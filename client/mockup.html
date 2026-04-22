@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PF2e RAG Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        border: 'hsl(240, 3.7%, 15.9%)',
+                        input: 'hsl(240, 3.7%, 15.9%)',
+                        ring: 'hsl(262, 83%, 58%)',
+                        background: 'hsl(240, 10%, 3.9%)',
+                        foreground: 'hsl(0, 0%, 98%)',
+                        primary: { DEFAULT: 'hsl(262, 83%, 58%)', foreground: 'hsl(0, 0%, 98%)' },
+                        secondary: { DEFAULT: 'hsl(240, 3.7%, 15.9%)', foreground: 'hsl(240, 5%, 96.1%)' },
+                        muted: { DEFAULT: 'hsl(240, 3.7%, 15.9%)', foreground: 'hsl(240, 5%, 64.9%)' },
+                        accent: { DEFAULT: 'hsl(240, 3.7%, 15.9%)', foreground: 'hsl(240, 5%, 96.1%)' },
+                        card: { DEFAULT: 'hsl(240, 10%, 3.9%)', foreground: 'hsl(0, 0%, 98%)' },
+                    },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        /* Custom scrollbar for chat */
+        .chat-scroll::-webkit-scrollbar { width: 6px; }
+        .chat-scroll::-webkit-scrollbar-track { background: transparent; }
+        .chat-scroll::-webkit-scrollbar-thumb { background: hsl(240, 3.7%, 25%); border-radius: 3px; }
+    </style>
+</head>
+<body class="bg-background text-foreground h-screen flex overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside class="w-64 bg-secondary border-r border-border flex flex-col p-4 gap-4 shrink-0">
+        <button class="flex items-center justify-center gap-2 w-full rounded-md border border-dashed border-muted-foreground/50 p-3 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            New Chat
+        </button>
+        
+        <div class="flex-1 overflow-y-auto space-y-1">
+            <p class="text-xs text-muted-foreground font-medium px-2 py-1">Recent</p>
+            <div class="rounded-md px-3 py-2 text-sm bg-accent text-accent-foreground truncate">Mitflit King Capture</div>
+            <div class="rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition truncate">Chandelier Assassination</div>
+            <div class="rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition truncate">Buying rare reagents</div>
+        </div>
+
+        <div class="border-t border-border pt-4 flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-xs font-bold">GM</div>
+            <div>
+                <p class="text-sm font-medium leading-none">Game Master 01</p>
+                <p class="text-xs text-muted-foreground mt-1">PF2e Remaster Rules</p>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col">
+        
+        <!-- Header -->
+        <header class="h-14 border-b border-border flex items-center justify-between px-6 shrink-0">
+            <div class="flex items-center gap-2">
+                <span class="text-lg font-semibold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Pathfinder 2e</span>
+                <span class="text-sm text-muted-foreground">Rules Assistant</span>
+            </div>
+            
+            <!-- The Toggle -->
+            <div class="flex items-center gap-3 bg-secondary rounded-lg p-1 border border-border">
+                <button class="px-3 py-1.5 text-xs font-medium rounded-md bg-primary text-primary-foreground shadow-sm transition">
+                    ⚔️ Player Mode
+                </button>
+                <button class="px-3 py-1.5 text-xs font-medium rounded-md text-muted-foreground hover:text-foreground transition">
+                    📜 GM Mode
+                </button>
+            </div>
+        </header>
+
+        <!-- Chat Area -->
+        <div class="flex-1 overflow-y-auto p-6 space-y-6 chat-scroll">
+            
+            <!-- User Message -->
+            <div class="flex justify-end">
+                <div class="max-w-[70%] bg-primary text-primary-foreground px-4 py-3 rounded-2xl rounded-br-sm shadow-lg">
+                    <p class="text-sm leading-relaxed">I'm a GM. My party just captured a mitflit king and wants to sell them at the market of a nearby settlement. How should I handle this?</p>
+                </div>
+            </div>
+
+            <!-- Assistant Message -->
+            <div class="flex justify-start gap-3">
+                <div class="w-8 h-8 rounded-full bg-secondary border border-border flex items-center justify-center text-xs shrink-0 mt-1">🤖</div>
+                <div class="max-w-[80%] space-y-4">
+                    
+                    <!-- Text Response -->
+                    <div class="bg-card border border-border rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
+                        <div class="text-sm leading-relaxed text-foreground space-y-3">
+                            <p>Selling a living, unique creature like a Mitflit King isn't a standard item transaction, so standard "Sell Items" rules don't perfectly apply. Here is the best way to adjudicate this using PF2e mechanics:</p>
+                            
+                            <div class="bg-secondary/50 p-3 rounded-md border border-border">
+                                <p class="font-semibold text-purple-400 mb-1">1. Earn Income (Diplomacy)</p>
+                                <p class="text-muted-foreground">Treat this as finding a buyer for exotic goods. Have the party face make an <strong class="text-foreground">Earn Income</strong> check using Diplomacy. The creature is Level 4, so the DC should be <strong class="text-foreground">19</strong>. The payout should be equivalent to a Level 4 task (approx. 5 gp per day spent arranging the sale).</p>
+                            </div>
+
+                            <div class="bg-secondary/50 p-3 rounded-md border border-border">
+                                <p class="font-semibold text-purple-400 mb-1">2. Setting the Scene</p>
+                                <p class="text-muted-foreground">Don't just let them click "sell". Make it an event. The settlement's guard might demand a "Monster Handling Fee" (1d4 x 10 gp). The blacksmith might want it for a sick gladiatorial pit, while the town guard wants it executed.</p>
+                            </div>
+
+                            <p class="text-muted-foreground italic">Here is the exact stat block pulled from the system for your reference:</p>
+                        </div>
+
+                        <!-- The Collapsible Stat Block Component -->
+                        <details class="mt-4 group">
+                            <summary class="flex items-center gap-2 cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground transition">
+                                <svg class="w-4 h-4 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                                View Mitflit King Stat Block
+                            </summary>
+                            <div class="mt-2 bg-zinc-950 border border-zinc-800 rounded-lg p-4 font-mono text-xs text-green-400 overflow-x-auto">
+<pre>{
+  "name": "Mitflit King",
+  "type": "npc",
+  "level": 4,
+  "traits": [" Goblinoid ", " Humanoid ", " Mitflit "],
+  "perception": "+9",
+  "languages": "Common, Goblin",
+  "attributes": {
+    "ac": 21,
+    "hp": 55,
+    "fortitude": "+10",
+    "reflex": "+9",
+    "will": "+7"
+  },
+  "skills": {
+    "acrobatics": "+9",
+    "athletics": "+7",
+    "deception": "+9",
+    "intimidation": "+11",
+    "stealth": "+9"
+  },
+  "str": 2, "dex": 4, "con": 3, "int": 0, "wis": 1, "cha": 4
+}</pre>
+                            </div>
+                        </details>
+                    </div>
+                </div>
+            </div>
+
+             <!-- User Follow-up -->
+             <div class="flex justify-end">
+                <div class="max-w-[70%] bg-primary text-primary-foreground px-4 py-3 rounded-2xl rounded-br-sm shadow-lg">
+                    <p class="text-sm leading-relaxed">The blacksmith decided to buy the mitflit king. How could this affect the settlement's and the blacksmith's standing with the party? What else could happen to the mitflit king?</p>
+                </div>
+            </div>
+
+             <!-- Assistant Follow-up -->
+             <div class="flex justify-start gap-3">
+                <div class="w-8 h-8 rounded-full bg-secondary border border-border flex items-center justify-center text-xs shrink-0 mt-1">🤖</div>
+                <div class="max-w-[80%] bg-card border border-border rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
+                    <div class="text-sm leading-relaxed text-foreground space-y-3">
+                        <p>Here are a few narrative and mechanical hooks for this decision:</p>
+                        <ul class="list-disc pl-5 space-y-2 text-muted-foreground">
+                            <li><strong class="text-foreground">Reputation Shift (Faction):</strong> If the town is lawful good, selling a sapient creature to a blacksmith for gladiatorial games might lower the party's standing with the Town Guard, but raise it with the local Thieves' Guild or Underworld.</li>
+                            <li><strong class="text-foreground">The Blacksmith's Debt:</strong> The blacksmith might not have liquid cash. He could offer a custom-crafted level 4 magical weapon (like a <em>+1 Striking Warhammer</em>) at a deep discount instead of gold.</li>
+                            <li><strong class="text-foreground">The Mitflit's Retinue:</strong> A Mitflit King wouldn't be alone. The party might soon find their base of operations besieged by angry Mitflits trying to rescue their liege.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Input Area -->
+        <div class="p-4 border-t border-border">
+            <div class="flex items-center gap-2 max-w-4xl mx-auto bg-secondary rounded-xl border border-border px-4 py-2 focus-within:ring-1 focus-within:ring-ring">
+                <input type="text" placeholder="Ask about rules, lore, or mechanics..." class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground">
+                <button class="bg-primary text-primary-foreground rounded-lg p-2 hover:opacity-90 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"></path></svg>
+                </button>
+            </div>
+            <p class="text-xs text-muted-foreground text-center mt-2">PF2e RAG can make mistakes. Verify critical mechanics with the PRD.</p>
+        </div>
+
+    </main>
+</body>
+</html>

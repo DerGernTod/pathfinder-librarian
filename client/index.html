@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pathfinder Librarian</title>
+    <script type="importmap">
+    {
+        "imports": {
+            "lit/decorators.js": "https://esm.sh/lit@3.3.2/decorators.js",
+            "lit-html": "https://esm.sh/lit-html@3.3.2",
+            "lit-element": "https://esm.sh/lit-element@4.2.2",
+            "hono/client": "https://esm.sh/hono@4.12.14/client"
+        }
+    }
+    </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/themes/dark.css" />
+    <script type="module" src="index.js" defer></script>
+ 
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #aaa;
+        background-color: #111;
+      }
+    </style>
+  </head>
+  <body class="sl-theme-dark">            
+    <main-page />
+  </body>
+</html>

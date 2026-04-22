@@ -1,0 +1,33 @@
+{
+  "name": "pathfinder-librarian",
+  "version": "1.0.0",
+  "description": "LLM-Powered Pathfinder Assistant",
+  "keywords": [
+    "pathfinder",
+    "rpg"
+  ],
+  "license": "MIT",
+  "author": "github@raudner.dev",
+  "type": "module",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "bun run --hot ./server/index.js --development",
+    "test": "vitest --run"
+  },
+  "devDependencies": {
+    "oxfmt": "0.46.0",
+    "oxlint": "1.61.0",
+    "playwright": "1.59.1",
+    "typescript": "6.0.3",
+    "vitest": "4.1.5"
+  },
+  "dependencies": {
+    "@hono/zod-validator": "0.7.6",
+    "@shoelace-style/shoelace": "2.20.1",
+    "hono": "4.12.14",
+    "lit": "3.3.2",
+    "lit-element": "4.2.2",
+    "lit-html": "3.3.2",
+    "zod": "4.3.6"
+  }
+}
