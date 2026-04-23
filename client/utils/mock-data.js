@@ -22,12 +22,28 @@ const MOCK_MESSAGES = [
         blocks: [
             {
                 type: "paragraph",
-                text: "Selling a living, unique creature like a Mitflit King isn't a standard item transaction, so standard \"Sell Items\" rules don't perfectly apply. Here is the best way to adjudicate this using PF2e mechanics:",
+                segments: [
+                    {
+                        text: "Selling a living, unique creature like a Mitflit King isn't a standard item transaction, so standard \"Sell Items\" rules don't perfectly apply. Here is the best way to adjudicate this using PF2e mechanics:",
+                    },
+                ],
             },
             {
                 type: "callout",
                 title: "1. Earn Income (Diplomacy)",
-                text: "Treat this as finding a buyer for exotic goods. Have the party face make an Earn Income check using Diplomacy. The creature is Level 4, so the DC should be 19. The payout should be equivalent to a Level 4 task (approx. 5 gp per day spent arranging the sale).",
+                segments: [
+                    {
+                        text: "Treat this as finding a buyer for exotic goods. Have the party face make an ",
+                    },
+                    { text: "Earn Income", highlight: true },
+                    {
+                        text: " check using Diplomacy. The creature is Level 4, so the DC should be ",
+                    },
+                    { text: "19", highlight: true },
+                    {
+                        text: ". The payout should be equivalent to a Level 4 task (approx. 5 gp per day spent arranging the sale).",
+                    },
+                ],
             },
             {
                 type: "callout",
@@ -36,7 +52,11 @@ const MOCK_MESSAGES = [
             },
             {
                 type: "paragraph",
-                text: "Here is the exact stat block pulled from the system for your reference:",
+                segments: [
+                    {
+                        text: "Here is the exact stat block pulled from the system for your reference:",
+                    },
+                ],
                 italic: true,
             },
             {
@@ -90,7 +110,13 @@ const MOCK_MESSAGES = [
                     },
                     {
                         title: "The Blacksmith's Debt:",
-                        text: "The blacksmith might not have liquid cash. He could offer a custom-crafted level 4 magical weapon (like a +1 Striking Warhammer) at a deep discount instead of gold.",
+                        segments: [
+                            {
+                                text: "The blacksmith might not have liquid cash. He could offer a custom-crafted level 4 magical weapon (like a ",
+                            },
+                            { text: "+1 Striking Warhammer", highlight: true },
+                            { text: ") at a deep discount instead of gold." },
+                        ],
                     },
                     {
                         title: "The Mitflit's Retinue:",

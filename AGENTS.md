@@ -8,8 +8,10 @@ No-build ESM web app: Hono server (Bun runtime) serving a Lit-component client. 
 
 - `bun run start` — dev server with hot reload (`bun run --hot ./server/index.js --development`)
 - `bun run test` — run tests via vitest (single run, not watch)
-- `npx oxlint .` — lint
-- `npx oxfmt . --check` — check formatting; `npx oxfmt .` to write
+- `bunx oxlint .` — lint
+- `bunx oxfmt . --check` — check formatting; `npx oxfmt .` to write
+- `bunx playwright test` — visual regression tests (Playwright)
+- `bunx playwright test --update-snapshots` — regenerate baselines
 
 No separate typecheck command — `jsconfig.json` enables `checkJs` + `strict` for VS Code / editor inline checking. TypeScript is a devDependency only for the language service, not for compilation.
 
@@ -59,7 +61,7 @@ import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/input/inp
 ## Testing
 
 - **Unit tests**: Bun test runner (`bun test`) — prefer over vitest where possible. Lit component tests likely need happy-dom for DOM APIs.
-- **Visual regression tests**: Playwright (not yet set up).
+- **Visual regression tests**: Playwright — config in `playwright.config.js`, tests in `vrtests/`, snapshots in `vrtests/__snapshots__/`. Uses Chromium only. Dev server auto-started.
 - TDD is encouraged — write tests first when adding features. Target high coverage.
 
 ## Conventions

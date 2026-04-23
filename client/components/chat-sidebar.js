@@ -28,14 +28,16 @@ class ChatSidebar extends LitElement {
     render() {
         return html`
             <aside
-                class="w-64 bg-secondary border-r border-border flex flex-col p-4 gap-4 shrink-0"
+                class="w-64 bg-secondary border-r border-border flex flex-col p-4 gap-4 shrink-0 h-full"
             >
                 <new-chat-button @new-chat=${this.handleNewChat}></new-chat-button>
-                <session-list
-                    .conversations=${this.conversations}
-                    .activeId=${this.activeId}
-                    @select-conversation=${this.handleSelectConversation}
-                ></session-list>
+                <div class="flex-1 min-h-0 overflow-hidden">
+                    <session-list
+                        .conversations=${this.conversations}
+                        .activeId=${this.activeId}
+                        @select-conversation=${this.handleSelectConversation}
+                    ></session-list>
+                </div>
                 <sidebar-profile
                     name="Game Master 01"
                     subtitle="PF2e Remaster Rules"

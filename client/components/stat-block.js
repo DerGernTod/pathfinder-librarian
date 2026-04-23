@@ -22,7 +22,7 @@ class StatBlock extends LitElement {
 
     render() {
         return html`
-            <sl-details summary="View ${this.title} Stat Block" class="mt-4">
+            <sl-details summary="View ${this.title} Stat Block" class="stat-block mt-4">
                 <sl-card class="w-full">
                     <pre class="font-mono text-xs text-green-400 overflow-x-auto">
 ${JSON.stringify(this.data, null, 2)}</pre

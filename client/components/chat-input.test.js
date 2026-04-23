@@ -15,32 +15,29 @@ describe("chat-input", () => {
         return el;
     }
 
-    it("renders input field with placeholder", async () => {
+    it("renders sl-textarea with placeholder", async () => {
         const el = createInput();
         await el.updateComplete;
-        const input = /** @type {HTMLInputElement} */ (el.querySelector("input[type='text']"));
-        expect(input).toBeTruthy();
-        expect(input.placeholder).toBe("Ask about rules, lore, or mechanics...");
+        const textarea = el.querySelector("sl-textarea");
+        expect(textarea).toBeTruthy();
+        expect(textarea.getAttribute("placeholder")).toBe(
+            "Ask about rules, lore, or mechanics...",
+        );
     });
 
     it("renders send button", async () => {
         const el = createInput();
         await el.updateComplete;
-        const button = el.querySelector("button[type='submit']");
+        const button = el.querySelector("button");
         expect(button).toBeTruthy();
     });
 
-    it("dispatches send-message on form submit with text", async () => {
+    it("dispatches send-message on button click with text", async () => {
         const el = createInput();
         await el.updateComplete;
 
         el.value = "Hello";
         el.requestUpdate();
-        await el.updateComplete;
-
-        const input = /** @type {HTMLInputElement} */ (el.querySelector("input"));
-        input.value = "Hello";
-        fireEvent.input(input);
         await el.updateComplete;
 
         /** @type {any} */
@@ -52,8 +49,8 @@ describe("chat-input", () => {
             },
         );
 
-        const form = /** @type {HTMLFormElement} */ (el.querySelector("form"));
-        fireEvent.submit(form);
+        const button = /** @type {HTMLElement} */ (el.querySelector("button"));
+        fireEvent.click(button);
         expect(detail).toBeTruthy();
         if (detail) {
             expect(detail.text).toBe("Hello");
@@ -68,13 +65,8 @@ describe("chat-input", () => {
         el.requestUpdate();
         await el.updateComplete;
 
-        const input = /** @type {HTMLInputElement} */ (el.querySelector("input"));
-        input.value = "Test";
-        fireEvent.input(input);
-        await el.updateComplete;
-
-        const form = /** @type {HTMLFormElement} */ (el.querySelector("form"));
-        fireEvent.submit(form);
+        const button = /** @type {HTMLElement} */ (el.querySelector("button"));
+        fireEvent.click(button);
         await el.updateComplete;
 
         expect(el.value).toBe("");
@@ -89,8 +81,8 @@ describe("chat-input", () => {
             dispatched = true;
         });
 
-        const form = /** @type {HTMLFormElement} */ (el.querySelector("form"));
-        fireEvent.submit(form);
+        const button = /** @type {HTMLElement} */ (el.querySelector("button"));
+        fireEvent.click(button);
         expect(dispatched).toBe(false);
     });
 

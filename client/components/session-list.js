@@ -34,7 +34,7 @@ class SessionList extends LitElement {
             : this.conversations;
 
         return html`
-            <div class="flex-1 overflow-y-auto space-y-1">
+            <div class="sidebar-search h-full overflow-y-auto space-y-1">
                 <p class="text-xs text-muted-foreground font-medium px-2 py-1">Recent</p>
                 <sl-input
                     .value=${this.query}

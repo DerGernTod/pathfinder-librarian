@@ -8,6 +8,7 @@ import { customElement } from "lit/decorators.js";
 /** @typedef {import("../../shared/types.js").UserMessage} UserMessage */
 /** @typedef {import("../../shared/types.js").AssistantMessage} AssistantMessage */
 /** @typedef {import("../../shared/types.js").MessageBlock} MessageBlock */
+/** @typedef {import("../../shared/types.js").Segment} Segment */
 
 class ChatMessage extends LitElement {
     static properties = {
@@ -80,14 +81,16 @@ class ChatMessage extends LitElement {
             case "paragraph":
                 return html`
                     <p class="${block.italic ? "text-muted-foreground italic" : ""}">
-                        ${block.text}
+                        ${this.renderInline(block.segments ?? block.text)}
                     </p>
                 `;
             case "callout":
                 return html`
-                    <sl-card class="w-full">
+                    <sl-card class="callout-card w-full">
                         <p class="font-semibold text-purple-400 mb-1">${block.title}</p>
-                        <p class="text-muted-foreground">${block.text}</p>
+                        <p class="text-muted-foreground">
+                            ${this.renderInline(block.segments ?? block.text)}
+                        </p>
                     </sl-card>
                 `;
             case "stat-block":
@@ -99,7 +102,7 @@ class ChatMessage extends LitElement {
                             (item) => html`
                                 <li>
                                     <strong class="text-foreground">${item.title}</strong>
-                                    ${item.text}
+                                    ${this.renderInline(item.segments ?? item.text)}
                                 </li>
                             `,
                         )}
@@ -108,6 +111,21 @@ class ChatMessage extends LitElement {
             default:
                 return nothing;
         }
+    }
+
+    /**
+     * @param {Segment[] | string | undefined} inline
+     */
+    renderInline(inline) {
+        if (!inline) {
+            return nothing;
+        }
+        if (typeof inline === "string") {
+            return inline;
+        }
+        return inline.map((seg) =>
+            seg.highlight ? html`<strong class="text-foreground">${seg.text}</strong>` : seg.text,
+        );
     }
 }
 

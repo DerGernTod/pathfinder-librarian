@@ -1,8 +1,6 @@
 import "./stat-block.js";
 import { beforeEach, describe, expect, it } from "bun:test";
 
-import { getByText } from "@testing-library/dom";
-
 describe("stat-block", () => {
     beforeEach(() => {
         document.body.innerHTML = "";
@@ -21,32 +19,34 @@ describe("stat-block", () => {
         return el;
     }
 
-    it("renders title in summary", async () => {
+    it("renders sl-details with title in summary attribute", async () => {
         const el = createStatBlock("Mitflit King", { name: "Mitflit King" });
         await el.updateComplete;
-        expect(getByText(el, /View Mitflit King Stat Block/)).toBeTruthy();
+        const details = el.querySelector("sl-details");
+        expect(details).toBeTruthy();
+        expect(details.getAttribute("summary")).toBe("View Mitflit King Stat Block");
     });
 
-    it("renders formatted JSON data in pre element", async () => {
+    it("renders formatted JSON data in sl-card pre element", async () => {
         const data = { name: "Test", level: 4 };
         const el = createStatBlock("Test", data);
         await el.updateComplete;
         const pre = el.querySelector("pre");
-        expect(pre.textContent).toBe(JSON.stringify(data, null, 2));
+        expect(pre.textContent.trim()).toBe(JSON.stringify(data, null, 2));
     });
 
-    it("renders details element (collapsed by default)", async () => {
+    it("renders sl-details element collapsed by default", async () => {
         const el = createStatBlock("Test", { foo: "bar" });
         await el.updateComplete;
-        const details = el.querySelector("details");
+        const details = /** @type {any} */ (el.querySelector("sl-details"));
         expect(details).toBeTruthy();
-        expect(details.open).toBe(false);
+        expect(details.open).toBeFalsy();
     });
 
-    it("contains chevron svg in summary", async () => {
+    it("sl-details contains sl-card with content", async () => {
         const el = createStatBlock("Test", {});
         await el.updateComplete;
-        const svg = el.querySelector("summary svg");
-        expect(svg).toBeTruthy();
+        const card = el.querySelector("sl-details > sl-card");
+        expect(card).toBeTruthy();
     });
 });

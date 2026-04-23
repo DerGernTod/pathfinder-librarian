@@ -24,12 +24,12 @@ describe("session-list", () => {
         expect(getByText(el, "Recent")).toBeTruthy();
     });
 
-    it("renders search input with placeholder", async () => {
+    it("renders sl-input search with placeholder", async () => {
         const el = createList();
         await el.updateComplete;
-        const input = el.querySelector("input[type='text']");
+        const input = el.querySelector("sl-input");
         expect(input).toBeTruthy();
-        expect(input.placeholder).toBe("Search conversations...");
+        expect(input.getAttribute("placeholder")).toBe("Search conversations...");
     });
 
     it("renders all conversation titles", async () => {

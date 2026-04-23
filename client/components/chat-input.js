@@ -1,4 +1,3 @@
-import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/icon/icon.js?deps=lit@3.3.2";
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/textarea/textarea.js?deps=lit@3.3.2";
 import { LitElement } from "lit-element";
 import { html } from "lit-html";
@@ -26,7 +25,9 @@ class ChatInput extends LitElement {
     render() {
         return html`
             <div class="p-4 border-t border-border">
-                <div class="flex items-end gap-2 max-w-4xl mx-auto">
+                <div
+                    class="chat-input-wrapper flex items-center gap-2 max-w-4xl mx-auto bg-secondary rounded-xl border border-border px-4 py-2 focus-within:ring-1 focus-within:ring-ring"
+                >
                     <sl-textarea
                         .value=${this.value}
                         @sl-input=${this.handleInput}
@@ -38,9 +39,16 @@ class ChatInput extends LitElement {
                     ></sl-textarea>
                     <button
                         @click=${this.handleSubmit}
-                        class="bg-primary text-primary-foreground rounded-lg p-2 hover:opacity-90 transition mb-0.5"
+                        class="bg-primary text-primary-foreground rounded-lg p-2 hover:opacity-90 transition"
                     >
-                        <sl-icon name="arrow-right" class="w-4 h-4"></sl-icon>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M5 12h14M12 5l7 7-7 7"
+                            />
+                        </svg>
                     </button>
                 </div>
                 <p class="text-xs text-muted-foreground text-center mt-2">

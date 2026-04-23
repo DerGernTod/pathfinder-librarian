@@ -42,7 +42,7 @@ class MainPage extends LitElement {
 
     render() {
         return html`
-            <div class="h-screen flex overflow-hidden">
+            <div class="h-screen flex overflow-hidden bg-background text-foreground">
                 <chat-sidebar
                     .conversations=${this.conversations}
                     .activeId=${this.activeConversationId}

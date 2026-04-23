@@ -14,7 +14,7 @@
         "start": "bun run --hot ./server/index.js --development",
         "lint": "oxlint",
         "format": "oxfmt",
-        "test": "vitest --run",
+        "test": "bun test",
         "check": "tsc -p jsconfig.json --noEmit"
     },
     "dependencies": {

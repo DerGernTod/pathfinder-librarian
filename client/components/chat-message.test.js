@@ -1,7 +1,9 @@
-import "./chat-message.js";
 import { beforeEach, describe, expect, it } from "bun:test";
 
+import "./chat-message.js";
+
 import { getByText } from "@testing-library/dom";
+
 
 describe("chat-message", () => {
     beforeEach(() => {

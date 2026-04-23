@@ -78,9 +78,84 @@
                 background: hsl(240, 3.7%, 25%);
                 border-radius: 3px;
             }
+
+            /* Chat input: transparent textarea inside unified wrapper */
+            .chat-input-wrapper sl-textarea::part(base) {
+                background: transparent;
+                border: none;
+                box-shadow: none;
+            }
+            .chat-input-wrapper sl-textarea::part(textarea) {
+                background: transparent;
+                font-size: 0.875rem;
+                line-height: 1.25rem;
+                padding: 0;
+                color: hsl(0, 0%, 98%);
+            }
+            .chat-input-wrapper sl-textarea::part(textarea)::placeholder {
+                color: hsl(240, 5%, 64.9%);
+            }
+
+            /* Callout cards inside assistant messages */
+            sl-card.callout-card::part(base) {
+                background: rgba(30, 30, 46, 0.5);
+                border: 1px solid hsl(240, 3.7%, 15.9%);
+                border-radius: 0.375rem;
+            }
+            sl-card.callout-card::part(body) {
+                padding: 0.75rem;
+            }
+
+            /* Stat block details */
+            sl-details.stat-block::part(base) {
+                background: transparent;
+                border: none;
+                border-radius: 0;
+            }
+            sl-details.stat-block::part(header) {
+                padding: 0;
+            }
+            sl-details.stat-block::part(summary) {
+                font-size: 0.875rem;
+                font-weight: 500;
+                color: hsl(240, 5%, 64.9%);
+            }
+            sl-details.stat-block::part(summary):hover {
+                color: hsl(0, 0%, 98%);
+            }
+            sl-details.stat-block::part(summary-icon) {
+                color: hsl(240, 5%, 64.9%);
+            }
+            sl-details.stat-block sl-card::part(base) {
+                background: hsl(240, 10%, 3.9%);
+                border: 1px solid hsl(240, 3.7%, 25%);
+                border-radius: 0.5rem;
+            }
+            sl-details.stat-block sl-card::part(body) {
+                padding: 1rem;
+            }
+
+            /* Sidebar search input */
+            .sidebar-search sl-input::part(base) {
+                background: transparent;
+                border: 1px solid hsl(240, 3.7%, 15.9%);
+                border-radius: 0.375rem;
+            }
+            .sidebar-search sl-input::part(base):focus-within {
+                border-color: hsl(240, 3.7%, 25%);
+                box-shadow: none;
+            }
+            .sidebar-search sl-input::part(input) {
+                font-size: 0.75rem;
+            }
+
+            /* Chat messages need block display for space-y margins */
+            chat-message {
+                display: block;
+            }
         </style>
     </head>
-    <body class="sl-theme-dark">
+    <body class="sl-theme-dark bg-background text-foreground">
         <main-page />
     </body>
 </html>
