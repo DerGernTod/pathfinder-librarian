@@ -1,11 +1,12 @@
 {
-  "compilerOptions": {
-    "checkJs": true,
-    "allowJs": true,
-    "module": "esnext",
-    "target": "esnext",
-    "moduleResolution": "bundler",
-    "strict": true
-  },
-  "exclude": ["node_modules"]
+    "compilerOptions": {
+        "checkJs": true,
+        "allowJs": true,
+        "module": "esnext",
+        "target": "esnext",
+        "moduleResolution": "bundler",
+        "strict": true,
+        "types": ["bun"]
+    },
+    "exclude": ["node_modules"]
 }

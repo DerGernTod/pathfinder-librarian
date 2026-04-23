@@ -1,36 +1,86 @@
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Pathfinder Librarian</title>
-    <script type="importmap">
-    {
-        "imports": {
-            "lit/decorators.js": "https://esm.sh/lit@3.3.2/decorators.js",
-            "lit-html": "https://esm.sh/lit-html@3.3.2",
-            "lit-element": "https://esm.sh/lit-element@4.2.2",
-            "hono/client": "https://esm.sh/hono@4.12.14/client"
-        }
-    }
-    </script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/themes/dark.css" />
-    <script type="module" src="index.js" defer></script>
- 
-    <style>
-      body {
-        margin: 0;
-        padding: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        color: #aaa;
-        background-color: #111;
-      }
-    </style>
-  </head>
-  <body class="sl-theme-dark">            
-    <main-page />
-  </body>
+<html lang="en" class="dark">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Pathfinder Librarian</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+            rel="stylesheet"
+        />
+        <script>
+            tailwind.config = {
+                darkMode: "class",
+                theme: {
+                    extend: {
+                        colors: {
+                            border: "hsl(240, 3.7%, 15.9%)",
+                            input: "hsl(240, 3.7%, 15.9%)",
+                            ring: "hsl(262, 83%, 58%)",
+                            background: "hsl(240, 10%, 3.9%)",
+                            foreground: "hsl(0, 0%, 98%)",
+                            primary: {
+                                DEFAULT: "hsl(262, 83%, 58%)",
+                                foreground: "hsl(0, 0%, 98%)",
+                            },
+                            secondary: {
+                                DEFAULT: "hsl(240, 3.7%, 15.9%)",
+                                foreground: "hsl(240, 5%, 96.1%)",
+                            },
+                            muted: {
+                                DEFAULT: "hsl(240, 3.7%, 15.9%)",
+                                foreground: "hsl(240, 5%, 64.9%)",
+                            },
+                            accent: {
+                                DEFAULT: "hsl(240, 3.7%, 15.9%)",
+                                foreground: "hsl(240, 5%, 96.1%)",
+                            },
+                            card: {
+                                DEFAULT: "hsl(240, 10%, 3.9%)",
+                                foreground: "hsl(0, 0%, 98%)",
+                            },
+                        },
+                        fontFamily: { sans: ["Inter", "sans-serif"] },
+                    },
+                },
+            };
+        </script>
+        <script type="importmap">
+            {
+                "imports": {
+                    "lit/decorators.js": "https://esm.sh/lit@3.3.2/decorators.js",
+                    "lit-html": "https://esm.sh/lit-html@3.3.2",
+                    "lit-element": "https://esm.sh/lit-element@4.2.2",
+                    "hono/client": "https://esm.sh/hono@4.12.14/client"
+                }
+            }
+        </script>
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/themes/dark.css"
+        />
+        <script type="module" src="index.js" defer></script>
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: "Inter", sans-serif;
+            }
+            .chat-scroll::-webkit-scrollbar {
+                width: 6px;
+            }
+            .chat-scroll::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            .chat-scroll::-webkit-scrollbar-thumb {
+                background: hsl(240, 3.7%, 25%);
+                border-radius: 3px;
+            }
+        </style>
+    </head>
+    <body class="sl-theme-dark">
+        <main-page />
+    </body>
 </html>

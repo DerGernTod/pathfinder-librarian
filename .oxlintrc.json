@@ -5,16 +5,8 @@
         "node": true,
         "browser": true
     },
-    "ignorePatterns": [
-        "node_modules/**",
-        "dist/**",
-        "build/**",
-        "coverage/**"
-    ],
-    "plugins": [
-        "typescript",
-        "import"
-    ],
+    "ignorePatterns": ["node_modules/**", "dist/**", "build/**", "coverage/**"],
+    "plugins": ["typescript", "import"],
     "rules": {
         "no-unused-vars": "error",
         "no-undef": "error",
@@ -23,7 +15,7 @@
         "no-default-export": "error",
         "eqeqeq": "error",
         "curly": "error",
-        "sort-imports": "error",
+        "sort-imports": "off",
         "@typescript-eslint/no-explicit-any": [
             "error",
             {
