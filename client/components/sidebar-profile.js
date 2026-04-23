@@ -1,17 +1,60 @@
-import { LitElement } from "lit-element";
+import { LitElement, css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
+import { baseStyles } from "../styles/base-styles.js";
+import { tokens } from "../styles/tokens.js";
+
+/** @typedef {import("../../shared/types.js").Mode} Mode */
+
 class SidebarProfile extends LitElement {
+    static styles = [
+        tokens,
+        baseStyles,
+        css`
+            .profile {
+                border-top: 1px solid var(--border);
+                padding-top: 1rem;
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+            }
+            .avatar {
+                width: 2rem;
+                height: 2rem;
+                border-radius: 9999px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 0.75rem;
+                font-weight: 700;
+                color: white;
+                background: var(--accent);
+                transition:
+                    background 0.5s ease,
+                    color 0.5s ease,
+                    box-shadow 0.5s ease;
+            }
+            .name {
+                font-size: 0.875rem;
+                font-weight: 500;
+                line-height: 1;
+            }
+            .subtitle {
+                font-size: 0.75rem;
+                line-height: 1rem;
+                color: var(--muted-foreground);
+                margin-top: 0.25rem;
+            }
+        `,
+    ];
+
     static properties = {
         name: { type: String },
         subtitle: { type: String },
         initials: { type: String },
+        mode: { type: String },
     };
-
-    createRenderRoot() {
-        return this;
-    }
 
     constructor() {
         super();
@@ -21,19 +64,17 @@ class SidebarProfile extends LitElement {
         this.subtitle = "";
         /** @type {string} */
         this.initials = "";
+        /** @type {Mode} */
+        this.mode = "gm";
     }
 
     render() {
         return html`
-            <div class="border-t border-border pt-4 flex items-center gap-3">
-                <div
-                    class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-xs font-bold"
-                >
-                    ${this.initials}
-                </div>
+            <div class="profile">
+                <div class="avatar">${this.initials}</div>
                 <div>
-                    <p class="text-sm font-medium leading-none">${this.name}</p>
-                    <p class="text-xs text-muted-foreground mt-1">${this.subtitle}</p>
+                    <p class="name">${this.name}</p>
+                    <p class="subtitle">${this.subtitle}</p>
                 </div>
             </div>
         `;

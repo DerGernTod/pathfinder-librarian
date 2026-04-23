@@ -20,38 +20,38 @@ describe("chat-header", () => {
     it("renders title", async () => {
         const el = createHeader();
         await el.updateComplete;
-        expect(getByText(el, "Pathfinder 2e")).toBeTruthy();
+        expect(getByText(el.shadowRoot, "Pathfinder 2e")).toBeTruthy();
     });
 
     it("renders subtitle", async () => {
         const el = createHeader();
         await el.updateComplete;
-        expect(getByText(el, "Rules Assistant")).toBeTruthy();
+        expect(getByText(el.shadowRoot, "Rules Assistant")).toBeTruthy();
     });
 
     it("renders both mode buttons", async () => {
         const el = createHeader();
         await el.updateComplete;
-        expect(getByText(el, "Player Mode", { exact: false })).toBeTruthy();
-        expect(getByText(el, "GM Mode", { exact: false })).toBeTruthy();
+        expect(getByText(el.shadowRoot, "Player Mode", { exact: false })).toBeTruthy();
+        expect(getByText(el.shadowRoot, "GM Mode", { exact: false })).toBeTruthy();
     });
 
     it("player button active when mode is player", async () => {
         const el = createHeader("player");
         await el.updateComplete;
         const playerBtn = /** @type {HTMLElement} */ (
-            getByText(el, "Player Mode", { exact: false }).closest("button")
+            getByText(el.shadowRoot, "Player Mode", { exact: false }).closest("button")
         );
-        expect(playerBtn.classList.contains("bg-primary")).toBe(true);
+        expect(playerBtn.classList.contains("active")).toBe(true);
     });
 
     it("gm button active when mode is gm", async () => {
         const el = createHeader("gm");
         await el.updateComplete;
         const gmBtn = /** @type {HTMLElement} */ (
-            getByText(el, "GM Mode", { exact: false }).closest("button")
+            getByText(el.shadowRoot, "GM Mode", { exact: false }).closest("button")
         );
-        expect(gmBtn.classList.contains("bg-primary")).toBe(true);
+        expect(gmBtn.classList.contains("active")).toBe(true);
     });
 
     it("dispatches mode-change on player button click", async () => {
@@ -67,7 +67,7 @@ describe("chat-header", () => {
             },
         );
 
-        fireEvent.click(getByText(el, "Player Mode", { exact: false }));
+        fireEvent.click(getByText(el.shadowRoot, "Player Mode", { exact: false }));
         expect(detail).toBeTruthy();
         if (detail) {
             expect(detail.mode).toBe("player");
@@ -87,7 +87,7 @@ describe("chat-header", () => {
             },
         );
 
-        fireEvent.click(getByText(el, "GM Mode", { exact: false }));
+        fireEvent.click(getByText(el.shadowRoot, "GM Mode", { exact: false }));
         expect(detail).toBeTruthy();
         if (detail) {
             expect(detail.mode).toBe("gm");

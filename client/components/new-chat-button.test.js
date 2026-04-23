@@ -18,13 +18,13 @@ describe("new-chat-button", () => {
     it("renders button with text", async () => {
         const el = createButton();
         await el.updateComplete;
-        expect(getByText(el, "New Chat")).toBeTruthy();
+        expect(getByText(el.shadowRoot, "New Chat")).toBeTruthy();
     });
 
     it("renders plus icon svg", async () => {
         const el = createButton();
         await el.updateComplete;
-        const svg = el.querySelector("svg");
+        const svg = el.shadowRoot.querySelector("svg");
         expect(svg).toBeTruthy();
     });
 
@@ -37,7 +37,7 @@ describe("new-chat-button", () => {
             dispatched = true;
         });
 
-        fireEvent.click(getByText(el, "New Chat"));
+        fireEvent.click(getByText(el.shadowRoot, "New Chat"));
         expect(dispatched).toBe(true);
     });
 });

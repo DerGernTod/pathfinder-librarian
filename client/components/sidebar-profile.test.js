@@ -26,25 +26,25 @@ describe("sidebar-profile", () => {
     it("renders name", async () => {
         const el = createProfile("Game Master 01");
         await el.updateComplete;
-        expect(getByText(el, "Game Master 01")).toBeTruthy();
+        expect(getByText(el.shadowRoot, "Game Master 01")).toBeTruthy();
     });
 
     it("renders subtitle", async () => {
         const el = createProfile("", "PF2e Remaster Rules");
         await el.updateComplete;
-        expect(getByText(el, "PF2e Remaster Rules")).toBeTruthy();
+        expect(getByText(el.shadowRoot, "PF2e Remaster Rules")).toBeTruthy();
     });
 
     it("renders initials in avatar", async () => {
         const el = createProfile("", "", "GM");
         await el.updateComplete;
-        expect(getByText(el, "GM")).toBeTruthy();
+        expect(getByText(el.shadowRoot, "GM")).toBeTruthy();
     });
 
-    it("renders with border-t separator", async () => {
+    it("renders with profile wrapper", async () => {
         const el = createProfile();
         await el.updateComplete;
-        const wrapper = el.querySelector(".border-t");
+        const wrapper = el.shadowRoot.querySelector(".profile");
         expect(wrapper).toBeTruthy();
     });
 });

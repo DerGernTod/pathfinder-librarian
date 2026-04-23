@@ -18,31 +18,35 @@ describe("chat-sidebar", () => {
         return el;
     }
 
-    it("renders New Chat button via new-chat-button component", async () => {
+    it("renders new-chat-button component", async () => {
         const el = createSidebar();
         await el.updateComplete;
-        expect(getByText(el, "New Chat")).toBeTruthy();
+        const btn = el.shadowRoot.querySelector("new-chat-button");
+        expect(btn).toBeTruthy();
     });
 
     it("renders session-list component", async () => {
         const el = createSidebar([{ id: "1", title: "Test Chat" }]);
         await el.updateComplete;
-        expect(getByText(el, "Recent")).toBeTruthy();
-        expect(getByText(el, "Test Chat")).toBeTruthy();
+        const list = el.shadowRoot.querySelector("session-list");
+        expect(list).toBeTruthy();
+        expect(list.conversations).toHaveLength(1);
     });
 
     it("renders sidebar-profile component", async () => {
         const el = createSidebar();
         await el.updateComplete;
-        expect(getByText(el, "Game Master 01")).toBeTruthy();
-        expect(getByText(el, "PF2e Remaster Rules")).toBeTruthy();
-        expect(getByText(el, "GM")).toBeTruthy();
+        const profile = el.shadowRoot.querySelector("sidebar-profile");
+        expect(profile).toBeTruthy();
+        expect(profile.name).toBe("Game Master 01");
+        expect(profile.subtitle).toBe("PF2e Remaster Rules");
+        expect(profile.initials).toBe("GM");
     });
 
     it("passes conversations and activeId to session-list", async () => {
         const el = createSidebar([{ id: "1", title: "Active Chat" }], "1");
         await el.updateComplete;
-        const list = el.querySelector("session-list");
+        const list = el.shadowRoot.querySelector("session-list");
         expect(list).toBeTruthy();
         expect(list.conversations).toHaveLength(1);
         expect(list.activeId).toBe("1");
@@ -57,7 +61,9 @@ describe("chat-sidebar", () => {
             dispatched = true;
         });
 
-        fireEvent.click(getByText(el, "New Chat"));
+        const ncb = el.shadowRoot.querySelector("new-chat-button");
+        await ncb.updateComplete;
+        fireEvent.click(ncb.shadowRoot.querySelector("button"));
         expect(dispatched).toBe(true);
     });
 
@@ -74,7 +80,14 @@ describe("chat-sidebar", () => {
             },
         );
 
-        fireEvent.click(getByText(el, "Pick me"));
+        const list = el.shadowRoot.querySelector("session-list");
+        list.dispatchEvent(
+            new CustomEvent("select-conversation", {
+                detail: { id: "42" },
+                bubbles: true,
+                composed: true,
+            }),
+        );
         expect(detail).toBeTruthy();
         if (detail) {
             expect(detail.id).toBe("42");
@@ -91,7 +104,14 @@ describe("chat-sidebar", () => {
         );
         await el.updateComplete;
 
-        fireEvent.click(getByText(el, "Second"));
+        const list = el.shadowRoot.querySelector("session-list");
+        list.dispatchEvent(
+            new CustomEvent("select-conversation", {
+                detail: { id: "2" },
+                bubbles: true,
+                composed: true,
+            }),
+        );
         await el.updateComplete;
 
         expect(el.activeId).toBe("2");

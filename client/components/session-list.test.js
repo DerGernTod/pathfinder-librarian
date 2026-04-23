@@ -21,13 +21,13 @@ describe("session-list", () => {
     it("renders Recent label", async () => {
         const el = createList();
         await el.updateComplete;
-        expect(getByText(el, "Recent")).toBeTruthy();
+        expect(getByText(el.shadowRoot, "Recent")).toBeTruthy();
     });
 
     it("renders sl-input search with placeholder", async () => {
         const el = createList();
         await el.updateComplete;
-        const input = el.querySelector("sl-input");
+        const input = el.shadowRoot.querySelector("sl-input");
         expect(input).toBeTruthy();
         expect(input.getAttribute("placeholder")).toBe("Search conversations...");
     });
@@ -38,18 +38,18 @@ describe("session-list", () => {
             { id: "2", title: "Chat Two" },
         ]);
         await el.updateComplete;
-        expect(getByText(el, "Chat One")).toBeTruthy();
-        expect(getByText(el, "Chat Two")).toBeTruthy();
+        expect(getByText(el.shadowRoot, "Chat One")).toBeTruthy();
+        expect(getByText(el.shadowRoot, "Chat Two")).toBeTruthy();
     });
 
     it("highlights active conversation", async () => {
         const el = createList([{ id: "1", title: "Active Chat" }], "1");
         await el.updateComplete;
-        const activeEl = getByText(el, "Active Chat");
-        expect(activeEl.classList.contains("bg-accent")).toBe(true);
+        const activeEl = getByText(el.shadowRoot, "Active Chat");
+        expect(activeEl.classList.contains("active")).toBe(true);
     });
 
-    it("non-active conversation has muted style", async () => {
+    it("non-active conversation does not have active class", async () => {
         const el = createList(
             [
                 { id: "1", title: "Active" },
@@ -58,8 +58,8 @@ describe("session-list", () => {
             "1",
         );
         await el.updateComplete;
-        const inactiveEl = getByText(el, "Inactive");
-        expect(inactiveEl.classList.contains("text-muted-foreground")).toBe(true);
+        const inactiveEl = getByText(el.shadowRoot, "Inactive");
+        expect(inactiveEl.classList.contains("active")).toBe(false);
     });
 
     it("dispatches select-conversation with id on click", async () => {
@@ -75,7 +75,7 @@ describe("session-list", () => {
             },
         );
 
-        fireEvent.click(getByText(el, "Pick me"));
+        fireEvent.click(getByText(el.shadowRoot, "Pick me"));
         expect(detail).toBeTruthy();
         if (detail) {
             expect(detail.id).toBe("42");
@@ -93,8 +93,8 @@ describe("session-list", () => {
         el.requestUpdate();
         await el.updateComplete;
 
-        expect(getByText(el, "Mitflit King")).toBeTruthy();
-        expect(el.textContent).not.toContain("Chandelier Plot");
+        expect(getByText(el.shadowRoot, "Mitflit King")).toBeTruthy();
+        expect(el.shadowRoot.textContent).not.toContain("Chandelier Plot");
     });
 
     it("shows all conversations when query is cleared", async () => {
@@ -108,13 +108,13 @@ describe("session-list", () => {
         el.requestUpdate();
         await el.updateComplete;
 
-        expect(el.textContent).not.toContain("Mitflit King");
+        expect(el.shadowRoot.textContent).not.toContain("Mitflit King");
 
         el.query = "";
         el.requestUpdate();
         await el.updateComplete;
 
-        expect(getByText(el, "Mitflit King")).toBeTruthy();
-        expect(getByText(el, "Chandelier Plot")).toBeTruthy();
+        expect(getByText(el.shadowRoot, "Mitflit King")).toBeTruthy();
+        expect(getByText(el.shadowRoot, "Chandelier Plot")).toBeTruthy();
     });
 });

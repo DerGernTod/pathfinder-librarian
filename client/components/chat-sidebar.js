@@ -1,21 +1,46 @@
 import "./new-chat-button.js";
 import "./session-list.js";
 import "./sidebar-profile.js";
-import { LitElement } from "lit-element";
+import { LitElement, css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
+import { baseStyles } from "../styles/base-styles.js";
+import { tokens } from "../styles/tokens.js";
+
 /** @typedef {import("../../shared/types.js").Conversation} Conversation */
+/** @typedef {import("../../shared/types.js").Mode} Mode */
 
 class ChatSidebar extends LitElement {
+    static styles = [
+        tokens,
+        baseStyles,
+        css`
+            .sidebar {
+                width: 16rem;
+                background: var(--secondary);
+                border-right: 2px solid var(--accent-sidebar-border);
+                display: flex;
+                flex-direction: column;
+                padding: 1rem;
+                gap: 1rem;
+                flex-shrink: 0;
+                height: 100%;
+                transition: border-color 0.5s ease;
+            }
+            .content {
+                flex: 1;
+                min-height: 0;
+                overflow: hidden;
+            }
+        `,
+    ];
+
     static properties = {
         conversations: { type: Array },
         activeId: { type: String },
+        mode: { type: String },
     };
-
-    createRenderRoot() {
-        return this;
-    }
 
     constructor() {
         super();
@@ -23,22 +48,24 @@ class ChatSidebar extends LitElement {
         this.conversations = [];
         /** @type {string} */
         this.activeId = "";
+        /** @type {Mode} */
+        this.mode = "gm";
     }
 
     render() {
         return html`
-            <aside
-                class="w-64 bg-secondary border-r border-border flex flex-col p-4 gap-4 shrink-0 h-full"
-            >
+            <aside class="sidebar">
                 <new-chat-button @new-chat=${this.handleNewChat}></new-chat-button>
-                <div class="flex-1 min-h-0 overflow-hidden">
+                <div class="content">
                     <session-list
+                        .mode=${this.mode}
                         .conversations=${this.conversations}
                         .activeId=${this.activeId}
                         @select-conversation=${this.handleSelectConversation}
                     ></session-list>
                 </div>
                 <sidebar-profile
+                    .mode=${this.mode}
                     name="Game Master 01"
                     subtitle="PF2e Remaster Rules"
                     initials="GM"

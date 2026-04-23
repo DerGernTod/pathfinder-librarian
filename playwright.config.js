@@ -6,6 +6,7 @@ export default defineConfig({
     fullyParallel: true,
     retries: 2,
     snapshotDir: "./vrtests/__snapshots__",
+
     use: {
         baseURL: "http://localhost:3000",
         trace: "on-first-retry",
@@ -16,6 +17,15 @@ export default defineConfig({
             use: { ...devices["Desktop Chrome"] },
         },
     ],
+    expect: {
+        toHaveScreenshot: {
+            threshold: 0.0001,
+        },
+        toMatchSnapshot: {
+            threshold: 0.0001,
+
+        },
+    },
     webServer: {
         command: "bun run start",
         url: "http://localhost:3000",

@@ -1,0 +1,16 @@
+{
+    "title": "Conversation doesn't autoscroll to bottom",
+    "description": "at the start when the page loads, as well as when the user sends a prompt, the conversation doesn't scroll to it",
+    "selector": "chat-message:nth-child(6) > div.flex.justify-start > div.max-w-[80%].space-y-4:nth-child(2) > div.bg-card.border > div.text-sm.leading-relaxed > p:nth-child(1)",
+    "cssSelector": "chat-message:nth-child(6) > div.flex.justify-start > div.max-w-[80%].space-y-4:nth-child(2) > div.bg-card.border > div.text-sm.leading-relaxed > p:nth-child(1)",
+    "url": "/",
+    "status": "todo",
+    "type": "Task",
+    "priority": "Medium",
+    "author": "Gernot Raudner",
+    "annotatedElementText": "When you have resistance to a damage type, you subtract the resistance value from the total damage dealt after applying any weaknesses or immunities.",
+    "id": "2e5b95562206c933b7bcad2b035b21",
+    "created": "2026-04-23T18:29:18.692Z",
+    "comments": [],
+    "files": []
+}

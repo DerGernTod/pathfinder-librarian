@@ -3,10 +3,12 @@ import "../components/chat-input.js";
 import "../components/chat-message.js";
 import "../components/chat-sidebar.js";
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/spinner/spinner.js?deps=lit@3.3.2";
-import { LitElement } from "lit-element";
+import { LitElement, css } from "lit-element";
 import { html, nothing } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
+import { baseStyles } from "../styles/base-styles.js";
+import { tokens } from "../styles/tokens.js";
 import { MOCK_CONVERSATIONS, MOCK_MESSAGES } from "../utils/mock-data.js";
 
 /** @typedef {import("../../shared/types.js").Conversation} Conversation */
@@ -14,6 +16,68 @@ import { MOCK_CONVERSATIONS, MOCK_MESSAGES } from "../utils/mock-data.js";
 /** @typedef {import("../../shared/types.js").Mode} Mode */
 
 class MainPage extends LitElement {
+    static styles = [
+        tokens,
+        baseStyles,
+        css`
+            :host {
+                height: 100vh;
+            }
+            .app {
+                height: 100%;
+                display: flex;
+                overflow: hidden;
+                background: var(--background);
+                color: var(--foreground);
+                --accent: hsl(262, 83%, 58%);
+                --accent-foreground: hsl(0, 0%, 98%);
+                --accent-sidebar-border: hsla(262, 83%, 58%, 0.25);
+            }
+            .app[data-mode="gm"] {
+                --accent: hsl(262, 83%, 58%);
+                --accent-foreground: hsl(0, 0%, 98%);
+                --accent-sidebar-border: hsla(262, 83%, 58%, 0.45);
+            }
+            .app[data-mode="player"] {
+                --accent: hsl(25, 83%, 48%);
+                --accent-foreground: hsl(0, 0%, 98%);
+                --accent-sidebar-border: hsla(25, 83%, 48%, 0.5);
+            }
+            .main {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+            }
+            .messages {
+                flex: 1;
+                overflow-y: auto;
+                padding: 1.5rem;
+            }
+            .messages > * + * {
+                margin-top: 1.5rem;
+            }
+            .messages::-webkit-scrollbar {
+                width: 6px;
+            }
+            .messages::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            .messages::-webkit-scrollbar-thumb {
+                background: var(--border-lighter);
+                border-radius: 3px;
+            }
+            .loading {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                color: var(--muted-foreground);
+            }
+            .loading-text {
+                font-size: 0.875rem;
+            }
+        `,
+    ];
+
     static properties = {
         conversations: { type: Array },
         activeConversationId: { type: String },
@@ -21,10 +85,6 @@ class MainPage extends LitElement {
         mode: { type: String },
         loading: { type: Boolean },
     };
-
-    createRenderRoot() {
-        return this;
-    }
 
     constructor() {
         super();
@@ -42,42 +102,42 @@ class MainPage extends LitElement {
 
     render() {
         return html`
-            <div class="h-screen flex overflow-hidden bg-background text-foreground">
+            <div class="app" data-mode=${this.mode}>
                 <chat-sidebar
                     .conversations=${this.conversations}
                     .activeId=${this.activeConversationId}
+                    .mode=${this.mode}
                     @new-chat=${this.handleNewChat}
                     @select-conversation=${this.handleSelectConversation}
                 ></chat-sidebar>
-                <main class="flex-1 flex flex-col">
+                <main class="main">
                     <chat-header
                         .mode=${this.mode}
                         @mode-change=${this.handleModeChange}
                     ></chat-header>
-                    <div class="flex-1 overflow-y-auto p-6 space-y-6 chat-scroll">
+                    <div class="messages">
                         ${this.messages.map(
                             (msg) => html` <chat-message .message=${msg}></chat-message> `,
                         )}
                         ${this.loading
                             ? html`
-                                  <div
-                                      class="flex items-center gap-2 text-muted-foreground justify-start"
-                                  >
+                                  <div class="loading">
                                       <sl-spinner style="font-size: 1rem;"></sl-spinner>
-                                      <span class="text-sm">Thinking...</span>
+                                      <span class="loading-text">Thinking...</span>
                                   </div>
                               `
                             : nothing}
                     </div>
-                    <chat-input @send-message=${this.handleSendMessage}></chat-input>
+                    <chat-input
+                        .mode=${this.mode}
+                        @send-message=${this.handleSendMessage}
+                    ></chat-input>
                 </main>
             </div>
         `;
     }
 
-    handleNewChat() {
-        // server integration later
-    }
+    handleNewChat() {}
 
     /**
      * @param {CustomEvent<{ id: string }>} e
@@ -100,7 +160,7 @@ class MainPage extends LitElement {
         const text = e.detail.text;
         this.messages = [
             ...this.messages,
-            { id: String(this.messages.length + 1), role: "user", content: text },
+            { id: String(this.messages.length + 1), role: "user", content: text, mode: this.mode },
         ];
     }
 }

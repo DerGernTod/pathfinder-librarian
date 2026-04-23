@@ -1,20 +1,74 @@
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/input/input.js?deps=lit@3.3.2";
-import { LitElement } from "lit-element";
+import { LitElement, css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
+import { baseStyles } from "../styles/base-styles.js";
+import { tokens } from "../styles/tokens.js";
+
 /** @typedef {import("../../shared/types.js").Conversation} Conversation */
 
+/**
+ * @template T
+ * @typedef {InputEvent & { currentTarget: T }} TargetedInputEvent
+ */
+
 class SessionList extends LitElement {
+    static styles = [
+        tokens,
+        baseStyles,
+        css`
+            .container {
+                height: 100%;
+                overflow-y: auto;
+                overflow-x: hidden;
+            }
+            .container > * + * {
+                margin-top: 0.25rem;
+            }
+            .label {
+                font-size: 0.75rem;
+                color: var(--muted-foreground);
+                font-weight: 500;
+                padding: 0.25rem 0.5rem;
+            }
+            .session-item {
+                border-radius: 0.375rem;
+                padding: 0.5rem 0.75rem;
+                font-size: 0.875rem;
+                color: var(--muted-foreground);
+                line-height: 1.25rem;
+                cursor: pointer;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                transition: all var(--transition-speed), background-color var(--accent-transition-speed);
+            }
+            .session-item:hover,
+            .session-item.active {
+                background: var(--accent);
+                color: var(--secondary-foreground);
+            }
+            sl-input::part(base) {
+                background: transparent;
+                border: 1px solid var(--border);
+                border-radius: 0.375rem;
+            }
+            sl-input::part(base):focus-within {
+                border-color: var(--border-lighter);
+                box-shadow: none;
+            }
+            sl-input::part(input) {
+                font-size: 0.75rem;
+            }
+        `,
+    ];
+
     static properties = {
         conversations: { type: Array },
         activeId: { type: String },
         query: { type: String },
     };
-
-    createRenderRoot() {
-        return this;
-    }
 
     constructor() {
         super();
@@ -34,8 +88,8 @@ class SessionList extends LitElement {
             : this.conversations;
 
         return html`
-            <div class="sidebar-search h-full overflow-y-auto space-y-1">
-                <p class="text-xs text-muted-foreground font-medium px-2 py-1">Recent</p>
+            <div class="container">
+                <p class="label">Recent</p>
                 <sl-input
                     .value=${this.query}
                     @sl-input=${this.handleSearch}
@@ -48,9 +102,7 @@ class SessionList extends LitElement {
                     (conv) => html`
                         <div
                             @click=${() => this.handleSelect(conv.id)}
-                            class="rounded-md px-3 py-2 text-sm ${conv.id === this.activeId
-                                ? "bg-accent text-accent-foreground"
-                                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"} transition truncate cursor-pointer"
+                            class="session-item ${conv.id === this.activeId ? "active" : ""}"
                         >
                             ${conv.title}
                         </div>
@@ -61,10 +113,10 @@ class SessionList extends LitElement {
     }
 
     /**
-     * @param {Event} e
+     * @param {TargetedInputEvent<HTMLInputElement>} e
      */
     handleSearch(e) {
-        this.query = e.target.value;
+        this.query = e.currentTarget.value;
     }
 
     /**

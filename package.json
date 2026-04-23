@@ -15,7 +15,8 @@
         "lint": "oxlint",
         "format": "oxfmt",
         "test": "bun test",
-        "check": "tsc -p jsconfig.json --noEmit"
+        "check": "tsc -p jsconfig.json --noEmit",
+        "e2e": "playwright test"
     },
     "dependencies": {
         "@hono/zod-validator": "0.7.6",

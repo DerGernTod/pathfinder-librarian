@@ -13,12 +13,14 @@ const MOCK_MESSAGES = [
     {
         id: "1",
         role: "user",
+        mode: "gm",
         content:
             "I'm a GM. My party just captured a mitflit king and wants to sell them at the market of a nearby settlement. How should I handle this?",
     },
     {
         id: "2",
         role: "assistant",
+        mode: "gm",
         blocks: [
             {
                 type: "paragraph",
@@ -90,12 +92,14 @@ const MOCK_MESSAGES = [
     {
         id: "3",
         role: "user",
+        mode: "gm",
         content:
             "The blacksmith decided to buy the mitflit king. How could this affect the settlement's and the blacksmith's standing with the party? What else could happen to the mitflit king?",
     },
     {
         id: "4",
         role: "assistant",
+        mode: "gm",
         blocks: [
             {
                 type: "paragraph",
@@ -123,6 +127,45 @@ const MOCK_MESSAGES = [
                         text: "A Mitflit King wouldn't be alone. The party might soon find their base of operations besieged by angry Mitflits trying to rescue their liege.",
                     },
                 ],
+            },
+        ],
+    },
+    {
+        id: "5",
+        role: "user",
+        mode: "player",
+        content:
+            "My fighter just got crit by a giant scorpion. How do I calculate the damage if I have resistance 5 to physical?",
+    },
+    {
+        id: "6",
+        role: "assistant",
+        mode: "player",
+        blocks: [
+            {
+                type: "paragraph",
+                segments: [
+                    {
+                        text: "When you have resistance to a damage type, you subtract the resistance value from the total damage dealt after applying any weaknesses or immunities.",
+                    },
+                ],
+            },
+            {
+                type: "callout",
+                title: "Resistance Calculation",
+                segments: [
+                    { text: "If the giant scorpion's crit deals " },
+                    { text: "28 slashing damage", highlight: true },
+                    {
+                        text: " and you have resistance 5 to physical, you take 28 - 5 = ",
+                    },
+                    { text: "23 damage", highlight: true },
+                    { text: "." },
+                ],
+            },
+            {
+                type: "paragraph",
+                text: "Note that resistance applies once per hit, not per damage die. If the attack includes multiple damage types (e.g. slashing + poison), resistance only applies to the matching type.",
             },
         ],
     },

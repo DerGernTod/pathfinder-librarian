@@ -18,17 +18,15 @@ describe("chat-input", () => {
     it("renders sl-textarea with placeholder", async () => {
         const el = createInput();
         await el.updateComplete;
-        const textarea = el.querySelector("sl-textarea");
+        const textarea = el.shadowRoot.querySelector("sl-textarea");
         expect(textarea).toBeTruthy();
-        expect(textarea.getAttribute("placeholder")).toBe(
-            "Ask about rules, lore, or mechanics...",
-        );
+        expect(textarea.getAttribute("placeholder")).toBe("Ask about rules, lore, or mechanics...");
     });
 
     it("renders send button", async () => {
         const el = createInput();
         await el.updateComplete;
-        const button = el.querySelector("button");
+        const button = el.shadowRoot.querySelector("button");
         expect(button).toBeTruthy();
     });
 
@@ -49,7 +47,7 @@ describe("chat-input", () => {
             },
         );
 
-        const button = /** @type {HTMLElement} */ (el.querySelector("button"));
+        const button = /** @type {HTMLElement} */ (el.shadowRoot.querySelector("button"));
         fireEvent.click(button);
         expect(detail).toBeTruthy();
         if (detail) {
@@ -65,7 +63,7 @@ describe("chat-input", () => {
         el.requestUpdate();
         await el.updateComplete;
 
-        const button = /** @type {HTMLElement} */ (el.querySelector("button"));
+        const button = /** @type {HTMLElement} */ (el.shadowRoot.querySelector("button"));
         fireEvent.click(button);
         await el.updateComplete;
 
@@ -81,7 +79,7 @@ describe("chat-input", () => {
             dispatched = true;
         });
 
-        const button = /** @type {HTMLElement} */ (el.querySelector("button"));
+        const button = /** @type {HTMLElement} */ (el.shadowRoot.querySelector("button"));
         fireEvent.click(button);
         expect(dispatched).toBe(false);
     });
@@ -89,6 +87,6 @@ describe("chat-input", () => {
     it("renders disclaimer text", async () => {
         const el = createInput();
         await el.updateComplete;
-        expect(getByText(el, /Pathfinder Librarian can make mistakes/)).toBeTruthy();
+        expect(getByText(el.shadowRoot, /Pathfinder Librarian can make mistakes/)).toBeTruthy();
     });
 });

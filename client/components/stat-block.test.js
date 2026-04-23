@@ -22,7 +22,7 @@ describe("stat-block", () => {
     it("renders sl-details with title in summary attribute", async () => {
         const el = createStatBlock("Mitflit King", { name: "Mitflit King" });
         await el.updateComplete;
-        const details = el.querySelector("sl-details");
+        const details = el.shadowRoot.querySelector("sl-details");
         expect(details).toBeTruthy();
         expect(details.getAttribute("summary")).toBe("View Mitflit King Stat Block");
     });
@@ -31,14 +31,14 @@ describe("stat-block", () => {
         const data = { name: "Test", level: 4 };
         const el = createStatBlock("Test", data);
         await el.updateComplete;
-        const pre = el.querySelector("pre");
+        const pre = el.shadowRoot.querySelector("pre");
         expect(pre.textContent.trim()).toBe(JSON.stringify(data, null, 2));
     });
 
     it("renders sl-details element collapsed by default", async () => {
         const el = createStatBlock("Test", { foo: "bar" });
         await el.updateComplete;
-        const details = /** @type {any} */ (el.querySelector("sl-details"));
+        const details = /** @type {any} */ (el.shadowRoot.querySelector("sl-details"));
         expect(details).toBeTruthy();
         expect(details.open).toBeFalsy();
     });
@@ -46,7 +46,7 @@ describe("stat-block", () => {
     it("sl-details contains sl-card with content", async () => {
         const el = createStatBlock("Test", {});
         await el.updateComplete;
-        const card = el.querySelector("sl-details > sl-card");
+        const card = el.shadowRoot.querySelector("sl-details > sl-card");
         expect(card).toBeTruthy();
     });
 });
