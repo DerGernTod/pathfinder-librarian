@@ -176,6 +176,20 @@ test.describe("sidebar toggle visual regression", () => {
         });
     });
 
+    test("conversation menu with active conversation highlighted", async ({ page }) => {
+        await page.goto("/");
+        await page.waitForSelector("main-page");
+        await page.waitForTimeout(1000);
+        await page.locator("sidebar-toggle button").click();
+        await page.waitForTimeout(500);
+        await page.locator("conversation-menu sl-icon-button").click();
+        await page.waitForTimeout(500);
+        const dropdown = page.locator("conversation-menu sl-dropdown");
+        await expect(dropdown).toHaveScreenshot("conversation-menu-active.png", {
+            maxDiffPixelRatio: 0.01,
+        });
+    });
+
     test("sidebar-profile collapsed state", async ({ page }) => {
         await page.goto("/");
         await page.waitForSelector("main-page");

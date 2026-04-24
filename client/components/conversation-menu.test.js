@@ -82,4 +82,18 @@ describe("conversation-menu", () => {
         expect(item).toBeTruthy();
         expect(item.getAttribute("value")).toBe("2");
     });
+
+    it("applies active class to active conversation", async () => {
+        const el = createMenu(
+            [
+                { id: "1", title: "First" },
+                { id: "2", title: "Second" },
+            ],
+            "2",
+        );
+        await el.updateComplete;
+        const item = el.shadowRoot.querySelector('sl-menu-item[value="2"]');
+        expect(item).toBeTruthy();
+        expect(item.classList.contains("active")).toBe(true);
+    });
 });

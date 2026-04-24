@@ -41,6 +41,15 @@ class ConversationMenu extends LitElement {
             sl-menu {
                 max-width: 20rem;
             }
+            sl-menu-item::part(base) {
+                transition:
+                    all var(--transition-speed),
+                    background-color var(--accent-transition-speed);
+            }
+            sl-menu-item.active::part(base) {
+                background: var(--accent);
+                color: var(--secondary-foreground);
+            }
         `,
     ];
 
@@ -81,7 +90,7 @@ class ConversationMenu extends LitElement {
                             (conv) => html`
                                 <sl-menu-item
                                     value=${conv.id}
-                                    .checked=${conv.id === this.activeId}
+                                    class=${conv.id === this.activeId ? "active" : ""}
                                     @click=${() => this.handleSelect(conv.id)}
                                 >
                                     ${conv.title}
