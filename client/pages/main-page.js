@@ -100,6 +100,30 @@ class MainPage extends LitElement {
         this.loading = false;
     }
 
+    scrollToBottom() {
+        const container = this.shadowRoot.querySelector(".messages");
+        if (!container) {
+            return;
+        }
+        container.scrollTo({
+            top: container.scrollHeight,
+            behavior: "smooth",
+        });
+    }
+
+    firstUpdated() {
+        this.scrollToBottom();
+    }
+
+    /**
+     * @param {Map<string, unknown>} changedProperties
+     */
+    updated(changedProperties) {
+        if (changedProperties.has("messages")) {
+            this.scrollToBottom();
+        }
+    }
+
     render() {
         return html`
             <div class="app" data-mode=${this.mode}>
