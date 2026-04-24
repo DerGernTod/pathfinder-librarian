@@ -182,7 +182,7 @@ test.describe("sidebar toggle visual regression", () => {
         await page.waitForTimeout(1000);
         await page.locator("sidebar-toggle button").click();
         await page.waitForTimeout(500);
-        await page.locator("conversation-menu sl-icon-button").click();
+        await page.locator("conversation-menu button.menu-trigger").click();
         await page.waitForTimeout(500);
         const dropdown = page.locator("conversation-menu sl-dropdown");
         await expect(dropdown).toHaveScreenshot("conversation-menu-active.png", {

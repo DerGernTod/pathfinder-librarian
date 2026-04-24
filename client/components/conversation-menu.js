@@ -1,4 +1,3 @@
-import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/icon-button/icon-button.js?deps=lit@3.3.2";
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/menu/menu.js?deps=lit@3.3.2";
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/menu-item/menu-item.js?deps=lit@3.3.2";
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/dropdown/dropdown.js?deps=lit@3.3.2";
@@ -29,6 +28,7 @@ class ConversationMenu extends LitElement {
                 cursor: pointer;
                 border-radius: 0.375rem;
                 transition: all 0.2s ease;
+                padding: 0;
             }
             .menu-trigger:hover {
                 background: var(--secondary);
@@ -72,12 +72,16 @@ class ConversationMenu extends LitElement {
     render() {
         return html`
             <sl-dropdown placement="right-start">
-                <sl-icon-button
-                    class="menu-trigger"
-                    slot="trigger"
-                    name="list"
-                    label="Recent conversations"
-                ></sl-icon-button>
+                <button class="menu-trigger" slot="trigger" aria-label="Recent conversations">
+                    <svg class="menu-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M4 6h16M4 12h16M4 18h16"
+                        />
+                    </svg>
+                </button>
                 <sl-menu>
                     <p
                         style="padding: 0.5rem 0.75rem; margin: 0; font-size: 0.75rem; color: var(--muted-foreground); font-weight: 500;"
