@@ -54,3 +54,16 @@ it("emits select-conversation on menu item click", async () => {
     expect(detail?.id).toBe("42");
 });
 ```
+
+When comparing DOM elements, use strict equality to avoid timeout issues from logging huge DOM trees:
+
+Good:
+
+```js
+expect(elem1 === elem2).toBeTrue(true);
+```
+
+Bad:
+```js
+expect(elem1).toBe(elem2);
+```
