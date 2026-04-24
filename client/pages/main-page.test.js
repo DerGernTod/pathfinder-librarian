@@ -25,6 +25,7 @@ describe("main-page autoscroll", () => {
             id: String(i + 1),
             role: "user",
             content: `Message ${i + 1} with enough text to create overflow`,
+            mode: "player",
         }));
 
         /** @type {any} */
@@ -42,8 +43,8 @@ describe("main-page autoscroll", () => {
 
     it("scrolls to bottom when new message is added", async () => {
         const el = createPage([
-            { id: "1", role: "user", content: "First" },
-            { id: "2", role: "user", content: "Second" },
+            { id: "1", role: "user", content: "First", mode: "player" },
+            { id: "2", role: "user", content: "Second", mode: "player" },
         ]);
         await el.updateComplete;
 
@@ -56,7 +57,7 @@ describe("main-page autoscroll", () => {
             configurable: true,
         });
 
-        el.messages = [...el.messages, { id: "3", role: "user", content: "New message" }];
+        el.messages = [...el.messages, { id: "3", role: "user", content: "New message", mode: "player" }];
         await el.updateComplete;
 
         expect(scrollToSpy).toHaveBeenCalledWith({
@@ -68,8 +69,9 @@ describe("main-page autoscroll", () => {
     it("does not re-scroll when non-message property changes", async () => {
         const messages = Array.from({ length: 50 }, (_, i) => ({
             id: String(i + 1),
-            role: "user",
+            role: /** @type {"user"} */ ("user"),
             content: `Message ${i + 1}`,
+            mode: /** @type {import("../../shared/types.js").Mode} */ ("player"),
         }));
         const el = createPage(messages);
         await el.updateComplete;

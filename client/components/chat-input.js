@@ -1,3 +1,4 @@
+// @ts-expect-error Side-effect import from esm.sh has no type declarations
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/textarea/textarea.js?deps=lit@3.3.2";
 import { LitElement, css } from "lit-element";
 import { html } from "lit-html";
@@ -63,7 +64,9 @@ class ChatInput extends LitElement {
                 border: none;
                 cursor: pointer;
                 background: var(--accent);
-                transition: opacity var(--transition-speed), background-color var(--accent-transition-speed);
+                transition:
+                    opacity var(--transition-speed),
+                    background-color var(--accent-transition-speed);
             }
             .send-btn:hover {
                 opacity: 0.9;

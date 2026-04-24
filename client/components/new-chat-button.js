@@ -23,7 +23,9 @@ class NewChatButton extends LitElement {
                 color: var(--muted-foreground);
                 background: transparent;
                 cursor: pointer;
-                transition: all var(--transition-speed), background-color var(--accent-transition-speed);
+                transition:
+                    all var(--transition-speed),
+                    background-color var(--accent-transition-speed);
             }
             .btn:hover {
                 background: var(--secondary);
