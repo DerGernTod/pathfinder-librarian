@@ -51,7 +51,7 @@ jobs:
         runs-on: ubuntu-latest
         container:
             image: mcr.microsoft.com/playwright:v1.59.1-noble
-            options: --user 1001
+            options: --user root
         permissions:
             contents: write # For snapshot updates
         steps:
