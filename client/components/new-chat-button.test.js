@@ -54,7 +54,8 @@ describe("new-chat-button", () => {
         const el = createButton(true);
         await el.updateComplete;
         const text = el.shadowRoot.querySelector(".btn-text");
-        expect(getComputedStyle(text).display).toBe("none");
+        expect(getComputedStyle(text).opacity).toBe("0");
+        expect(getComputedStyle(text).pointerEvents).toBe("none");
     });
 
     it("increases icon size when collapsed", async () => {
@@ -63,5 +64,67 @@ describe("new-chat-button", () => {
         const icon = el.shadowRoot.querySelector(".btn-icon");
         expect(getComputedStyle(icon).width).toBe("20px");
         expect(getComputedStyle(icon).height).toBe("20px");
+    });
+
+    it("transitions button width smoothly", async () => {
+        const el = createButton(false);
+        await el.updateComplete;
+        const btn = el.shadowRoot.querySelector("button");
+        expect(getComputedStyle(btn).transition).toContain("width");
+    });
+
+    it("transitions button height smoothly", async () => {
+        const el = createButton(false);
+        await el.updateComplete;
+        const btn = el.shadowRoot.querySelector("button");
+        expect(getComputedStyle(btn).transition).toContain("height");
+    });
+
+    it("transitions text opacity smoothly", async () => {
+        const el = createButton(false);
+        await el.updateComplete;
+        const text = el.shadowRoot.querySelector(".btn-text");
+        expect(getComputedStyle(text).transition).toContain("opacity");
+    });
+
+    it("has aria-label for collapsed state", async () => {
+        const el = createButton(true);
+        await el.updateComplete;
+        const btn = el.shadowRoot.querySelector("button");
+        expect(btn.getAttribute("aria-label")).toBe("New Chat");
+    });
+
+    it("transitions button dimensions from collapsed to expanded", async () => {
+        const el = createButton(true);
+        await el.updateComplete;
+        const btn = el.shadowRoot.querySelector("button");
+
+        // Start collapsed
+        expect(getComputedStyle(btn).width).toBe("40px");
+        expect(getComputedStyle(btn).height).toBe("40px");
+
+        // Expand
+        el.collapsed = false;
+        await el.updateComplete;
+
+        // Should transition to expanded dimensions
+        expect(getComputedStyle(btn).width).not.toBe("40px");
+        expect(getComputedStyle(btn).height).not.toBe("40px");
+    });
+
+    it("hides text with opacity transition when collapsed", async () => {
+        const el = createButton(false);
+        await el.updateComplete;
+        const text = el.shadowRoot.querySelector(".btn-text");
+
+        // Start expanded
+        expect(getComputedStyle(text).opacity).toBe("1");
+
+        // Collapse
+        el.collapsed = true;
+        await el.updateComplete;
+
+        // Should transition to hidden
+        expect(getComputedStyle(text).opacity).toBe("0");
     });
 });

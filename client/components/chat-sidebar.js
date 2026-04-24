@@ -80,12 +80,12 @@ class ChatSidebar extends LitElement {
                         @toggle-sidebar=${this.handleToggle}
                     ></sidebar-toggle>
                 </div>
+                <new-chat-button
+                    @new-chat=${this.handleNewChat}
+                    ?collapsed=${!this.expanded}
+                ></new-chat-button>
                 ${this.expanded
                     ? html`
-                          <new-chat-button
-                              @new-chat=${this.handleNewChat}
-                              ?collapsed=${false}
-                          ></new-chat-button>
                           <div class="content">
                               <session-list
                                   .mode=${this.mode}
@@ -94,33 +94,22 @@ class ChatSidebar extends LitElement {
                                   @select-conversation=${this.handleSelectConversation}
                               ></session-list>
                           </div>
-                          <sidebar-profile
-                              .mode=${this.mode}
-                              .name=${"Game Master 01"}
-                              .subtitle=${"PF2e Remaster Rules"}
-                              .initials=${"GM"}
-                              .collapsed=${false}
-                          ></sidebar-profile>
                       `
                     : html`
-                          <new-chat-button
-                              @new-chat=${this.handleNewChat}
-                              ?collapsed=${true}
-                          ></new-chat-button>
                           <conversation-menu
                               .conversations=${this.conversations}
                               .activeId=${this.activeId}
                               .mode=${this.mode}
                               @select-conversation=${this.handleSelectConversation}
                           ></conversation-menu>
-                          <sidebar-profile
-                              .mode=${this.mode}
-                              .name=${"Game Master 01"}
-                              .subtitle=${"PF2e Remaster Rules"}
-                              .initials=${"GM"}
-                              .collapsed=${true}
-                          ></sidebar-profile>
                       `}
+                <sidebar-profile
+                    .mode=${this.mode}
+                    .name=${"Game Master 01"}
+                    .subtitle=${"PF2e Remaster Rules"}
+                    .initials=${"GM"}
+                    ?collapsed=${!this.expanded}
+                ></sidebar-profile>
             </aside>
         `;
     }

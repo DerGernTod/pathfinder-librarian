@@ -191,6 +191,37 @@ describe("chat-sidebar", () => {
         expect(ncb.collapsed).toBe(false);
     });
 
+    it("renders only one new-chat-button element always", async () => {
+        const el = createSidebar();
+        await el.updateComplete;
+        const buttons = el.shadowRoot.querySelectorAll("new-chat-button");
+        expect(buttons).toHaveLength(1);
+    });
+
+    it("keeps same new-chat-button element when toggling", async () => {
+        const el = createSidebar();
+        await el.updateComplete;
+        const initialButton = el.shadowRoot.querySelector("new-chat-button");
+        expect(initialButton).toBeTruthy();
+
+        // Toggle to collapsed
+        el.expanded = false;
+        const updatePromise = el.updateComplete;
+        await updatePromise;
+        const collapsedButton = el.shadowRoot.querySelector("new-chat-button");
+
+        // Should be the same DOM element
+        expect(collapsedButton).toBe(initialButton);
+
+        // Toggle back to expanded
+        el.expanded = true;
+        await el.updateComplete;
+        const expandedButton = el.shadowRoot.querySelector("new-chat-button");
+
+        // Should still be the same DOM element
+        expect(expandedButton).toBe(initialButton);
+    });
+
     it("renders conversation-menu when collapsed", async () => {
         const el = createSidebar([{ id: "1", title: "Test" }]);
         el.expanded = false;

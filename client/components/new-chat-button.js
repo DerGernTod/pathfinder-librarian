@@ -28,7 +28,8 @@ class NewChatButton extends LitElement {
                 background: transparent;
                 cursor: pointer;
                 transition:
-                    all var(--transition-speed),
+                    width 0.3s ease,
+                    height 0.3s ease,
                     background-color var(--accent-transition-speed);
             }
             .btn.collapsed {
@@ -43,13 +44,21 @@ class NewChatButton extends LitElement {
             }
             .btn-text {
                 display: block;
+                opacity: 1;
+                transition: opacity 0.3s ease;
+                white-space: nowrap;
             }
             .btn.collapsed .btn-text {
-                display: none;
+                opacity: 0;
+                pointer-events: none;
+                position: absolute;
             }
             .btn-icon {
                 width: 1rem;
                 height: 1rem;
+                transition:
+                    width 0.3s ease,
+                    height 0.3s ease;
             }
             .btn.collapsed .btn-icon {
                 width: 1.25rem;
@@ -65,7 +74,11 @@ class NewChatButton extends LitElement {
 
     render() {
         return html`
-            <button @click=${this.handleClick} class="btn ${this.collapsed ? "collapsed" : ""}">
+            <button
+                @click=${this.handleClick}
+                class="btn ${this.collapsed ? "collapsed" : ""}"
+                aria-label=${this.collapsed ? "New Chat" : ""}
+            >
                 <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
                         stroke-linecap="round"
