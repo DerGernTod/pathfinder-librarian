@@ -8,15 +8,16 @@ describe("new-chat-button", () => {
         document.body.innerHTML = "";
     });
 
-    function createButton() {
+    function createButton(collapsed = false) {
         /** @type {any} */
         const el = document.createElement("new-chat-button");
+        el.collapsed = collapsed;
         document.body.appendChild(el);
         return el;
     }
 
-    it("renders button with text", async () => {
-        const el = createButton();
+    it("renders button with text when not collapsed", async () => {
+        const el = createButton(false);
         await el.updateComplete;
         expect(getByText(el.shadowRoot, "New Chat")).toBeTruthy();
     });
@@ -39,5 +40,28 @@ describe("new-chat-button", () => {
 
         fireEvent.click(getByText(el.shadowRoot, "New Chat"));
         expect(dispatched).toBe(true);
+    });
+
+    // NEW: Tests for collapsed state
+    it("renders collapsed state correctly", async () => {
+        const el = createButton(true);
+        await el.updateComplete;
+        const btn = el.shadowRoot.querySelector("button");
+        expect(btn.classList.contains("collapsed")).toBe(true);
+    });
+
+    it("hides text label when collapsed", async () => {
+        const el = createButton(true);
+        await el.updateComplete;
+        const text = el.shadowRoot.querySelector(".btn-text");
+        expect(getComputedStyle(text).display).toBe("none");
+    });
+
+    it("increases icon size when collapsed", async () => {
+        const el = createButton(true);
+        await el.updateComplete;
+        const icon = el.shadowRoot.querySelector(".btn-icon");
+        expect(getComputedStyle(icon).width).toBe("20px");
+        expect(getComputedStyle(icon).height).toBe("20px");
     });
 });

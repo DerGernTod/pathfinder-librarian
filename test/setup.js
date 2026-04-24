@@ -10,6 +10,10 @@ const components = [
     "input/input",
     "spinner/spinner",
     "textarea/textarea",
+    "icon-button/icon-button",
+    "menu/menu",
+    "menu-item/menu-item",
+    "dropdown/dropdown",
 ];
 
 for (const comp of components) {

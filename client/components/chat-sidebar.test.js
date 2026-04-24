@@ -116,4 +116,94 @@ describe("chat-sidebar", () => {
 
         expect(el.activeId).toBe("2");
     });
+
+    // NEW: Tests for toggle functionality
+    it("renders in expanded state by default", async () => {
+        const el = createSidebar();
+        await el.updateComplete;
+        expect(el.expanded).toBe(true);
+        const sidebar = el.shadowRoot.querySelector(".sidebar");
+        expect(sidebar.classList.contains("collapsed")).toBe(false);
+    });
+
+    it("renders in collapsed state when expanded=false", async () => {
+        const el = createSidebar();
+        el.expanded = false;
+        await el.updateComplete;
+        const sidebar = el.shadowRoot.querySelector(".sidebar");
+        expect(sidebar.classList.contains("collapsed")).toBe(true);
+    });
+
+    it("shows full content when expanded", async () => {
+        const el = createSidebar([{ id: "1", title: "Test" }]);
+        await el.updateComplete;
+        expect(el.shadowRoot.querySelector("session-list")).toBeTruthy();
+        expect(el.shadowRoot.querySelector("sidebar-profile")).toBeTruthy();
+        expect(el.shadowRoot.querySelector("conversation-menu")).toBeFalsy();
+    });
+
+    it("hides content when collapsed", async () => {
+        const el = createSidebar([{ id: "1", title: "Test" }]);
+        el.expanded = false;
+        await el.updateComplete;
+        expect(el.shadowRoot.querySelector("session-list")).toBeFalsy();
+        expect(el.shadowRoot.querySelector("sidebar-profile")).toBeFalsy();
+        expect(el.shadowRoot.querySelector("conversation-menu")).toBeTruthy();
+    });
+
+    it("emits toggle-sidebar event on toggle click", async () => {
+        const el = createSidebar();
+        await el.updateComplete;
+
+        let dispatched = false;
+        el.addEventListener("toggle-sidebar", () => {
+            dispatched = true;
+        });
+
+        const toggle = el.shadowRoot.querySelector("sidebar-toggle");
+        fireEvent.click(toggle.shadowRoot.querySelector("button"));
+        expect(dispatched).toBe(true);
+    });
+
+    it("updates expanded state on toggle", async () => {
+        const el = createSidebar();
+        await el.updateComplete;
+
+        const toggle = el.shadowRoot.querySelector("sidebar-toggle");
+        fireEvent.click(toggle.shadowRoot.querySelector("button"));
+
+        expect(el.expanded).toBe(false);
+    });
+
+    it("passes collapsed prop to new-chat-button when collapsed", async () => {
+        const el = createSidebar();
+        el.expanded = false;
+        await el.updateComplete;
+        const ncb = el.shadowRoot.querySelector("new-chat-button");
+        expect(ncb.collapsed).toBe(true);
+    });
+
+    it("passes collapsed=false to new-chat-button when expanded", async () => {
+        const el = createSidebar();
+        el.expanded = true;
+        await el.updateComplete;
+        const ncb = el.shadowRoot.querySelector("new-chat-button");
+        expect(ncb.collapsed).toBe(false);
+    });
+
+    it("renders conversation-menu when collapsed", async () => {
+        const el = createSidebar([{ id: "1", title: "Test" }]);
+        el.expanded = false;
+        await el.updateComplete;
+        const menu = el.shadowRoot.querySelector("conversation-menu");
+        expect(menu).toBeTruthy();
+    });
+
+    it("does not render conversation-menu when expanded", async () => {
+        const el = createSidebar([{ id: "1", title: "Test" }]);
+        el.expanded = true;
+        await el.updateComplete;
+        const menu = el.shadowRoot.querySelector("conversation-menu");
+        expect(menu).toBeFalsy();
+    });
 });

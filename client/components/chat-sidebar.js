@@ -1,6 +1,8 @@
+import "./sidebar-toggle.js";
 import "./new-chat-button.js";
 import "./session-list.js";
 import "./sidebar-profile.js";
+import "./conversation-menu.js";
 import { LitElement, css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
@@ -26,7 +28,23 @@ class ChatSidebar extends LitElement {
                 gap: 1rem;
                 flex-shrink: 0;
                 height: 100%;
-                transition: border-color 0.5s ease;
+                transition:
+                    width 0.3s ease,
+                    padding 0.3s ease;
+            }
+            .sidebar.collapsed {
+                width: 3.5rem;
+                padding: 0.5rem;
+            }
+            .sidebar.collapsed .content,
+            .sidebar.collapsed sidebar-profile {
+                display: none;
+            }
+            .sidebar.collapsed new-chat-button {
+            }
+            .toggle-container {
+                display: flex;
+                justify-content: flex-end;
             }
             .content {
                 flex: 1;
@@ -40,6 +58,8 @@ class ChatSidebar extends LitElement {
         conversations: { type: Array },
         activeId: { type: String },
         mode: { type: String },
+        /** @type {boolean} */
+        expanded: { type: Boolean },
     };
 
     constructor() {
@@ -50,26 +70,51 @@ class ChatSidebar extends LitElement {
         this.activeId = "";
         /** @type {Mode} */
         this.mode = "gm";
+        this.expanded = true;
     }
 
     render() {
         return html`
-            <aside class="sidebar">
-                <new-chat-button @new-chat=${this.handleNewChat}></new-chat-button>
-                <div class="content">
-                    <session-list
-                        .mode=${this.mode}
-                        .conversations=${this.conversations}
-                        .activeId=${this.activeId}
-                        @select-conversation=${this.handleSelectConversation}
-                    ></session-list>
+            <aside class="sidebar ${!this.expanded ? "collapsed" : ""}">
+                <div class="toggle-container">
+                    <sidebar-toggle
+                        .expanded=${this.expanded}
+                        @toggle-sidebar=${this.handleToggle}
+                    ></sidebar-toggle>
                 </div>
-                <sidebar-profile
-                    .mode=${this.mode}
-                    name="Game Master 01"
-                    subtitle="PF2e Remaster Rules"
-                    initials="GM"
-                ></sidebar-profile>
+                ${this.expanded
+                    ? html`
+                          <new-chat-button
+                              @new-chat=${this.handleNewChat}
+                              ?collapsed=${false}
+                          ></new-chat-button>
+                          <div class="content">
+                              <session-list
+                                  .mode=${this.mode}
+                                  .conversations=${this.conversations}
+                                  .activeId=${this.activeId}
+                                  @select-conversation=${this.handleSelectConversation}
+                              ></session-list>
+                          </div>
+                          <sidebar-profile
+                              .mode=${this.mode}
+                              name="Game Master 01"
+                              subtitle="PF2e Remaster Rules"
+                              initials="GM"
+                          ></sidebar-profile>
+                      `
+                    : html`
+                          <new-chat-button
+                              @new-chat=${this.handleNewChat}
+                              ?collapsed=${true}
+                          ></new-chat-button>
+                          <conversation-menu
+                              .conversations=${this.conversations}
+                              .activeId=${this.activeId}
+                              .mode=${this.mode}
+                              @select-conversation=${this.handleSelectConversation}
+                          ></conversation-menu>
+                      `}
             </aside>
         `;
     }
@@ -86,6 +131,17 @@ class ChatSidebar extends LitElement {
         this.dispatchEvent(
             new CustomEvent("select-conversation", {
                 detail: { id: e.detail.id },
+                bubbles: true,
+                composed: true,
+            }),
+        );
+    }
+
+    handleToggle() {
+        this.expanded = !this.expanded;
+        this.dispatchEvent(
+            new CustomEvent("toggle-sidebar", {
+                detail: { expanded: this.expanded },
                 bubbles: true,
                 composed: true,
             }),

@@ -85,6 +85,8 @@ class MainPage extends LitElement {
         messages: { type: Array },
         mode: { type: String },
         loading: { type: Boolean },
+        /** @type {boolean} */
+        sidebarExpanded: { type: Boolean },
     };
 
     constructor() {
@@ -99,6 +101,7 @@ class MainPage extends LitElement {
         this.mode = "player";
         /** @type {boolean} */
         this.loading = false;
+        this.sidebarExpanded = true;
     }
 
     scrollToBottom() {
@@ -135,8 +138,10 @@ class MainPage extends LitElement {
                     .conversations=${this.conversations}
                     .activeId=${this.activeConversationId}
                     .mode=${this.mode}
+                    .expanded=${this.sidebarExpanded}
                     @new-chat=${this.handleNewChat}
                     @select-conversation=${this.handleSelectConversation}
+                    @toggle-sidebar=${this.handleSidebarToggle}
                 ></chat-sidebar>
                 <main class="main">
                     <chat-header
@@ -190,6 +195,10 @@ class MainPage extends LitElement {
             ...this.messages,
             { id: String(this.messages.length + 1), role: "user", content: text, mode: this.mode },
         ];
+    }
+
+    handleSidebarToggle(e) {
+        this.sidebarExpanded = e.detail.expanded;
     }
 }
 

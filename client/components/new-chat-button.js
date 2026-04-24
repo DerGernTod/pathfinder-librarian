@@ -6,6 +6,11 @@ import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
 
 class NewChatButton extends LitElement {
+    static properties = {
+        /** @type {boolean} */
+        collapsed: { type: Boolean },
+    };
+
     static styles = [
         tokens,
         baseStyles,
@@ -27,20 +32,41 @@ class NewChatButton extends LitElement {
                     all var(--transition-speed),
                     background-color var(--accent-transition-speed);
             }
+            .btn.collapsed {
+                width: 2.5rem;
+                height: 2.5rem;
+                padding: 0.5rem;
+                margin-bottom: 0.5rem;
+            }
             .btn:hover {
                 background: var(--secondary);
                 color: var(--secondary-foreground);
+            }
+            .btn-text {
+                display: block;
+            }
+            .btn.collapsed .btn-text {
+                display: none;
             }
             .btn-icon {
                 width: 1rem;
                 height: 1rem;
             }
+            .btn.collapsed .btn-icon {
+                width: 1.25rem;
+                height: 1.25rem;
+            }
         `,
     ];
 
+    constructor() {
+        super();
+        this.collapsed = false;
+    }
+
     render() {
         return html`
-            <button @click=${this.handleClick} class="btn">
+            <button @click=${this.handleClick} class="btn ${this.collapsed ? "collapsed" : ""}">
                 <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
                         stroke-linecap="round"
@@ -49,7 +75,7 @@ class NewChatButton extends LitElement {
                         d="M12 4v16m8-8H4"
                     />
                 </svg>
-                New Chat
+                <span class="btn-text">New Chat</span>
             </button>
         `;
     }
