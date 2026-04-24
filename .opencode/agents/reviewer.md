@@ -15,7 +15,7 @@ Verify the implementation through automated checks and logic review.
 
 1. **Test Execution:** Run all test suites:
    - `bun run test` — unit/integration tests
-   - `bunx playwright test` — visual regression tests
+   - `bun run e2e` — visual regression tests
    - All must pass
 2. **Verification:**
    - If task involved UI changes, verify visual regression tests exist in `vrtests/`
