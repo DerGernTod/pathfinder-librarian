@@ -63,6 +63,9 @@ import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/input/inp
 - **Unit tests**: Bun test runner (`bun test`) — prefer over vitest where possible. Lit component tests likely need happy-dom for DOM APIs.
 - **Visual regression tests**: Playwright — config in `playwright.config.js`, tests in `vrtests/`, snapshots in `vrtests/__snapshots__/`. Uses Chromium only. Dev server auto-started.
 - TDD is encouraged — write tests first when adding features. Target high coverage.
+- Use the testing skill for details
+
+---
 
 ## Conventions
 
@@ -71,3 +74,4 @@ import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/input/inp
 - Types via JSDoc only — no `.ts` files.
 - Server routes use Hono chaining with `zValidator` for request validation.
 - Zod schemas in shared/ for reuse across server and client.
+- Aria labels for describing interaction elements without visual label

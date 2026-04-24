@@ -57,7 +57,10 @@ describe("main-page autoscroll", () => {
             configurable: true,
         });
 
-        el.messages = [...el.messages, { id: "3", role: "user", content: "New message", mode: "player" }];
+        el.messages = [
+            ...el.messages,
+            { id: "3", role: "user", content: "New message", mode: "player" },
+        ];
         await el.updateComplete;
 
         expect(scrollToSpy).toHaveBeenCalledWith({
@@ -84,5 +87,60 @@ describe("main-page autoscroll", () => {
         await el.updateComplete;
 
         expect(scrollToSpy).not.toHaveBeenCalled();
+    });
+});
+
+describe("main-page sidebar", () => {
+    beforeEach(() => {
+        document.body.innerHTML = "";
+    });
+
+    function createPage() {
+        /** @type {any} */
+        const el = document.createElement("main-page");
+        document.body.appendChild(el);
+        return el;
+    }
+
+    it("passes sidebarExpanded to chat-sidebar", async () => {
+        const el = createPage();
+        el.sidebarExpanded = false;
+        await el.updateComplete;
+        const sidebar = el.shadowRoot.querySelector("chat-sidebar");
+        expect(sidebar.expanded).toBe(false);
+    });
+
+    it("handles toggle-sidebar event from chat-sidebar", async () => {
+        const el = createPage();
+        await el.updateComplete;
+
+        const sidebar = el.shadowRoot.querySelector("chat-sidebar");
+        sidebar.dispatchEvent(
+            new CustomEvent("toggle-sidebar", {
+                detail: { expanded: false },
+                bubbles: true,
+                composed: true,
+            }),
+        );
+
+        await el.updateComplete;
+        expect(el.sidebarExpanded).toBe(false);
+    });
+
+    it("updates sidebarExpanded state on toggle", async () => {
+        const el = createPage();
+        await el.updateComplete;
+
+        const sidebar = el.shadowRoot.querySelector("chat-sidebar");
+        sidebar.dispatchEvent(
+            new CustomEvent("toggle-sidebar", {
+                detail: { expanded: false },
+                bubbles: true,
+                composed: true,
+            }),
+        );
+
+        await el.updateComplete;
+        expect(el.sidebarExpanded).toBe(false);
     });
 });

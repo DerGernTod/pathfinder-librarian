@@ -2,7 +2,6 @@ import "../components/chat-header.js";
 import "../components/chat-input.js";
 import "../components/chat-message.js";
 import "../components/chat-sidebar.js";
-// @ts-expect-error Side-effect import from esm.sh has no type declarations
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/spinner/spinner.js?deps=lit@3.3.2";
 import { LitElement, css } from "lit-element";
 import { html, nothing } from "lit-html";
@@ -85,6 +84,7 @@ class MainPage extends LitElement {
         messages: { type: Array },
         mode: { type: String },
         loading: { type: Boolean },
+        sidebarExpanded: { type: Boolean },
     };
 
     constructor() {
@@ -99,6 +99,7 @@ class MainPage extends LitElement {
         this.mode = "player";
         /** @type {boolean} */
         this.loading = false;
+        this.sidebarExpanded = true;
     }
 
     scrollToBottom() {
@@ -135,8 +136,10 @@ class MainPage extends LitElement {
                     .conversations=${this.conversations}
                     .activeId=${this.activeConversationId}
                     .mode=${this.mode}
+                    .expanded=${this.sidebarExpanded}
                     @new-chat=${this.handleNewChat}
                     @select-conversation=${this.handleSelectConversation}
+                    @toggle-sidebar=${this.handleSidebarToggle}
                 ></chat-sidebar>
                 <main class="main">
                     <chat-header
@@ -190,6 +193,11 @@ class MainPage extends LitElement {
             ...this.messages,
             { id: String(this.messages.length + 1), role: "user", content: text, mode: this.mode },
         ];
+    }
+
+    /** @param {CustomEvent<{ expanded: boolean }>} e */
+    handleSidebarToggle(e) {
+        this.sidebarExpanded = e.detail.expanded;
     }
 }
 
