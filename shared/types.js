@@ -8,7 +8,37 @@
 
 /** @typedef {{ type: "callout", title: string, text?: string, segments?: Segment[] }} CalloutBlock */
 
-/** @typedef {{ type: "stat-block", title: string, data: Record<string, unknown> }} StatBlockMessageBlock */
+/** @typedef {{ name: string, modifier: number }} AbilityScore */
+
+/** @typedef {{ name: string, bonus: number }} SkillEntry */
+
+/** @typedef {{ name: string, actionType?: "single" | "two" | "three" | "reaction" | "free", description: string }} CreatureAction */
+
+/** @typedef {{ name: string, dc?: number, attack?: number, description: string, tradition?: string, rank?: number }} SpellEntry */
+
+/** @typedef {{ name: string, description: string }} AbilityEntry */
+
+/** @typedef {{
+ *   name: string,
+ *   type: string,
+ *   level: number,
+ *   traits: string[],
+ *   perception: string,
+ *   languages: string,
+ *   attributes: { ac: number, hp: number, fortitude: string, reflex: string, will: string },
+ *   skills: Record<string, string>,
+ *   str: number,
+ *   dex: number,
+ *   con: number,
+ *   int: number,
+ *   wis: number,
+ *   cha: number,
+ *   actions?: CreatureAction[],
+ *   spells?: SpellEntry[],
+ *   abilities?: AbilityEntry[]
+ * }} MonsterStatBlock */
+
+/** @typedef {{ type: "stat-block", title: string, data: MonsterStatBlock }} StatBlockMessageBlock */
 
 /** @typedef {{ type: "list", items: Array<ListItem> }} ListBlock */
 

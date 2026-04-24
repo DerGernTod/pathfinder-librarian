@@ -14,6 +14,8 @@ const components = [
     "menu/menu",
     "menu-item/menu-item",
     "dropdown/dropdown",
+    "tag/tag",
+    "divider/divider",
 ];
 
 for (const comp of components) {

@@ -29,6 +29,87 @@ test.describe("main page visual regression", () => {
     });
 });
 
+test.describe("stat block visual regression", () => {
+    test("full stat block with all features", async ({ page }) => {
+        await page.goto("/");
+        await page.waitForSelector("main-page");
+        await page.waitForTimeout(1000);
+
+        const input = page.locator("chat-input textarea");
+        await input.fill("Show me a Mitflit King stat block");
+        await page.keyboard.press("Enter");
+        await page.waitForTimeout(2000);
+
+        const statBlock = page.locator("stat-block").first();
+        await expect(statBlock).toBeVisible();
+
+        const details = statBlock.locator("sl-details");
+        await details.click();
+        await page.waitForTimeout(500);
+
+        await expect(statBlock).toHaveScreenshot("stat-block-full.png", {
+            maxDiffPixelRatio: 0.01,
+        });
+    });
+
+    test("minimal stat block (partial data)", async ({ page }) => {
+        await page.goto("/");
+        await page.waitForSelector("main-page");
+        await page.waitForTimeout(1000);
+
+        const input = page.locator("chat-input textarea");
+        await input.fill("Show me a simple goblin stat block");
+        await page.keyboard.press("Enter");
+        await page.waitForTimeout(2000);
+
+        const statBlock = page.locator("stat-block").first();
+        await expect(statBlock).toBeVisible();
+
+        const details = statBlock.locator("sl-details");
+        await details.click();
+        await page.waitForTimeout(500);
+
+        await expect(statBlock).toHaveScreenshot("stat-block-minimal.png", {
+            maxDiffPixelRatio: 0.01,
+        });
+    });
+
+    test("stat block responsive layout", async ({ page }) => {
+        await page.goto("/");
+        await page.waitForSelector("main-page");
+        await page.waitForTimeout(1000);
+
+        const input = page.locator("chat-input textarea");
+        await input.fill("Show me a Mitflit King stat block");
+        await page.keyboard.press("Enter");
+        await page.waitForTimeout(2000);
+
+        const statBlock = page.locator("stat-block").first();
+        await expect(statBlock).toBeVisible();
+
+        const details = statBlock.locator("sl-details");
+        await details.click();
+        await page.waitForTimeout(500);
+
+        await page.setViewportSize({ width: 375, height: 812 });
+        await page.waitForTimeout(300);
+
+        await expect(statBlock).toHaveScreenshot("stat-block-mobile.png", {
+            maxDiffPixelRatio: 0.01,
+        });
+
+        await page.setViewportSize({ width: 768, height: 1024 });
+        await page.waitForTimeout(300);
+
+        await expect(statBlock).toHaveScreenshot("stat-block-tablet.png", {
+            maxDiffPixelRatio: 0.01,
+        });
+
+        await page.setViewportSize({ width: 1920, height: 1080 });
+        await page.waitForTimeout(300);
+    });
+});
+
 test.describe("mode toggle visual regression", () => {
     test("player mode header", async ({ page }) => {
         await page.goto("/");
