@@ -64,6 +64,31 @@ import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/input/inp
 - **Visual regression tests**: Playwright — config in `playwright.config.js`, tests in `vrtests/`, snapshots in `vrtests/__snapshots__/`. Uses Chromium only. Dev server auto-started.
 - TDD is encouraged — write tests first when adding features. Target high coverage.
 
+---
+
+### ⚠️ CRITICAL: Visual Regression Tests
+
+Whenever implementing UI-related changes, you **MUST** add visual regression tests.
+
+**UI Changes Include:**
+- New or modified Lit components
+- CSS/styling changes (layout, spacing, colors, transitions)
+- State-driven UI changes (collapsed/expanded, toggles, hover/active states)
+- Icon or component positioning changes
+- Any change affecting the visual appearance of the application
+
+**Requirements:**
+- Add tests to `vrtests/` directory following existing patterns
+- Test all relevant states (default, collapsed/expanded, hover, active, etc.)
+- Use `toHaveScreenshot()` with appropriate selectors
+- Reference `vrtests/main-page.spec.js` for examples
+
+**Commands:**
+- `bunx playwright test` — run visual regression tests
+- `bunx playwright test --update-snapshots` — regenerate baselines
+
+**Failure to add visual regression tests for UI changes is considered a bug and will be rejected.**
+
 ## Conventions
 
 - Clean code: single responsibility, principle of least knowledge, minimal dependencies. Follow Uncle Bob's practices.
