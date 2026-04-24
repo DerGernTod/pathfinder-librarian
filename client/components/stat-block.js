@@ -1,5 +1,7 @@
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/card/card.js?deps=lit@3.3.2";
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/details/details.js?deps=lit@3.3.2";
+import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/tag/tag.js?deps=lit@3.3.2";
+import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/divider/divider.js?deps=lit@3.3.2";
 import { LitElement, css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
@@ -42,11 +44,134 @@ class StatBlock extends LitElement {
             sl-card::part(body) {
                 padding: 1rem;
             }
-            .stat-pre {
-                font-family: monospace;
+            .header {
+                margin-bottom: 1rem;
+            }
+            .header h3 {
+                font-size: 1.5rem;
+                font-weight: 700;
+                margin: 0 0 0.25rem 0;
+                color: var(--foreground);
+            }
+            .type-level {
+                font-size: 0.875rem;
+                color: var(--muted-foreground);
+                margin-bottom: 0.5rem;
+            }
+            .traits {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+            sl-tag {
                 font-size: 0.75rem;
-                color: #4ade80;
-                overflow-x: auto;
+            }
+            .primary-stats {
+                margin-bottom: 1rem;
+            }
+            .defense-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.5rem;
+                margin-bottom: 0.75rem;
+            }
+            .stat-box {
+                background: var(--muted);
+                border-radius: 0.25rem;
+                padding: 0.5rem;
+            }
+            .stat-label {
+                font-size: 0.75rem;
+                color: var(--muted-foreground);
+                margin-bottom: 0.125rem;
+            }
+            .stat-value {
+                font-size: 1.25rem;
+                font-weight: 700;
+                color: var(--foreground);
+            }
+            .hp-value {
+                color: #22c55e;
+            }
+            .saves-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 0.25rem;
+                margin-bottom: 0.75rem;
+            }
+            .save {
+                font-size: 0.875rem;
+                padding: 0.25rem 0.5rem;
+                background: var(--muted);
+                border-radius: 0.25rem;
+            }
+            .perception-languages {
+                font-size: 0.875rem;
+                color: var(--muted-foreground);
+            }
+            .secondary-stats {
+                margin-bottom: 1rem;
+            }
+            .ability-scores {
+                display: grid;
+                grid-template-columns: repeat(6, 1fr);
+                gap: 0.25rem;
+                margin-bottom: 0.75rem;
+            }
+            .ability-score {
+                font-size: 0.75rem;
+                text-align: center;
+                padding: 0.25rem;
+                background: var(--muted);
+                border-radius: 0.25rem;
+            }
+            .skills {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.25rem;
+            }
+            .skill-entry {
+                font-size: 0.875rem;
+                padding: 0.125rem 0;
+            }
+            .drill-downs sl-details {
+                margin-bottom: 0.5rem;
+            }
+            .drill-downs sl-details::part(base) {
+                border-left: 2px solid var(--border);
+                padding-left: 0.5rem;
+                background: transparent;
+            }
+            .drill-downs sl-details::part(header) {
+                padding: 0.25rem 0;
+            }
+            .drill-downs sl-details::part(summary) {
+                font-size: 0.875rem;
+                font-weight: 600;
+            }
+            .action-entry,
+            .spell-entry,
+            .ability-entry {
+                margin-bottom: 0.5rem;
+            }
+            .action-name,
+            .spell-name,
+            .ability-name {
+                font-weight: 600;
+                font-size: 0.875rem;
+            }
+            .action-type,
+            .spell-details {
+                font-size: 0.75rem;
+                color: var(--muted-foreground);
+            }
+            .description {
+                font-size: 0.875rem;
+                margin-top: 0.125rem;
+                color: var(--foreground);
+            }
+            .spell-tradition {
+                font-size: 0.75rem;
             }
         `,
     ];
@@ -66,10 +191,200 @@ class StatBlock extends LitElement {
         return html`
             <sl-details summary="View ${this.title} Stat Block">
                 <sl-card style="width: 100%;">
-                    <pre class="stat-pre">${JSON.stringify(this.data, null, 2)}</pre>
+                    ${this.renderHeader()}
+                    <sl-divider></sl-divider>
+                    ${this.renderPrimaryStats()}
+                    <sl-divider></sl-divider>
+                    ${this.renderSecondaryStats()}
+                    <sl-divider></sl-divider>
+                    ${this.renderDrillDowns()}
                 </sl-card>
             </sl-details>
         `;
+    }
+
+    renderHeader() {
+        const { name, type, level, traits } = this.data;
+        return html`
+            <div class="header">
+                <h3>${name || "Unknown"}</h3>
+                <div class="type-level">${type || ""} ${level !== undefined ? level : ""}</div>
+                <div class="traits">
+                    ${(traits || []).map((trait) => html` <sl-tag>${trait}</sl-tag> `)}
+                </div>
+            </div>
+        `;
+    }
+
+    renderPrimaryStats() {
+        const { attributes, perception, languages } = this.data;
+        if (!attributes) {
+            return html``;
+        }
+        return html`
+            <div class="primary-stats">
+                <div class="defense-grid">
+                    <div class="stat-box">
+                        <div class="stat-label">Armor Class</div>
+                        <div class="stat-value ac-value">${attributes.ac ?? "-"}</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Hit Points</div>
+                        <div class="stat-value hp-value">${attributes.hp ?? "-"}</div>
+                    </div>
+                </div>
+                <div class="saves-grid">
+                    <div class="save save-fort">
+                        <span>Fort ${attributes.fortitude ?? "-"}</span>
+                    </div>
+                    <div class="save save-ref">
+                        <span>Ref ${attributes.reflex ?? "-"}</span>
+                    </div>
+                    <div class="save save-will">
+                        <span>Will ${attributes.will ?? "-"}</span>
+                    </div>
+                </div>
+                <div class="perception-languages">
+                    <div class="perception">Perception ${perception ?? "-"}</div>
+                    <div class="languages">Languages: ${languages ?? "-"}</div>
+                </div>
+            </div>
+        `;
+    }
+
+    renderSecondaryStats() {
+        const { skills, str, dex, con, int, wis, cha } = this.data;
+        const abilityScores = [
+            { name: "STR", value: str },
+            { name: "DEX", value: dex },
+            { name: "CON", value: con },
+            { name: "INT", value: int },
+            { name: "WIS", value: wis },
+            { name: "CHA", value: cha },
+        ];
+        return html`
+            <div class="secondary-stats">
+                <div class="ability-scores">
+                    ${abilityScores.map(
+                        (score) =>
+                            html` <div class="ability-score">
+                                ${score.name} ${this.formatModifier(score.value)}
+                            </div>`,
+                    )}
+                </div>
+                <div class="skills">
+                    ${skills
+                        ? Object.entries(skills).map(
+                              ([name, bonus]) =>
+                                  html` <div class="skill-entry">${name} ${bonus}</div>`,
+                          )
+                        : html``}
+                </div>
+            </div>
+        `;
+    }
+
+    renderDrillDowns() {
+        return html`
+            <div class="drill-downs">
+                ${this.renderActions()} ${this.renderSpells()} ${this.renderAbilities()}
+            </div>
+        `;
+    }
+
+    renderActions() {
+        const { actions } = this.data;
+        if (!actions || actions.length === 0) {
+            return html``;
+        }
+        return html`
+            <sl-details summary="Actions">
+                ${actions.map(
+                    (action) =>
+                        html` <div class="action-entry">
+                            <div class="action-name">${action.name}</div>
+                            ${action.actionType
+                                ? html`
+                                      <div class="action-type">
+                                          ${this.formatActionType(action.actionType)}
+                                      </div>
+                                  `
+                                : html``}
+                            <div class="description">${action.description}</div>
+                        </div>`,
+                )}
+            </sl-details>
+        `;
+    }
+
+    renderSpells() {
+        const { spells } = this.data;
+        if (!spells || spells.length === 0) {
+            return html``;
+        }
+        return html`
+            <sl-details summary="Spells">
+                ${spells.map(
+                    (spell) =>
+                        html` <div class="spell-entry">
+                            <div class="spell-name">${spell.name}</div>
+                            <div class="spell-details">
+                                ${spell.tradition
+                                    ? html`
+                                          <sl-tag class="spell-tradition"
+                                              >${spell.tradition}</sl-tag
+                                          >
+                                      `
+                                    : html``}
+                                ${spell.rank !== undefined
+                                    ? html` <span>Rank ${spell.rank}</span> `
+                                    : html``}
+                                ${spell.dc ? html` <span>DC ${spell.dc}</span> ` : html``}
+                            </div>
+                            <div class="description">${spell.description}</div>
+                        </div>`,
+                )}
+            </sl-details>
+        `;
+    }
+
+    renderAbilities() {
+        const { abilities } = this.data;
+        if (!abilities || abilities.length === 0) {
+            return html``;
+        }
+        return html`
+            <sl-details summary="Abilities">
+                ${abilities.map(
+                    (ability) =>
+                        html` <div class="ability-entry">
+                            <div class="ability-name">${ability.name}</div>
+                            <div class="description">${ability.description}</div>
+                        </div>`,
+                )}
+            </sl-details>
+        `;
+    }
+
+    formatModifier(value) {
+        if (value === undefined || value === null) {
+            return "-";
+        }
+        if (value >= 0) {
+            return `+${value}`;
+        }
+        return `${value}`;
+    }
+
+    formatActionType(type) {
+        const types = {
+            single: "⬤",
+            two: "⬤⬤",
+            three: "⬤⬤⬤",
+            reaction: "⬢",
+            free: "◯",
+        };
+        return types[type] || "";
     }
 }
 

@@ -36,8 +36,7 @@ class ChatSidebar extends LitElement {
                 width: 3.5rem;
                 padding: 0.5rem;
             }
-            .sidebar.collapsed .content,
-            .sidebar.collapsed sidebar-profile {
+            .sidebar.collapsed .content {
                 display: none;
             }
             .sidebar.collapsed new-chat-button {
@@ -81,12 +80,12 @@ class ChatSidebar extends LitElement {
                         @toggle-sidebar=${this.handleToggle}
                     ></sidebar-toggle>
                 </div>
+                <new-chat-button
+                    @new-chat=${this.handleNewChat}
+                    ?collapsed=${!this.expanded}
+                ></new-chat-button>
                 ${this.expanded
                     ? html`
-                          <new-chat-button
-                              @new-chat=${this.handleNewChat}
-                              ?collapsed=${false}
-                          ></new-chat-button>
                           <div class="content">
                               <session-list
                                   .mode=${this.mode}
@@ -95,18 +94,8 @@ class ChatSidebar extends LitElement {
                                   @select-conversation=${this.handleSelectConversation}
                               ></session-list>
                           </div>
-                          <sidebar-profile
-                              .mode=${this.mode}
-                              name="Game Master 01"
-                              subtitle="PF2e Remaster Rules"
-                              initials="GM"
-                          ></sidebar-profile>
                       `
                     : html`
-                          <new-chat-button
-                              @new-chat=${this.handleNewChat}
-                              ?collapsed=${true}
-                          ></new-chat-button>
                           <conversation-menu
                               .conversations=${this.conversations}
                               .activeId=${this.activeId}
@@ -114,6 +103,13 @@ class ChatSidebar extends LitElement {
                               @select-conversation=${this.handleSelectConversation}
                           ></conversation-menu>
                       `}
+                <sidebar-profile
+                    .mode=${this.mode}
+                    .name=${"Game Master 01"}
+                    .subtitle=${"PF2e Remaster Rules"}
+                    .initials=${"GM"}
+                    ?collapsed=${!this.expanded}
+                ></sidebar-profile>
             </aside>
         `;
     }

@@ -21,13 +21,15 @@ describe("conversation-menu", () => {
         return el;
     }
 
-    it("renders dropdown trigger button", async () => {
+    it("renders dropdown trigger button with native SVG", async () => {
         const el = createMenu();
         await el.updateComplete;
-        const trigger = el.shadowRoot.querySelector("sl-icon-button");
+        const trigger = el.shadowRoot.querySelector("button.menu-trigger");
         expect(trigger).toBeTruthy();
-        expect(trigger.getAttribute("name")).toBe("list");
-        expect(trigger.getAttribute("label")).toBe("Recent conversations");
+        expect(trigger.getAttribute("aria-label")).toBe("Recent conversations");
+        const icon = el.shadowRoot.querySelector(".menu-icon");
+        expect(icon).toBeTruthy();
+        expect(icon.getAttribute("stroke")).toBe("currentColor");
     });
 
     it("renders menu with conversations", async () => {
@@ -59,10 +61,7 @@ describe("conversation-menu", () => {
 
         /** @type {import("bun:test").Mock<(arg: CustomEvent<{ id: string }>) => void>} */
         let listener = mock(() => {});
-        el.addEventListener(
-            "select-conversation",
-            listener,
-        );
+        el.addEventListener("select-conversation", listener);
 
         const item = /** @type {HTMLElement} */ (
             el.shadowRoot.querySelector('sl-menu-item[value="42"]')
@@ -84,5 +83,36 @@ describe("conversation-menu", () => {
         const item = el.shadowRoot.querySelector('sl-menu-item[value="2"]');
         expect(item).toBeTruthy();
         expect(item.getAttribute("value")).toBe("2");
+    });
+
+    it("applies active class to active conversation", async () => {
+        const el = createMenu(
+            [
+                { id: "1", title: "First" },
+                { id: "2", title: "Second" },
+            ],
+            "2",
+        );
+        await el.updateComplete;
+        const item = el.shadowRoot.querySelector('sl-menu-item[value="2"]');
+        expect(item).toBeTruthy();
+        expect(item.classList.contains("active")).toBe(true);
+    });
+
+    it("has proper color inheritance on icon", async () => {
+        const el = createMenu();
+        await el.updateComplete;
+        const icon = el.shadowRoot.querySelector(".menu-icon");
+        expect(icon.getAttribute("stroke")).toBe("currentColor");
+        expect(icon.getAttribute("fill")).toBe("none");
+    });
+
+    it("has menu trigger button with correct attributes", async () => {
+        const el = createMenu();
+        await el.updateComplete;
+        const trigger = el.shadowRoot.querySelector("button.menu-trigger");
+        expect(trigger).toBeTruthy();
+        expect(trigger.classList.contains("menu-trigger")).toBe(true);
+        expect(trigger.getAttribute("aria-label")).toBe("Recent conversations");
     });
 });

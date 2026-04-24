@@ -147,7 +147,7 @@ describe("chat-sidebar", () => {
         el.expanded = false;
         await el.updateComplete;
         expect(el.shadowRoot.querySelector("session-list")).toBeFalsy();
-        expect(el.shadowRoot.querySelector("sidebar-profile")).toBeFalsy();
+        expect(el.shadowRoot.querySelector("sidebar-profile")).toBeTruthy();
         expect(el.shadowRoot.querySelector("conversation-menu")).toBeTruthy();
     });
 
@@ -191,6 +191,37 @@ describe("chat-sidebar", () => {
         expect(ncb.collapsed).toBe(false);
     });
 
+    it("renders only one new-chat-button element always", async () => {
+        const el = createSidebar();
+        await el.updateComplete;
+        const buttons = el.shadowRoot.querySelectorAll("new-chat-button");
+        expect(buttons).toHaveLength(1);
+    });
+
+    it("keeps same new-chat-button element when toggling", async () => {
+        const el = createSidebar();
+        await el.updateComplete;
+        const initialButton = el.shadowRoot.querySelector("new-chat-button");
+        expect(initialButton).toBeTruthy();
+
+        // Toggle to collapsed
+        el.expanded = false;
+        const updatePromise = el.updateComplete;
+        await updatePromise;
+        const collapsedButton = el.shadowRoot.querySelector("new-chat-button");
+
+        // Should be the same DOM element
+        expect(collapsedButton).toBe(initialButton);
+
+        // Toggle back to expanded
+        el.expanded = true;
+        await el.updateComplete;
+        const expandedButton = el.shadowRoot.querySelector("new-chat-button");
+
+        // Should still be the same DOM element
+        expect(expandedButton).toBe(initialButton);
+    });
+
     it("renders conversation-menu when collapsed", async () => {
         const el = createSidebar([{ id: "1", title: "Test" }]);
         el.expanded = false;
@@ -205,5 +236,21 @@ describe("chat-sidebar", () => {
         await el.updateComplete;
         const menu = el.shadowRoot.querySelector("conversation-menu");
         expect(menu).toBeFalsy();
+    });
+
+    it("passes collapsed prop to sidebar-profile when collapsed", async () => {
+        const el = createSidebar();
+        el.expanded = false;
+        await el.updateComplete;
+        const profile = el.shadowRoot.querySelector("sidebar-profile");
+        expect(profile.collapsed).toBe(true);
+    });
+
+    it("passes collapsed=false to sidebar-profile when expanded", async () => {
+        const el = createSidebar();
+        el.expanded = true;
+        await el.updateComplete;
+        const profile = el.shadowRoot.querySelector("sidebar-profile");
+        expect(profile.collapsed).toBe(false);
     });
 });
