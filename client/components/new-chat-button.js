@@ -7,7 +7,6 @@ import { tokens } from "../styles/tokens.js";
 
 class NewChatButton extends LitElement {
     static properties = {
-        /** @type {boolean} */
         collapsed: { type: Boolean },
     };
 

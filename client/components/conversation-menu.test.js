@@ -1,5 +1,5 @@
 import "./conversation-menu.js";
-import { beforeEach, describe, expect, it } from "bun:test";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 
 import { fireEvent } from "@testing-library/dom";
 
@@ -8,6 +8,10 @@ describe("conversation-menu", () => {
         document.body.innerHTML = "";
     });
 
+    /**
+     * @param {import("../../shared/types.js").Conversation[]} conversations
+     * @param {string} activeId
+     */
     function createMenu(conversations = [], activeId = "") {
         /** @type {any} */
         const el = document.createElement("conversation-menu");
@@ -53,18 +57,19 @@ describe("conversation-menu", () => {
         const el = createMenu([{ id: "42", title: "Pick me" }]);
         await el.updateComplete;
 
-        let dispatched = false;
-        /** @type {any} */
-        let detail = null;
-        el.addEventListener("select-conversation", (e) => {
-            dispatched = true;
-            detail = e.detail;
-        });
+        /** @type {import("bun:test").Mock<(arg: CustomEvent<{ id: string }>) => void>} */
+        let listener = mock(() => {});
+        el.addEventListener(
+            "select-conversation",
+            listener,
+        );
 
-        const item = el.shadowRoot.querySelector('sl-menu-item[value="42"]');
+        const item = /** @type {HTMLElement} */ (
+            el.shadowRoot.querySelector('sl-menu-item[value="42"]')
+        );
         fireEvent.click(item);
-        expect(dispatched).toBe(true);
-        expect(detail?.id).toBe("42");
+        expect(listener).toHaveBeenCalled();
+        expect(listener.mock.calls[0][0].detail.id).toBe("42");
     });
 
     it("marks active conversation with correct value attribute", async () => {

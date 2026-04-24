@@ -58,7 +58,6 @@ class ChatSidebar extends LitElement {
         conversations: { type: Array },
         activeId: { type: String },
         mode: { type: String },
-        /** @type {boolean} */
         expanded: { type: Boolean },
     };
 

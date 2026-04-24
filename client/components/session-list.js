@@ -1,4 +1,3 @@
-// @ts-expect-error Side-effect import from esm.sh has no type declarations
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/input/input.js?deps=lit@3.3.2";
 import { LitElement, css } from "lit-element";
 import { html } from "lit-html";

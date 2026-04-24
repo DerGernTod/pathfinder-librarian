@@ -96,3 +96,83 @@ test.describe("mode toggle visual regression", () => {
         });
     });
 });
+
+test.describe("sidebar toggle visual regression", () => {
+    test("sidebar expanded state", async ({ page }) => {
+        await page.goto("/");
+        await page.waitForSelector("main-page");
+        await page.waitForTimeout(1000);
+        const sidebar = page.locator("chat-sidebar");
+        await expect(sidebar).toHaveScreenshot("sidebar-expanded.png", {
+            maxDiffPixelRatio: 0.01,
+        });
+    });
+
+    test("sidebar collapsed state", async ({ page }) => {
+        await page.goto("/");
+        await page.waitForSelector("main-page");
+        await page.waitForTimeout(1000);
+        await page.locator("sidebar-toggle button").click();
+        await page.waitForTimeout(500);
+        const sidebar = page.locator("chat-sidebar");
+        await expect(sidebar).toHaveScreenshot("sidebar-collapsed.png", {
+            maxDiffPixelRatio: 0.01,
+        });
+    });
+
+    test("toggle button expanded state", async ({ page }) => {
+        await page.goto("/");
+        await page.waitForSelector("sidebar-toggle");
+        await page.waitForTimeout(1000);
+        const sidebar = page.locator("chat-sidebar");
+        await expect(sidebar).toHaveScreenshot("toggle-expanded.png", {
+            maxDiffPixelRatio: 0.01,
+        });
+    });
+
+    test("toggle button collapsed state", async ({ page }) => {
+        await page.goto("/");
+        await page.waitForSelector("sidebar-toggle");
+        await page.waitForTimeout(1000);
+        await page.locator("sidebar-toggle button").click();
+        await page.waitForTimeout(500);
+        const sidebar = page.locator("chat-sidebar");
+        await expect(sidebar).toHaveScreenshot("toggle-collapsed.png", {
+            maxDiffPixelRatio: 0.01,
+        });
+    });
+
+    test("new chat button expanded state", async ({ page }) => {
+        await page.goto("/");
+        await page.waitForSelector("new-chat-button");
+        await page.waitForTimeout(1000);
+        const sidebar = page.locator("chat-sidebar");
+        await expect(sidebar).toHaveScreenshot("new-chat-expanded.png", {
+            maxDiffPixelRatio: 0.01,
+        });
+    });
+
+    test("new chat button collapsed state", async ({ page }) => {
+        await page.goto("/");
+        await page.waitForSelector("new-chat-button");
+        await page.waitForTimeout(1000);
+        await page.locator("sidebar-toggle button").click();
+        await page.waitForTimeout(500);
+        const sidebar = page.locator("chat-sidebar");
+        await expect(sidebar).toHaveScreenshot("new-chat-collapsed.png", {
+            maxDiffPixelRatio: 0.01,
+        });
+    });
+
+    test("conversation menu dropdown trigger", async ({ page }) => {
+        await page.goto("/");
+        await page.waitForSelector("main-page");
+        await page.waitForTimeout(1000);
+        await page.locator("sidebar-toggle button").click();
+        await page.waitForTimeout(500);
+        const sidebar = page.locator("chat-sidebar");
+        await expect(sidebar).toHaveScreenshot("conversation-menu-trigger.png", {
+            maxDiffPixelRatio: 0.01,
+        });
+    });
+});

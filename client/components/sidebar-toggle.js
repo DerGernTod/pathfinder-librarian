@@ -37,7 +37,6 @@ class SidebarToggle extends LitElement {
     ];
 
     static properties = {
-        /** @type {boolean} */
         expanded: { type: Boolean },
     };
 

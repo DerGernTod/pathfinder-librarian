@@ -1,4 +1,3 @@
-// @ts-expect-error Side-effect import from esm.sh has no type declarations
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/icon-button/icon-button.js?deps=lit@3.3.2";
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/menu/menu.js?deps=lit@3.3.2";
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/menu-item/menu-item.js?deps=lit@3.3.2";
@@ -46,18 +45,18 @@ class ConversationMenu extends LitElement {
     ];
 
     static properties = {
-        /** @type {Conversation[]} */
         conversations: { type: Array },
-        /** @type {string} */
         activeId: { type: String },
-        /** @type {Mode} */
         mode: { type: String },
     };
 
     constructor() {
         super();
+        /** @type {import("../../shared/types.js").Conversation[]} */
         this.conversations = [];
+        /** @type {string} */
         this.activeId = "";
+        /** @type {import("../../shared/types.js").Mode} */
         this.mode = "gm";
     }
 
@@ -94,6 +93,7 @@ class ConversationMenu extends LitElement {
         `;
     }
 
+    /** @param {string} id */
     handleSelect(id) {
         this.dispatchEvent(
             new CustomEvent("select-conversation", {
