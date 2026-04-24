@@ -1,4 +1,5 @@
 import "./stat-block.js";
+// @ts-expect-error Side-effect import from esm.sh has no type declarations
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/card/card.js?deps=lit@3.3.2";
 import { LitElement, css } from "lit-element";
 import { html, nothing } from "lit-html";

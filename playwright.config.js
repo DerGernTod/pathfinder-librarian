@@ -23,7 +23,6 @@ export default defineConfig({
         },
         toMatchSnapshot: {
             threshold: 0.0001,
-
         },
     },
     webServer: {

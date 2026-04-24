@@ -1,3 +1,4 @@
+// @ts-expect-error Side-effect import from esm.sh has no type declarations
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/input/input.js?deps=lit@3.3.2";
 import { LitElement, css } from "lit-element";
 import { html } from "lit-html";
@@ -42,7 +43,9 @@ class SessionList extends LitElement {
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
-                transition: all var(--transition-speed), background-color var(--accent-transition-speed);
+                transition:
+                    all var(--transition-speed),
+                    background-color var(--accent-transition-speed);
             }
             .session-item:hover,
             .session-item.active {

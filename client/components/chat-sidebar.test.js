@@ -1,7 +1,7 @@
 import "./chat-sidebar.js";
 import { beforeEach, describe, expect, it } from "bun:test";
 
-import { fireEvent, getByText } from "@testing-library/dom";
+import { fireEvent } from "@testing-library/dom";
 
 describe("chat-sidebar", () => {
     beforeEach(() => {

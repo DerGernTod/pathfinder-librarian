@@ -2,6 +2,7 @@ import "../components/chat-header.js";
 import "../components/chat-input.js";
 import "../components/chat-message.js";
 import "../components/chat-sidebar.js";
+// @ts-expect-error Side-effect import from esm.sh has no type declarations
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/spinner/spinner.js?deps=lit@3.3.2";
 import { LitElement, css } from "lit-element";
 import { html, nothing } from "lit-html";
@@ -101,6 +102,9 @@ class MainPage extends LitElement {
     }
 
     scrollToBottom() {
+        if (!this.shadowRoot) {
+            return;
+        }
         const container = this.shadowRoot.querySelector(".messages");
         if (!container) {
             return;

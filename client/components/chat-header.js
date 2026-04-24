@@ -54,7 +54,9 @@ class ChatHeader extends LitElement {
                 border-radius: 0.375rem;
                 border: none;
                 cursor: pointer;
-                transition: all var(--transition-speed), background-color var(--accent-transition-speed);
+                transition:
+                    all var(--transition-speed),
+                    background-color var(--accent-transition-speed);
                 background: transparent;
                 line-height: 1rem;
             }
