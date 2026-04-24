@@ -36,8 +36,7 @@ class ChatSidebar extends LitElement {
                 width: 3.5rem;
                 padding: 0.5rem;
             }
-            .sidebar.collapsed .content,
-            .sidebar.collapsed sidebar-profile {
+            .sidebar.collapsed .content {
                 display: none;
             }
             .sidebar.collapsed new-chat-button {
@@ -97,9 +96,10 @@ class ChatSidebar extends LitElement {
                           </div>
                           <sidebar-profile
                               .mode=${this.mode}
-                              name="Game Master 01"
-                              subtitle="PF2e Remaster Rules"
-                              initials="GM"
+                              .name=${"Game Master 01"}
+                              .subtitle=${"PF2e Remaster Rules"}
+                              .initials=${"GM"}
+                              .collapsed=${false}
                           ></sidebar-profile>
                       `
                     : html`
@@ -113,6 +113,13 @@ class ChatSidebar extends LitElement {
                               .mode=${this.mode}
                               @select-conversation=${this.handleSelectConversation}
                           ></conversation-menu>
+                          <sidebar-profile
+                              .mode=${this.mode}
+                              .name=${"Game Master 01"}
+                              .subtitle=${"PF2e Remaster Rules"}
+                              .initials=${"GM"}
+                              .collapsed=${true}
+                          ></sidebar-profile>
                       `}
             </aside>
         `;

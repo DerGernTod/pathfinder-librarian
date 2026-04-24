@@ -59,10 +59,7 @@ describe("conversation-menu", () => {
 
         /** @type {import("bun:test").Mock<(arg: CustomEvent<{ id: string }>) => void>} */
         let listener = mock(() => {});
-        el.addEventListener(
-            "select-conversation",
-            listener,
-        );
+        el.addEventListener("select-conversation", listener);
 
         const item = /** @type {HTMLElement} */ (
             el.shadowRoot.querySelector('sl-menu-item[value="42"]')

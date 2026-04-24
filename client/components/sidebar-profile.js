@@ -19,6 +19,10 @@ class SidebarProfile extends LitElement {
                 align-items: center;
                 gap: 0.75rem;
             }
+            .profile.collapsed {
+                justify-content: center;
+                gap: 0;
+            }
             .avatar {
                 width: 2rem;
                 height: 2rem;
@@ -39,12 +43,24 @@ class SidebarProfile extends LitElement {
                 font-size: 0.875rem;
                 font-weight: 500;
                 line-height: 1;
+                transition:
+                    opacity 0.3s ease,
+                    transform 0.3s ease;
             }
             .subtitle {
                 font-size: 0.75rem;
                 line-height: 1rem;
                 color: var(--muted-foreground);
                 margin-top: 0.25rem;
+                transition:
+                    opacity 0.3s ease,
+                    transform 0.3s ease;
+            }
+            .name.hidden,
+            .subtitle.hidden {
+                opacity: 0;
+                transform: translateX(-10px);
+                pointer-events: none;
             }
         `,
     ];
@@ -54,6 +70,7 @@ class SidebarProfile extends LitElement {
         subtitle: { type: String },
         initials: { type: String },
         mode: { type: String },
+        collapsed: { type: Boolean },
     };
 
     constructor() {
@@ -66,15 +83,17 @@ class SidebarProfile extends LitElement {
         this.initials = "";
         /** @type {Mode} */
         this.mode = "gm";
+        /** @type {boolean} */
+        this.collapsed = false;
     }
 
     render() {
         return html`
-            <div class="profile">
+            <div class="profile ${this.collapsed ? "collapsed" : ""}">
                 <div class="avatar">${this.initials}</div>
                 <div>
-                    <p class="name">${this.name}</p>
-                    <p class="subtitle">${this.subtitle}</p>
+                    <p class="name ${this.collapsed ? "hidden" : ""}">${this.name}</p>
+                    <p class="subtitle ${this.collapsed ? "hidden" : ""}">${this.subtitle}</p>
                 </div>
             </div>
         `;

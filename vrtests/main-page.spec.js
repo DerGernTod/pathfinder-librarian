@@ -175,4 +175,16 @@ test.describe("sidebar toggle visual regression", () => {
             maxDiffPixelRatio: 0.01,
         });
     });
+
+    test("sidebar-profile collapsed state", async ({ page }) => {
+        await page.goto("/");
+        await page.waitForSelector("main-page");
+        await page.waitForTimeout(1000);
+        await page.locator("sidebar-toggle button").click();
+        await page.waitForTimeout(500);
+        const profile = page.locator("sidebar-profile");
+        await expect(profile).toHaveScreenshot("sidebar-profile-collapsed.png", {
+            maxDiffPixelRatio: 0.01,
+        });
+    });
 });

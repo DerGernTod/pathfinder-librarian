@@ -47,4 +47,49 @@ describe("sidebar-profile", () => {
         const wrapper = el.shadowRoot.querySelector(".profile");
         expect(wrapper).toBeTruthy();
     });
+
+    it("renders in expanded state by default", async () => {
+        const el = createProfile("Game Master 01", "PF2e Remaster Rules", "GM");
+        await el.updateComplete;
+        expect(el.collapsed).toBe(false);
+        const wrapper = el.shadowRoot.querySelector(".profile");
+        expect(wrapper.classList.contains("collapsed")).toBe(false);
+    });
+
+    it("renders in collapsed state when collapsed=true", async () => {
+        const el = createProfile("Game Master 01", "PF2e Remaster Rules", "GM");
+        el.collapsed = true;
+        await el.updateComplete;
+        const wrapper = el.shadowRoot.querySelector(".profile");
+        expect(wrapper.classList.contains("collapsed")).toBe(true);
+    });
+
+    it("hides name and subtitle when collapsed", async () => {
+        const el = createProfile("Game Master 01", "PF2e Remaster Rules", "GM");
+        el.collapsed = true;
+        await el.updateComplete;
+        const name = el.shadowRoot.querySelector(".name");
+        const subtitle = el.shadowRoot.querySelector(".subtitle");
+        expect(name.classList.contains("hidden")).toBe(true);
+        expect(subtitle.classList.contains("hidden")).toBe(true);
+    });
+
+    it("shows name and subtitle when expanded", async () => {
+        const el = createProfile("Game Master 01", "PF2e Remaster Rules", "GM");
+        el.collapsed = false;
+        await el.updateComplete;
+        const name = el.shadowRoot.querySelector(".name");
+        const subtitle = el.shadowRoot.querySelector(".subtitle");
+        expect(name.classList.contains("hidden")).toBe(false);
+        expect(subtitle.classList.contains("hidden")).toBe(false);
+    });
+
+    it("always shows avatar when collapsed", async () => {
+        const el = createProfile("Game Master 01", "PF2e Remaster Rules", "GM");
+        el.collapsed = true;
+        await el.updateComplete;
+        const avatar = el.shadowRoot.querySelector(".avatar");
+        expect(avatar).toBeTruthy();
+        expect(avatar.classList.contains("hidden")).toBe(false);
+    });
 });

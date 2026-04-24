@@ -147,7 +147,7 @@ describe("chat-sidebar", () => {
         el.expanded = false;
         await el.updateComplete;
         expect(el.shadowRoot.querySelector("session-list")).toBeFalsy();
-        expect(el.shadowRoot.querySelector("sidebar-profile")).toBeFalsy();
+        expect(el.shadowRoot.querySelector("sidebar-profile")).toBeTruthy();
         expect(el.shadowRoot.querySelector("conversation-menu")).toBeTruthy();
     });
 
@@ -205,5 +205,21 @@ describe("chat-sidebar", () => {
         await el.updateComplete;
         const menu = el.shadowRoot.querySelector("conversation-menu");
         expect(menu).toBeFalsy();
+    });
+
+    it("passes collapsed prop to sidebar-profile when collapsed", async () => {
+        const el = createSidebar();
+        el.expanded = false;
+        await el.updateComplete;
+        const profile = el.shadowRoot.querySelector("sidebar-profile");
+        expect(profile.collapsed).toBe(true);
+    });
+
+    it("passes collapsed=false to sidebar-profile when expanded", async () => {
+        const el = createSidebar();
+        el.expanded = true;
+        await el.updateComplete;
+        const profile = el.shadowRoot.querySelector("sidebar-profile");
+        expect(profile.collapsed).toBe(false);
     });
 });
