@@ -14,6 +14,11 @@ class MessageList extends LitElement {
         tokens,
         baseStyles,
         css`
+            :host {
+                display: flex;
+                flex: 1;
+                min-height: 0;
+            }
             .messages {
                 flex: 1;
                 overflow-y: auto;
