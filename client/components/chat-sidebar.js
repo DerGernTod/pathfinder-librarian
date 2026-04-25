@@ -48,14 +48,17 @@ class ChatSidebar extends LitElement {
                 overflow: hidden;
                 opacity: 1;
                 transform: translateX(0);
+                max-height: 100%;
                 transition:
                     opacity 0.3s ease,
-                    transform 0.3s ease;
+                    transform 0.3s ease,
+                    max-height 0.3s ease;
             }
             .content.collapsed {
                 opacity: 0;
                 transform: translateX(-1rem);
                 pointer-events: none;
+                max-height: 0;
             }
             .conversation-menu-wrapper {
                 opacity: 0;
