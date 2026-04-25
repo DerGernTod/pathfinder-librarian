@@ -17,27 +17,35 @@ describe("chat-message", () => {
         return el;
     }
 
-    it("renders user message content", async () => {
+    it("renders user message via user-message child", async () => {
         const el = createMessage({ id: "1", role: "user", content: "Hello world" });
         await el.updateComplete;
-        expect(getByText(el.shadowRoot, "Hello world")).toBeTruthy();
+        const userMsg = el.shadowRoot.querySelector("user-message");
+        expect(userMsg).toBeTruthy();
+        await /** @type {any} */ (userMsg).updateComplete;
+        expect(getByText(userMsg.shadowRoot, "Hello world")).toBeTruthy();
     });
 
-    it("user message has user-message class", async () => {
+    it("user message child has user-message class", async () => {
         const el = createMessage({ id: "1", role: "user", content: "Hi" });
         await el.updateComplete;
-        expect(el.shadowRoot.querySelector(".user-message")).toBeTruthy();
+        const userMsg = el.shadowRoot.querySelector("user-message");
+        await /** @type {any} */ (userMsg).updateComplete;
+        expect(userMsg.shadowRoot.querySelector(".user-message")).toBeTruthy();
     });
 
-    it("renders assistant message with avatar", async () => {
+    it("renders assistant message via assistant-message child", async () => {
         const el = createMessage({
             id: "2",
             role: "assistant",
             blocks: [{ type: "paragraph", text: "Response text" }],
         });
         await el.updateComplete;
-        expect(getByText(el.shadowRoot, "Response text")).toBeTruthy();
-        expect(el.shadowRoot.querySelector(".assistant-message")).toBeTruthy();
+        const assistantMsg = el.shadowRoot.querySelector("assistant-message");
+        expect(assistantMsg).toBeTruthy();
+        await /** @type {any} */ (assistantMsg).updateComplete;
+        expect(getByText(assistantMsg.shadowRoot, "Response text")).toBeTruthy();
+        expect(assistantMsg.shadowRoot.querySelector(".assistant-message")).toBeTruthy();
     });
 
     it("renders paragraph block", async () => {
@@ -47,7 +55,9 @@ describe("chat-message", () => {
             blocks: [{ type: "paragraph", text: "Plain paragraph" }],
         });
         await el.updateComplete;
-        expect(getByText(el.shadowRoot, "Plain paragraph")).toBeTruthy();
+        const assistantMsg = el.shadowRoot.querySelector("assistant-message");
+        await /** @type {any} */ (assistantMsg).updateComplete;
+        expect(getByText(assistantMsg.shadowRoot, "Plain paragraph")).toBeTruthy();
     });
 
     it("renders italic paragraph block", async () => {
@@ -57,7 +67,9 @@ describe("chat-message", () => {
             blocks: [{ type: "paragraph", text: "Italic text", italic: true }],
         });
         await el.updateComplete;
-        const p = getByText(el.shadowRoot, "Italic text");
+        const assistantMsg = el.shadowRoot.querySelector("assistant-message");
+        await /** @type {any} */ (assistantMsg).updateComplete;
+        const p = getByText(assistantMsg.shadowRoot, "Italic text");
         expect(p.classList.contains("italic")).toBe(true);
     });
 
@@ -68,8 +80,10 @@ describe("chat-message", () => {
             blocks: [{ type: "callout", title: "Important Note", text: "Details here" }],
         });
         await el.updateComplete;
-        expect(getByText(el.shadowRoot, "Important Note")).toBeTruthy();
-        expect(getByText(el.shadowRoot, "Details here")).toBeTruthy();
+        const assistantMsg = el.shadowRoot.querySelector("assistant-message");
+        await /** @type {any} */ (assistantMsg).updateComplete;
+        expect(getByText(assistantMsg.shadowRoot, "Important Note")).toBeTruthy();
+        expect(getByText(assistantMsg.shadowRoot, "Details here")).toBeTruthy();
     });
 
     it("renders list block with items", async () => {
@@ -87,9 +101,11 @@ describe("chat-message", () => {
             ],
         });
         await el.updateComplete;
-        expect(getByText(el.shadowRoot, "Item A:")).toBeTruthy();
-        expect(getByText(el.shadowRoot, "Detail A")).toBeTruthy();
-        expect(getByText(el.shadowRoot, "Item B:")).toBeTruthy();
+        const assistantMsg = el.shadowRoot.querySelector("assistant-message");
+        await /** @type {any} */ (assistantMsg).updateComplete;
+        expect(getByText(assistantMsg.shadowRoot, "Item A:")).toBeTruthy();
+        expect(getByText(assistantMsg.shadowRoot, "Detail A")).toBeTruthy();
+        expect(getByText(assistantMsg.shadowRoot, "Item B:")).toBeTruthy();
     });
 
     it("renders stat-block block as nested element", async () => {
@@ -99,7 +115,9 @@ describe("chat-message", () => {
             blocks: [{ type: "stat-block", title: "Orc", data: { name: "Orc" } }],
         });
         await el.updateComplete;
-        const nested = el.shadowRoot.querySelector("stat-block");
+        const assistantMsg = el.shadowRoot.querySelector("assistant-message");
+        await /** @type {any} */ (assistantMsg).updateComplete;
+        const nested = assistantMsg.shadowRoot.querySelector("stat-block");
         expect(nested).toBeTruthy();
         expect(nested.title).toBe("Orc");
     });

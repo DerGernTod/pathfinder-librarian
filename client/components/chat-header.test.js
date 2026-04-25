@@ -1,7 +1,7 @@
 import "./chat-header.js";
 import { beforeEach, describe, expect, it } from "bun:test";
 
-import { fireEvent, getByText } from "@testing-library/dom";
+import { getByText } from "@testing-library/dom";
 
 describe("chat-header", () => {
     beforeEach(() => {
@@ -29,52 +29,21 @@ describe("chat-header", () => {
         expect(getByText(el.shadowRoot, "Rules Assistant")).toBeTruthy();
     });
 
-    it("renders both mode buttons", async () => {
+    it("renders mode-toggle child", async () => {
         const el = createHeader();
         await el.updateComplete;
-        expect(getByText(el.shadowRoot, "Player Mode", { exact: false })).toBeTruthy();
-        expect(getByText(el.shadowRoot, "GM Mode", { exact: false })).toBeTruthy();
+        const toggle = el.shadowRoot.querySelector("mode-toggle");
+        expect(toggle).toBeTruthy();
     });
 
-    it("player button active when mode is player", async () => {
-        const el = createHeader("player");
-        await el.updateComplete;
-        const playerBtn = /** @type {HTMLElement} */ (
-            getByText(el.shadowRoot, "Player Mode", { exact: false }).closest("button")
-        );
-        expect(playerBtn.classList.contains("active")).toBe(true);
-    });
-
-    it("gm button active when mode is gm", async () => {
+    it("passes mode to mode-toggle", async () => {
         const el = createHeader("gm");
         await el.updateComplete;
-        const gmBtn = /** @type {HTMLElement} */ (
-            getByText(el.shadowRoot, "GM Mode", { exact: false }).closest("button")
-        );
-        expect(gmBtn.classList.contains("active")).toBe(true);
+        const toggle = /** @type {any} */ (el.shadowRoot.querySelector("mode-toggle"));
+        expect(toggle.mode).toBe("gm");
     });
 
-    it("dispatches mode-change on player button click", async () => {
-        const el = createHeader("gm");
-        await el.updateComplete;
-
-        /** @type {any} */
-        let detail = null;
-        el.addEventListener(
-            "mode-change",
-            /** @param {any} e */ (e) => {
-                detail = e.detail;
-            },
-        );
-
-        fireEvent.click(getByText(el.shadowRoot, "Player Mode", { exact: false }));
-        expect(detail).toBeTruthy();
-        if (detail) {
-            expect(detail.mode).toBe("player");
-        }
-    });
-
-    it("dispatches mode-change on gm button click", async () => {
+    it("dispatches mode-change when mode-toggle fires mode-change", async () => {
         const el = createHeader("player");
         await el.updateComplete;
 
@@ -87,10 +56,36 @@ describe("chat-header", () => {
             },
         );
 
-        fireEvent.click(getByText(el.shadowRoot, "GM Mode", { exact: false }));
+        const toggle = /** @type {any} */ (el.shadowRoot.querySelector("mode-toggle"));
+        toggle.dispatchEvent(
+            new CustomEvent("mode-change", {
+                detail: { mode: "gm" },
+                bubbles: true,
+                composed: true,
+            }),
+        );
+
+        await el.updateComplete;
         expect(detail).toBeTruthy();
         if (detail) {
             expect(detail.mode).toBe("gm");
         }
+    });
+
+    it("updates own mode when mode-toggle fires mode-change", async () => {
+        const el = createHeader("player");
+        await el.updateComplete;
+
+        const toggle = /** @type {any} */ (el.shadowRoot.querySelector("mode-toggle"));
+        toggle.dispatchEvent(
+            new CustomEvent("mode-change", {
+                detail: { mode: "gm" },
+                bubbles: true,
+                composed: true,
+            }),
+        );
+
+        await el.updateComplete;
+        expect(el.mode).toBe("gm");
     });
 });
