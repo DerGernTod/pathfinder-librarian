@@ -1,11 +1,11 @@
-/** @typedef {import("../../shared/types.js").UserMessage} UserMessage */
-
 import { LitElement, css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
+
+/** @typedef {import("../../shared/types.js").UserMessage} UserMessageType */
 
 class UserMessage extends LitElement {
     static styles = [
@@ -44,7 +44,7 @@ class UserMessage extends LitElement {
 
     constructor() {
         super();
-        /** @type {UserMessage | undefined} */
+        /** @type {UserMessageType | undefined} */
         this.message = undefined;
     }
 

@@ -1,12 +1,18 @@
 import "./user-message.js";
 import "./assistant-message.js";
-import { LitElement } from "lit-element";
+import { LitElement, css } from "lit-element";
 import { html, nothing } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
 /** @typedef {import("../../shared/types.js").Message} Message */
 
 class ChatMessage extends LitElement {
+    static styles = css`
+        :host {
+            display: block;
+        }
+    `;
+
     static properties = {
         message: { type: Object },
     };

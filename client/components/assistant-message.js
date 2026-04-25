@@ -7,7 +7,7 @@ import { customElement } from "lit/decorators.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
 
-/** @typedef {import("../../shared/types.js").AssistantMessage} AssistantMessage */
+/** @typedef {import("../../shared/types.js").AssistantMessage} AssistantMessageType */
 /** @typedef {import("../../shared/types.js").MessageBlock} MessageBlock */
 /** @typedef {import("../../shared/types.js").Segment} Segment */
 
@@ -101,7 +101,7 @@ class AssistantMessage extends LitElement {
 
     constructor() {
         super();
-        /** @type {AssistantMessage | undefined} */
+        /** @type {AssistantMessageType | undefined} */
         this.message = undefined;
     }
 
