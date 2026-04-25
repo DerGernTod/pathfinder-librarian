@@ -92,8 +92,8 @@ describe("new-chat-button", () => {
         const btn = el.shadowRoot.querySelector("button");
 
         // Start collapsed
-        expect(getComputedStyle(btn).width).toBe("40px");
-        expect(getComputedStyle(btn).height).toBe("40px");
+        expect(getComputedStyle(btn).width).toBe("100%");
+        expect(getComputedStyle(btn).height).toBe("");
 
         // Expand
         el.collapsed = false;
