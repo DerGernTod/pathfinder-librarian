@@ -30,14 +30,13 @@ jobs:
               run: |
                   apt-get update
                   apt-get install -y curl unzip
-                  # Add GitHub CLI official repository
-                  mkdir -p -m 755 /etc/apt/keyrings
-                  curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null
-                  chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
-                  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/list.d/github-cli.list > /dev/null
-                  apt-get update
-                  apt-get install -y gh
-
+            - name: Install GH CLI (Binary)
+              run: |
+                  GH_VERSION=$(curl -s https://api.github.com/repos/cli/cli/releases/latest | grep tag_name | cut -d '"' -f 4 | sed 's/v//')
+                  curl -sSL "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_amd64.tar.gz" -o gh.tar.gz
+                  tar xzf gh.tar.gz
+                  mv gh_${GH_VERSION}_linux_amd64/bin/gh /usr/local/bin/
+                  rm -rf gh.tar.gz gh_${GH_VERSION}_linux_amd64
             - uses: oven-sh/setup-bun@v2
             - run: bun install --frozen-lockfile
 
