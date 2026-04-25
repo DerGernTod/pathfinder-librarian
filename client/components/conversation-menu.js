@@ -42,9 +42,17 @@ class ConversationMenu extends LitElement {
                 max-width: 20rem;
             }
             sl-menu-item::part(base) {
+                padding: 0.5rem 0.75rem;
+                font-size: 0.875rem;
+                color: var(--muted-foreground);
+                line-height: 1.25rem;
+                cursor: pointer;
                 transition:
                     all var(--transition-speed),
                     background-color var(--accent-transition-speed);
+            }
+            sl-menu-item::part(base):hover {
+                color: var(--foreground);
             }
             sl-menu-item.active::part(base) {
                 background: var(--accent);

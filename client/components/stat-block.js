@@ -9,6 +9,39 @@ import { customElement } from "lit/decorators.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
 
+/** @typedef {string} ActionType */
+/** @typedef {{ name: string; description: string; actionType?: ActionType }} Action */
+/** @typedef {{ name: string; description: string; tradition?: string; rank?: number; dc?: number }} Spell */
+/** @typedef {{ name: string; description: string }} Ability */
+
+/**
+ * @typedef {{
+ *     name?: string;
+ *     type?: string;
+ *     level?: number;
+ *     traits?: string[];
+ *     perception?: string;
+ *     languages?: string;
+ *     attributes?: {
+ *         ac?: number | string;
+ *         hp?: number | string;
+ *         fortitude?: string;
+ *         reflex?: string;
+ *         will?: string;
+ *     };
+ *     skills?: Record<string, string>;
+ *     str?: number;
+ *     dex?: number;
+ *     con?: number;
+ *     int?: number;
+ *     wis?: number;
+ *     cha?: number;
+ *     actions?: Action[];
+ *     spells?: Spell[];
+ *     abilities?: Ability[];
+ * }} StatBlockData
+ */
+
 class StatBlock extends LitElement {
     static styles = [
         tokens,
@@ -183,7 +216,9 @@ class StatBlock extends LitElement {
 
     constructor() {
         super();
+        /** @type {string} */
         this.title = "";
+        /** @type {StatBlockData} */
         this.data = {};
     }
 
@@ -366,17 +401,27 @@ class StatBlock extends LitElement {
         `;
     }
 
+    /**
+     * @param {number | string | undefined | null} value
+     * @returns {string}
+     */
     formatModifier(value) {
         if (value === undefined || value === null) {
             return "-";
         }
-        if (value >= 0) {
+        const numValue = typeof value === "string" ? parseInt(value, 10) : value;
+        if (numValue >= 0) {
             return `+${value}`;
         }
         return `${value}`;
     }
 
+    /**
+     * @param {ActionType} type
+     * @returns {string}
+     */
     formatActionType(type) {
+        /** @type {{ single: string; two: string; three: string; reaction: string; free: string }} */
         const types = {
             single: "⬤",
             two: "⬤⬤",
@@ -384,7 +429,7 @@ class StatBlock extends LitElement {
             reaction: "⬢",
             free: "◯",
         };
-        return types[type] || "";
+        return types[/** @type {keyof typeof types} */ (type)] || "";
     }
 }
 

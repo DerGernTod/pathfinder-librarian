@@ -3,12 +3,10 @@ name: CI
 
 on:
     pull_request:
+    # workflow_dispatch allows CI to be triggered manually or from other
+    # workflows (e.g. update-snapshots.yml dispatches CI after pushing
+    # snapshot commits so PR required checks are reported for the new HEAD).
     workflow_dispatch:
-        inputs:
-            update_snapshots:
-                description: "Update Playwright snapshots?"
-                type: boolean
-                default: false
 
 jobs:
     lint:
@@ -52,8 +50,6 @@ jobs:
         container:
             image: mcr.microsoft.com/playwright:v1.59.1-noble
             options: --user root
-        permissions:
-            contents: write # For snapshot updates
         steps:
             - uses: actions/checkout@v4
               with:
@@ -66,25 +62,8 @@ jobs:
                   path: ~/.bun/install/cache
                   key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
             - run: bun install --frozen-lockfile
-            # Run normally on PR, or with --update-snapshots if dispatch input is true
             - name: Run Playwright tests
-              run: |
-                  if [ "${{ github.event.inputs.update_snapshots }}" = "true" ]; then
-                    bun run e2e -- --update-snapshots
-                  else
-                    bun run e2e
-                  fi
-            - name: Commit and Push Snapshot Updates
-              if: github.event.inputs.update_snapshots == 'true'
-              run: |
-                  # The fix for "dubious ownership" error:
-                  git config --global --add safe.directory "$GITHUB_WORKSPACE"
-
-                  git config --global user.name "github-actions[bot]"
-                  git config --global user.email "github-actions[bot]@users.noreply.github.com"
-                  git add vrtests/__snapshots__/**/*.png
-                  git commit -m "chore: Update Playwright snapshots (linux)" || echo "No changes to commit"
-                  git push
+              run: bun run e2e
 
     check:
         runs-on: ubuntu-latest

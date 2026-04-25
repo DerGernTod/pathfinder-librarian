@@ -1,3 +1,25 @@
+## CI / Workflows
+
+### Updating Playwright visual-regression snapshots
+
+When a CI run fails on the `e2e` job because snapshots are outdated, use the **Update Snapshots** workflow:
+
+1. Go to **Actions → Update Snapshots → Run workflow**.
+2. Set the **branch** input to the PR branch name (e.g. `fix/my-feature`).
+3. Click **Run workflow**.
+
+The workflow will:
+
+- Run Playwright with `--update-snapshots` on the specified branch.
+- Commit any changed `.png` files and push them to the branch.
+- Trigger the main **CI** workflow for the new commit so PR required checks are reported.
+
+**Prerequisites**: the repository secret `PAT_VR_PUSH` must be a fine-grained PAT
+with **Contents: Read and Write** (to push commits) and **Actions: Read and Write**
+(to dispatch the CI workflow) on this repository.
+
+---
+
 i'm trying to build a RAG system for the pathfinder rpg. i want a chat-like assistant interaction that's augmented with deterministic data (e.g. stat blocks of npcs, spells, equipment etc.). the user should be able to ask things like this:
 "i'm a gm, my party just captured a mitflit king and wants to sell them at the market of a nearby settlement. how should i handle this?". the assistant should respond with settlement requirements, rules, proposals of how to set the scene, DCs on required skill rolls etc.. another example of a question:
 "i'm an assassin, hanging from a chandelier. i want to jump on an enemy below me and cut their throat. what do i need to roll?" - the assistant should find the respective rule sets and answer with the requirements, what to roll, what skills they need, what stats of the enemy affect the action etc.

@@ -1,0 +1,63 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+# Usage: trigger manually from Actions → "Update Snapshots" → Run workflow.
+# Select the PR branch in the "Branch" dropdown.
+# The workflow will update Playwright snapshots, commit them to the branch,
+# then trigger the main CI workflow so PR required checks are reported for
+# the new HEAD commit.
+#
+# Prerequisites: repository secret PAT_VR_PUSH must be a fine-grained PAT
+# with Contents: Read and Write AND Actions: Read and Write on this repository.
+name: Update Snapshots
+
+on:
+    workflow_dispatch:
+        # No inputs needed; use the native dropdown
+
+jobs:
+    update-snapshots:
+        runs-on: ubuntu-latest
+        container:
+            image: mcr.microsoft.com/playwright:v1.59.1-noble
+            options: --user root
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  # Use the branch selected in the 'Use workflow from' dropdown
+                  ref: ${{ github.ref_name }}
+                  token: ${{ secrets.PAT_VR_PUSH }}
+
+            - name: Prepare Container
+              run: |
+                  apt-get update
+                  apt-get install -y curl unzip
+            - name: Install GH CLI (Binary)
+              run: |
+                  GH_VERSION=$(curl -s https://api.github.com/repos/cli/cli/releases/latest | grep tag_name | cut -d '"' -f 4 | sed 's/v//')
+                  curl -sSL "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_amd64.tar.gz" -o gh.tar.gz
+                  tar xzf gh.tar.gz
+                  mv gh_${GH_VERSION}_linux_amd64/bin/gh /usr/local/bin/
+                  rm -rf gh.tar.gz gh_${GH_VERSION}_linux_amd64
+            - uses: oven-sh/setup-bun@v2
+            - run: bun install --frozen-lockfile
+
+            - name: Run Playwright with snapshot update
+              run: bun run e2e -- --update-snapshots
+
+            - name: Commit and push snapshot updates
+              run: |
+                  git config --global --add safe.directory "$GITHUB_WORKSPACE"
+                  git config --global user.name "github-actions[bot]"
+                  git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+                  git add vrtests/__snapshots__/**/*.png
+                  if git commit -m "chore: Update Playwright snapshots (linux)"; then
+                    # No need to set-url; checkout with PAT handles auth
+                    git push origin HEAD:${{ github.ref_name }}
+                  else
+                    echo "No changes to commit"
+                  fi
+
+            - name: Trigger CI
+              env:
+                  GH_TOKEN: ${{ secrets.PAT_VR_PUSH }}
+              run: gh workflow run ci.yml --ref ${{ github.ref_name }}

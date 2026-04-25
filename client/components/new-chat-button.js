@@ -22,7 +22,7 @@ class NewChatButton extends LitElement {
                 width: 100%;
                 border-radius: 0.375rem;
                 border: 1px dashed hsla(240, 5%, 64.9%, 0.5);
-                padding: 0.75rem;
+                padding: 0.5rem;
                 font-size: 0.875rem;
                 color: var(--muted-foreground);
                 background: transparent;
@@ -31,12 +31,6 @@ class NewChatButton extends LitElement {
                     width 0.3s ease,
                     height 0.3s ease,
                     background-color var(--accent-transition-speed);
-            }
-            .btn.collapsed {
-                width: 2.5rem;
-                height: 2.5rem;
-                padding: 0.5rem;
-                margin-bottom: 0.5rem;
             }
             .btn:hover {
                 background: var(--secondary);
@@ -55,14 +49,10 @@ class NewChatButton extends LitElement {
             }
             .btn-icon {
                 width: 1rem;
-                height: 1rem;
+                height: 1.125rem;
                 transition:
                     width 0.3s ease,
                     height 0.3s ease;
-            }
-            .btn.collapsed .btn-icon {
-                width: 1.25rem;
-                height: 1.25rem;
             }
         `,
     ];

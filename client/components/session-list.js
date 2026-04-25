@@ -1,4 +1,5 @@
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/input/input.js?deps=lit@3.3.2";
+import "./conversation-item.js";
 import { LitElement, css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
@@ -31,25 +32,6 @@ class SessionList extends LitElement {
                 color: var(--muted-foreground);
                 font-weight: 500;
                 padding: 0.25rem 0.5rem;
-            }
-            .session-item {
-                border-radius: 0.375rem;
-                padding: 0.5rem 0.75rem;
-                font-size: 0.875rem;
-                color: var(--muted-foreground);
-                line-height: 1.25rem;
-                cursor: pointer;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-                transition:
-                    all var(--transition-speed),
-                    background-color var(--accent-transition-speed);
-            }
-            .session-item:hover,
-            .session-item.active {
-                background: var(--accent);
-                color: var(--secondary-foreground);
             }
             sl-input::part(base) {
                 background: transparent;
@@ -102,12 +84,11 @@ class SessionList extends LitElement {
                 ></sl-input>
                 ${filtered.map(
                     (conv) => html`
-                        <div
-                            @click=${() => this.handleSelect(conv.id)}
-                            class="session-item ${conv.id === this.activeId ? "active" : ""}"
-                        >
-                            ${conv.title}
-                        </div>
+                        <conversation-item
+                            .conversation=${conv}
+                            .active=${conv.id === this.activeId}
+                            @select=${this.handleSelect}
+                        ></conversation-item>
                     `,
                 )}
             </div>
@@ -122,12 +103,12 @@ class SessionList extends LitElement {
     }
 
     /**
-     * @param {string} id
+     * @param {CustomEvent<{ id: string }>} e
      */
-    handleSelect(id) {
+    handleSelect(e) {
         this.dispatchEvent(
             new CustomEvent("select-conversation", {
-                detail: { id },
+                detail: { id: e.detail.id },
                 bubbles: true,
                 composed: true,
             }),

@@ -58,14 +58,6 @@ describe("new-chat-button", () => {
         expect(getComputedStyle(text).pointerEvents).toBe("none");
     });
 
-    it("increases icon size when collapsed", async () => {
-        const el = createButton(true);
-        await el.updateComplete;
-        const icon = el.shadowRoot.querySelector(".btn-icon");
-        expect(getComputedStyle(icon).width).toBe("20px");
-        expect(getComputedStyle(icon).height).toBe("20px");
-    });
-
     it("transitions button width smoothly", async () => {
         const el = createButton(false);
         await el.updateComplete;
@@ -100,8 +92,8 @@ describe("new-chat-button", () => {
         const btn = el.shadowRoot.querySelector("button");
 
         // Start collapsed
-        expect(getComputedStyle(btn).width).toBe("40px");
-        expect(getComputedStyle(btn).height).toBe("40px");
+        expect(getComputedStyle(btn).width).toBe("100%");
+        expect(getComputedStyle(btn).height).toBe("");
 
         // Expand
         el.collapsed = false;
