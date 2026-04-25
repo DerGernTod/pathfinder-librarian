@@ -42,25 +42,38 @@ class ChatSidebar extends LitElement {
                 display: flex;
                 justify-content: flex-end;
             }
-            .content {
+            .content-container {
                 flex: 1;
                 min-height: 0;
+                position: relative;
                 overflow: hidden;
+            }
+            .content {
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
                 opacity: 1;
                 transform: translateX(0);
-                max-height: 100%;
                 transition:
                     opacity 0.3s ease,
-                    transform 0.3s ease,
-                    max-height 0.3s ease;
+                    transform 0.3s ease;
             }
             .content.collapsed {
                 opacity: 0;
                 transform: translateX(-1rem);
                 pointer-events: none;
-                max-height: 0;
             }
             .conversation-menu-wrapper {
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
                 opacity: 0;
                 transform: translateX(1rem);
                 transition:
@@ -113,21 +126,23 @@ class ChatSidebar extends LitElement {
                     @new-chat=${this.handleNewChat}
                     ?collapsed=${!this.expanded}
                 ></new-chat-button>
-                <div class="content ${!this.expanded ? "collapsed" : ""}">
-                    <session-list
-                        .mode=${this.mode}
-                        .conversations=${this.conversations}
-                        .activeId=${this.activeId}
-                        @select-conversation=${this.handleSelectConversation}
-                    ></session-list>
-                </div>
-                <div class="conversation-menu-wrapper ${!this.expanded ? "visible" : ""}">
-                    <conversation-menu
-                        .conversations=${this.conversations}
-                        .activeId=${this.activeId}
-                        .mode=${this.mode}
-                        @select-conversation=${this.handleSelectConversation}
-                    ></conversation-menu>
+                <div class="content-container">
+                    <div class="content ${!this.expanded ? "collapsed" : ""}">
+                        <session-list
+                            .mode=${this.mode}
+                            .conversations=${this.conversations}
+                            .activeId=${this.activeId}
+                            @select-conversation=${this.handleSelectConversation}
+                        ></session-list>
+                    </div>
+                    <div class="conversation-menu-wrapper ${!this.expanded ? "visible" : ""}">
+                        <conversation-menu
+                            .conversations=${this.conversations}
+                            .activeId=${this.activeId}
+                            .mode=${this.mode}
+                            @select-conversation=${this.handleSelectConversation}
+                        ></conversation-menu>
+                    </div>
                 </div>
                 <sidebar-profile
                     .mode=${this.mode}
