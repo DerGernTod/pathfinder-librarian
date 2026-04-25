@@ -77,6 +77,9 @@ jobs:
             - name: Commit and Push Snapshot Updates
               if: github.event.inputs.update_snapshots == 'true'
               run: |
+                  # The fix for "dubious ownership" error:
+                  git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
                   git config --global user.name "github-actions[bot]"
                   git config --global user.email "github-actions[bot]@users.noreply.github.com"
                   git add vrtests/__snapshots__/**/*.png
