@@ -18,10 +18,12 @@ class SidebarProfile extends LitElement {
                 display: flex;
                 align-items: center;
                 gap: 0.75rem;
+                overflow: hidden;
+                position: relative;
             }
             .profile.collapsed {
                 justify-content: center;
-                gap: 0;
+                padding-top: 1rem;
             }
             .avatar {
                 width: 2rem;
@@ -34,33 +36,39 @@ class SidebarProfile extends LitElement {
                 font-weight: 700;
                 color: white;
                 background: var(--accent);
+                flex-shrink: 0;
                 transition:
                     background 0.5s ease,
                     color 0.5s ease,
                     box-shadow 0.5s ease;
             }
+            .text-container {
+                flex: 1;
+                min-width: 0;
+                opacity: 1;
+                transition: opacity 0.3s ease;
+            }
+            .profile.collapsed .text-container {
+                position: absolute;
+                opacity: 0;
+                pointer-events: none;
+            }
             .name {
                 font-size: 0.875rem;
                 font-weight: 500;
                 line-height: 1;
-                transition:
-                    opacity 0.3s ease,
-                    transform 0.3s ease;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
             }
             .subtitle {
                 font-size: 0.75rem;
                 line-height: 1rem;
                 color: var(--muted-foreground);
                 margin-top: 0.25rem;
-                transition:
-                    opacity 0.3s ease,
-                    transform 0.3s ease;
-            }
-            .name.hidden,
-            .subtitle.hidden {
-                opacity: 0;
-                transform: translateX(-10px);
-                pointer-events: none;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
             }
         `,
     ];
@@ -89,11 +97,14 @@ class SidebarProfile extends LitElement {
 
     render() {
         return html`
-            <div class="profile ${this.collapsed ? "collapsed" : ""}">
+            <div
+                class="profile ${this.collapsed ? "collapsed" : ""}"
+                aria-label=${this.collapsed ? `${this.name} - ${this.subtitle}` : ""}
+            >
                 <div class="avatar">${this.initials}</div>
-                <div>
-                    <p class="name ${this.collapsed ? "hidden" : ""}">${this.name}</p>
-                    <p class="subtitle ${this.collapsed ? "hidden" : ""}">${this.subtitle}</p>
+                <div class="text-container">
+                    <p class="name">${this.name}</p>
+                    <p class="subtitle">${this.subtitle}</p>
                 </div>
             </div>
         `;

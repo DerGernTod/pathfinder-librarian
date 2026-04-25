@@ -197,8 +197,7 @@ describe("stat-block", () => {
         });
 
         it("does not render actions section when data missing", async () => {
-            const data = { ...fullMonsterData };
-            delete data.actions;
+            const data = { ...fullMonsterData, actions: undefined };
             const el = createStatBlock("Test", data);
             await el.updateComplete;
             const actionsSection = el.shadowRoot.querySelector("sl-details[summary='Actions']");
@@ -216,8 +215,7 @@ describe("stat-block", () => {
         });
 
         it("does not render spells section when data missing", async () => {
-            const data = { ...fullMonsterData };
-            delete data.spells;
+            const data = { ...fullMonsterData, spells: undefined };
             const el = createStatBlock("Test", data);
             await el.updateComplete;
             const spellsSection = el.shadowRoot.querySelector("sl-details[summary='Spells']");
@@ -232,8 +230,7 @@ describe("stat-block", () => {
         });
 
         it("does not render abilities section when data missing", async () => {
-            const data = { ...fullMonsterData };
-            delete data.abilities;
+            const data = { ...fullMonsterData, abilities: undefined };
             const el = createStatBlock("Test", data);
             await el.updateComplete;
             const abilitiesSection = el.shadowRoot.querySelector("sl-details[summary='Abilities']");
