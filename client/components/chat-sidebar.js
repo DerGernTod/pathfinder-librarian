@@ -34,8 +34,7 @@ class ChatSidebar extends LitElement {
             }
             .sidebar.collapsed {
                 width: 3.5rem;
-                padding: 0.5rem;
-                padding-top: 1rem;
+                padding: 1rem 0.5rem;
             }
             .sidebar.collapsed new-chat-button {
             }

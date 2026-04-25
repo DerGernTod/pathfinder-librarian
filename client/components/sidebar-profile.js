@@ -15,15 +15,20 @@ class SidebarProfile extends LitElement {
             .profile {
                 border-top: 1px solid var(--border);
                 padding-top: 1rem;
-                display: flex;
+                display: grid;
+                grid-template-columns: 2rem 1fr;
                 align-items: center;
                 gap: 0.75rem;
                 overflow: hidden;
                 position: relative;
+                justify-content: start;
+                transition: all 0.5s ease;
             }
             .profile.collapsed {
-                justify-content: center;
+                grid-template-columns: 100% 0fr;
+                gap: 0;
                 padding-top: 1rem;
+                padding-left: 0.2rem;
             }
             .avatar {
                 width: 2rem;
@@ -36,20 +41,17 @@ class SidebarProfile extends LitElement {
                 font-weight: 700;
                 color: white;
                 background: var(--accent);
-                flex-shrink: 0;
                 transition:
                     background 0.5s ease,
                     color 0.5s ease,
                     box-shadow 0.5s ease;
             }
             .text-container {
-                flex: 1;
-                min-width: 0;
+                overflow: hidden;
                 opacity: 1;
                 transition: opacity 0.3s ease;
             }
             .profile.collapsed .text-container {
-                position: absolute;
                 opacity: 0;
                 pointer-events: none;
             }
