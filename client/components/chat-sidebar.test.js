@@ -137,18 +137,26 @@ describe("chat-sidebar", () => {
     it("shows full content when expanded", async () => {
         const el = createSidebar([{ id: "1", title: "Test" }]);
         await el.updateComplete;
+        const content = el.shadowRoot.querySelector(".content");
+        const menuWrapper = el.shadowRoot.querySelector(".conversation-menu-wrapper");
         expect(el.shadowRoot.querySelector("session-list")).toBeTruthy();
         expect(el.shadowRoot.querySelector("sidebar-profile")).toBeTruthy();
-        expect(el.shadowRoot.querySelector("conversation-menu")).toBeFalsy();
+        expect(el.shadowRoot.querySelector("conversation-menu")).toBeTruthy();
+        expect(content.classList.contains("collapsed")).toBe(false);
+        expect(menuWrapper.classList.contains("visible")).toBe(false);
     });
 
     it("hides content when collapsed", async () => {
         const el = createSidebar([{ id: "1", title: "Test" }]);
         el.expanded = false;
         await el.updateComplete;
-        expect(el.shadowRoot.querySelector("session-list")).toBeFalsy();
+        const content = el.shadowRoot.querySelector(".content");
+        const menuWrapper = el.shadowRoot.querySelector(".conversation-menu-wrapper");
+        expect(el.shadowRoot.querySelector("session-list")).toBeTruthy();
         expect(el.shadowRoot.querySelector("sidebar-profile")).toBeTruthy();
         expect(el.shadowRoot.querySelector("conversation-menu")).toBeTruthy();
+        expect(content.classList.contains("collapsed")).toBe(true);
+        expect(menuWrapper.classList.contains("visible")).toBe(true);
     });
 
     it("emits toggle-sidebar event on toggle click", async () => {
@@ -227,15 +235,19 @@ describe("chat-sidebar", () => {
         el.expanded = false;
         await el.updateComplete;
         const menu = el.shadowRoot.querySelector("conversation-menu");
+        const menuWrapper = el.shadowRoot.querySelector(".conversation-menu-wrapper");
         expect(menu).toBeTruthy();
+        expect(menuWrapper.classList.contains("visible")).toBe(true);
     });
 
-    it("does not render conversation-menu when expanded", async () => {
+    it("renders conversation-menu when expanded (hidden via CSS)", async () => {
         const el = createSidebar([{ id: "1", title: "Test" }]);
         el.expanded = true;
         await el.updateComplete;
         const menu = el.shadowRoot.querySelector("conversation-menu");
-        expect(menu).toBeFalsy();
+        const menuWrapper = el.shadowRoot.querySelector(".conversation-menu-wrapper");
+        expect(menu).toBeTruthy();
+        expect(menuWrapper.classList.contains("visible")).toBe(false);
     });
 
     it("passes collapsed prop to sidebar-profile when collapsed", async () => {
@@ -252,5 +264,54 @@ describe("chat-sidebar", () => {
         await el.updateComplete;
         const profile = el.shadowRoot.querySelector("sidebar-profile");
         expect(profile.collapsed).toBe(false);
+    });
+
+    it("both elements always present regardless of expanded state", async () => {
+        const el = createSidebar([{ id: "1", title: "Test" }]);
+        await el.updateComplete;
+
+        // Test expanded state
+        expect(el.shadowRoot.querySelector(".content")).toBeTruthy();
+        expect(el.shadowRoot.querySelector(".conversation-menu-wrapper")).toBeTruthy();
+        expect(el.shadowRoot.querySelector("session-list")).toBeTruthy();
+        expect(el.shadowRoot.querySelector("conversation-menu")).toBeTruthy();
+
+        // Test collapsed state
+        el.expanded = false;
+        await el.updateComplete;
+        expect(el.shadowRoot.querySelector(".content")).toBeTruthy();
+        expect(el.shadowRoot.querySelector(".conversation-menu-wrapper")).toBeTruthy();
+        expect(el.shadowRoot.querySelector("session-list")).toBeTruthy();
+        expect(el.shadowRoot.querySelector("conversation-menu")).toBeTruthy();
+    });
+
+    it("content has correct CSS classes for expanded state", async () => {
+        const el = createSidebar([{ id: "1", title: "Test" }]);
+        await el.updateComplete;
+        const content = el.shadowRoot.querySelector(".content");
+        expect(content.classList.contains("collapsed")).toBe(false);
+    });
+
+    it("content has correct CSS classes for collapsed state", async () => {
+        const el = createSidebar([{ id: "1", title: "Test" }]);
+        el.expanded = false;
+        await el.updateComplete;
+        const content = el.shadowRoot.querySelector(".content");
+        expect(content.classList.contains("collapsed")).toBe(true);
+    });
+
+    it("conversation-menu-wrapper has correct CSS classes for expanded state", async () => {
+        const el = createSidebar([{ id: "1", title: "Test" }]);
+        await el.updateComplete;
+        const menuWrapper = el.shadowRoot.querySelector(".conversation-menu-wrapper");
+        expect(menuWrapper.classList.contains("visible")).toBe(false);
+    });
+
+    it("conversation-menu-wrapper has correct CSS classes for collapsed state", async () => {
+        const el = createSidebar([{ id: "1", title: "Test" }]);
+        el.expanded = false;
+        await el.updateComplete;
+        const menuWrapper = el.shadowRoot.querySelector(".conversation-menu-wrapper");
+        expect(menuWrapper.classList.contains("visible")).toBe(true);
     });
 });

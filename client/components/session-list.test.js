@@ -38,15 +38,19 @@ describe("session-list", () => {
             { id: "2", title: "Chat Two" },
         ]);
         await el.updateComplete;
-        expect(getByText(el.shadowRoot, "Chat One")).toBeTruthy();
-        expect(getByText(el.shadowRoot, "Chat Two")).toBeTruthy();
+        const items = el.shadowRoot.querySelectorAll("conversation-item");
+        expect(items.length).toBe(2);
+        expect(items[0].shadowRoot?.querySelector(".item")?.textContent).toContain("Chat One");
+        expect(items[1].shadowRoot?.querySelector(".item")?.textContent).toContain("Chat Two");
     });
 
     it("highlights active conversation", async () => {
         const el = createList([{ id: "1", title: "Active Chat" }], "1");
         await el.updateComplete;
-        const activeEl = getByText(el.shadowRoot, "Active Chat");
-        expect(activeEl.classList.contains("active")).toBe(true);
+        const item = el.shadowRoot.querySelector("conversation-item");
+        expect(item?.active).toBe(true);
+        const itemDiv = item?.shadowRoot?.querySelector(".item");
+        expect(itemDiv?.classList.contains("active")).toBe(true);
     });
 
     it("non-active conversation does not have active class", async () => {
@@ -58,8 +62,12 @@ describe("session-list", () => {
             "1",
         );
         await el.updateComplete;
-        const inactiveEl = getByText(el.shadowRoot, "Inactive");
-        expect(inactiveEl.classList.contains("active")).toBe(false);
+        const items = el.shadowRoot.querySelectorAll("conversation-item");
+        const inactiveItem = Array.from(items).find((item) =>
+            item.shadowRoot?.querySelector(".item")?.textContent?.includes("Inactive"),
+        );
+        const inactiveDiv = inactiveItem?.shadowRoot?.querySelector(".item");
+        expect(inactiveDiv?.classList.contains("active")).toBe(false);
     });
 
     it("dispatches select-conversation with id on click", async () => {
@@ -75,7 +83,11 @@ describe("session-list", () => {
             },
         );
 
-        fireEvent.click(getByText(el.shadowRoot, "Pick me"));
+        const item = el.shadowRoot.querySelector("conversation-item");
+        const itemDiv = item?.shadowRoot?.querySelector(".item");
+        if (itemDiv) {
+            fireEvent.click(itemDiv);
+        }
         expect(detail).toBeTruthy();
         if (detail) {
             expect(detail.id).toBe("42");
@@ -93,8 +105,35 @@ describe("session-list", () => {
         el.requestUpdate();
         await el.updateComplete;
 
-        expect(getByText(el.shadowRoot, "Mitflit King")).toBeTruthy();
+        const items = el.shadowRoot.querySelectorAll("conversation-item");
+        expect(items.length).toBe(1);
+        expect(items[0].shadowRoot?.querySelector(".item")?.textContent).toContain("Mitflit King");
         expect(el.shadowRoot.textContent).not.toContain("Chandelier Plot");
+    });
+
+    it("shows all conversations when query is cleared", async () => {
+        const el = createList([
+            { id: "1", title: "Mitflit King" },
+            { id: "2", title: "Chandelier Plot" },
+        ]);
+        await el.updateComplete;
+
+        el.query = "xyz";
+        el.requestUpdate();
+        await el.updateComplete;
+
+        expect(el.shadowRoot.querySelectorAll("conversation-item").length).toBe(0);
+
+        el.query = "";
+        el.requestUpdate();
+        await el.updateComplete;
+
+        const items = el.shadowRoot.querySelectorAll("conversation-item");
+        expect(items.length).toBe(2);
+        expect(items[0].shadowRoot?.querySelector(".item")?.textContent).toContain("Mitflit King");
+        expect(items[1].shadowRoot?.querySelector(".item")?.textContent).toContain(
+            "Chandelier Plot",
+        );
     });
 
     it("shows all conversations when query is cleared", async () => {
@@ -114,7 +153,11 @@ describe("session-list", () => {
         el.requestUpdate();
         await el.updateComplete;
 
-        expect(getByText(el.shadowRoot, "Mitflit King")).toBeTruthy();
-        expect(getByText(el.shadowRoot, "Chandelier Plot")).toBeTruthy();
+        const items = el.shadowRoot.querySelectorAll("conversation-item");
+        expect(items.length).toBe(2);
+        expect(items[0].shadowRoot?.querySelector(".item")?.textContent).toContain("Mitflit King");
+        expect(items[1].shadowRoot?.querySelector(".item")?.textContent).toContain(
+            "Chandelier Plot",
+        );
     });
 });

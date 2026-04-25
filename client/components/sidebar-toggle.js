@@ -22,7 +22,6 @@ class SidebarToggle extends LitElement {
                 cursor: pointer;
                 border-radius: 0.375rem;
                 transition: all 0.2s ease;
-                margin-bottom: 0.5rem;
             }
             .toggle-btn:hover {
                 background: var(--secondary);
