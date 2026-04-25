@@ -9,11 +9,12 @@ const MOCK_CONVERSATIONS = [
 ];
 
 /** @type {Message[]} */
-const MOCK_MESSAGES = [
+const MOCK_MESSAGES_CONV_1 = [
     {
         id: "1",
         role: "user",
         mode: "gm",
+        conversationId: "1",
         content:
             "I'm a GM. My party just captured a mitflit king and wants to sell them at the market of a nearby settlement. How should I handle this?",
     },
@@ -21,6 +22,7 @@ const MOCK_MESSAGES = [
         id: "2",
         role: "assistant",
         mode: "gm",
+        conversationId: "1",
         blocks: [
             {
                 type: "paragraph",
@@ -93,6 +95,7 @@ const MOCK_MESSAGES = [
         id: "3",
         role: "user",
         mode: "gm",
+        conversationId: "1",
         content:
             "The blacksmith decided to buy the mitflit king. How could this affect the settlement's and the blacksmith's standing with the party? What else could happen to the mitflit king?",
     },
@@ -100,6 +103,7 @@ const MOCK_MESSAGES = [
         id: "4",
         role: "assistant",
         mode: "gm",
+        conversationId: "1",
         blocks: [
             {
                 type: "paragraph",
@@ -134,6 +138,7 @@ const MOCK_MESSAGES = [
         id: "5",
         role: "user",
         mode: "player",
+        conversationId: "1",
         content:
             "My fighter just got crit by a giant scorpion. How do I calculate the damage if I have resistance 5 to physical?",
     },
@@ -141,6 +146,7 @@ const MOCK_MESSAGES = [
         id: "6",
         role: "assistant",
         mode: "player",
+        conversationId: "1",
         blocks: [
             {
                 type: "paragraph",
@@ -170,5 +176,207 @@ const MOCK_MESSAGES = [
         ],
     },
 ];
+
+/** @type {Message[]} */
+const MOCK_MESSAGES_CONV_2 = [
+    {
+        id: "7",
+        role: "user",
+        mode: "gm",
+        conversationId: "2",
+        content:
+            "My rogue wants to assassinate a noble by cutting the rope of a massive chandelier above them. What should I ask for in terms of checks?",
+    },
+    {
+        id: "8",
+        role: "assistant",
+        mode: "gm",
+        conversationId: "2",
+        blocks: [
+            {
+                type: "paragraph",
+                segments: [
+                    {
+                        text: "This is a creative improvised action! Here's how to handle it:",
+                    },
+                ],
+            },
+            {
+                type: "callout",
+                title: "Skill Checks Needed",
+                segments: [
+                    {
+                        text: "1. ",
+                    },
+                    { text: "Thievery (DC 18)", highlight: true },
+                    {
+                        text: " - to cut or weaken the rope unnoticed",
+                    },
+                    { text: "2. ", highlight: true },
+                    { text: "Stealth (DC 20)", highlight: true },
+                    {
+                        text: " - to position themselves without detection",
+                    },
+                    { text: "3. ", highlight: true },
+                    { text: "Timing check", highlight: true },
+                    {
+                        text: " - a free action to release when the noble is under it",
+                    },
+                ],
+            },
+            {
+                type: "paragraph",
+                text: "If all succeed, deal 6d6 bludgeoning damage (DC 20 Reflex for half). If spotted early, guards intervene.",
+            },
+        ],
+    },
+    {
+        id: "9",
+        role: "user",
+        mode: "gm",
+        conversationId: "2",
+        content:
+            "What if the noble notices and orders guards to attack? The rogue is on the rafters.",
+    },
+    {
+        id: "10",
+        role: "assistant",
+        mode: "gm",
+        conversationId: "2",
+        blocks: [
+            {
+                type: "paragraph",
+                text: "This becomes a dynamic chase scene! Consider these complications:",
+            },
+            {
+                type: "list",
+                items: [
+                    {
+                        title: "Rafter Terrain:",
+                        text: "Narrow, unstable surfaces. Acrobatics DC 15 to move without falling (10 ft fall damage). Guards have -2 to attack.",
+                    },
+                    {
+                        title: "The Chandelier:",
+                        segments: [
+                            { text: "If the rogue cuts it now, they can drop it on " },
+                            { text: "1d4 guards below", highlight: true },
+                            { text: " for the same damage." },
+                        ],
+                    },
+                    {
+                        title: "Escape Options:",
+                        text: "Through a window (Athletics DC 12 to climb out), down a nearby servant's stair, or use a grappling hook to swing to a balcony.",
+                    },
+                ],
+            },
+        ],
+    },
+];
+
+/** @type {Message[]} */
+const MOCK_MESSAGES_CONV_3 = [
+    {
+        id: "11",
+        role: "user",
+        mode: "player",
+        conversationId: "3",
+        content:
+            "I'm playing a wizard and need to buy dragon's blood for my potion research. Where can I find it and what should it cost?",
+    },
+    {
+        id: "12",
+        role: "assistant",
+        mode: "player",
+        conversationId: "3",
+        blocks: [
+            {
+                type: "paragraph",
+                segments: [
+                    {
+                        text: "Dragon's blood is a rare alchemical reagent. Here's how to handle it in your campaign:",
+                    },
+                ],
+            },
+            {
+                type: "callout",
+                title: "Availability & Cost",
+                segments: [
+                    {
+                        text: "In a major settlement with a magic district, treat it as ",
+                    },
+                    { text: "Level 5 rare item", highlight: true },
+                    {
+                        text: ". Base cost: 25 gp per vial (enough for 1 potion or 2 scrolls).",
+                    },
+                ],
+            },
+            {
+                type: "callout",
+                title: "Purchase Options",
+                segments: [
+                    {
+                        text: "1. ",
+                    },
+                    { text: "Alchemist's Shop", highlight: true },
+                    {
+                        text: " - DC 22 Diplomacy to find a supplier",
+                    },
+                    { text: "2. ", highlight: true },
+                    { text: "Black Market", highlight: true },
+                    {
+                        text: " - DC 20 Underworld check, but watch for shady dealings",
+                    },
+                ],
+            },
+            {
+                type: "paragraph",
+                text: "Your GM might require you to hunt a dragon yourself as a quest instead of buying it!",
+            },
+        ],
+    },
+    {
+        id: "13",
+        role: "user",
+        mode: "player",
+        conversationId: "3",
+        content: "What level of dragon would have blood usable for a wizard's research?",
+    },
+    {
+        id: "14",
+        role: "assistant",
+        mode: "player",
+        conversationId: "3",
+        blocks: [
+            {
+                type: "paragraph",
+                text: "Most dragon blood is usable, but the quality affects potency:",
+            },
+            {
+                type: "list",
+                items: [
+                    {
+                        title: "Young or Adult Dragon:",
+                        text: "Standard quality. Good for basic potions and scrolls. Blood harvested after death.",
+                    },
+                    {
+                        title: "Ancient Dragon:",
+                        segments: [
+                            { text: "Superior quality. Grants a " },
+                            { text: "+1 item bonus", highlight: true },
+                            { text: " on crafting checks using this reagent." },
+                        ],
+                    },
+                    {
+                        title: "Extraction Method:",
+                        text: "Non-lethal extraction is possible (Athletics or Medicine DC equal to dragon's Fortitude save) but yields 50% less blood and the dragon remembers...",
+                    },
+                ],
+            },
+        ],
+    },
+];
+
+/** @type {Message[]} */
+const MOCK_MESSAGES = [...MOCK_MESSAGES_CONV_1, ...MOCK_MESSAGES_CONV_2, ...MOCK_MESSAGES_CONV_3];
 
 export { MOCK_CONVERSATIONS, MOCK_MESSAGES };
