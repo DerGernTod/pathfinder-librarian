@@ -55,19 +55,15 @@ test.describe("navigation e2e tests", () => {
 
         await sidebar.locator("conversation-item", { hasText: "Mitflit King Capture" }).click();
         await page.waitForTimeout(500);
-        const conv1FirstMessageText = await messageList.locator("chat-message").first().textContent();
+        await expect(messageList.locator("chat-message").first()).toContainText(/mitflit/i);
 
         await sidebar.locator("conversation-item", { hasText: "Chandelier Assassination" }).click();
         await page.waitForTimeout(500);
-        const conv2FirstMessageText = await messageList.locator("chat-message").first().textContent();
+        await expect(messageList.locator("chat-message").first()).toContainText(/chandelier/i);
 
         await sidebar.locator("conversation-item", { hasText: "Buying rare reagents" }).click();
         await page.waitForTimeout(500);
-        const conv3FirstMessageText = await messageList.locator("chat-message").first().textContent();
-
-        expect(conv1FirstMessageText).not.toEqual(conv2FirstMessageText);
-        expect(conv2FirstMessageText).not.toEqual(conv3FirstMessageText);
-        expect(conv1FirstMessageText).not.toEqual(conv3FirstMessageText);
+        await expect(messageList.locator("chat-message").first()).toContainText(/dragon/i);
 
         await sidebar.locator("conversation-item", { hasText: "Mitflit King Capture" }).click();
         await page.waitForTimeout(500);

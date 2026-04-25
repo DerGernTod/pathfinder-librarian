@@ -67,8 +67,16 @@ describe("main-page", () => {
         const conv2Messages = element.filteredMessages;
 
         expect(conv1Messages).not.toEqual(conv2Messages);
-        expect(conv1Messages.every((/** @type {{conversationId: string}} */ m) => m.conversationId === "1")).toBe(true);
-        expect(conv2Messages.every((/** @type {{conversationId: string}} */ m) => m.conversationId === "2")).toBe(true);
+        expect(
+            conv1Messages.every(
+                (/** @type {{conversationId: string}} */ m) => m.conversationId === "1",
+            ),
+        ).toBe(true);
+        expect(
+            conv2Messages.every(
+                (/** @type {{conversationId: string}} */ m) => m.conversationId === "2",
+            ),
+        ).toBe(true);
     });
 
     it("should switch mode correctly", () => {
