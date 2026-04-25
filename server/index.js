@@ -39,6 +39,7 @@ const app = new Hono()
         (c) => {
             const { id } = c.req.valid("param");
             const data = c.req.valid("json");
+            /** @type {{ id: string, role: "user", content: string, mode: "player" | "gm", conversationId: string }} */
             const newMessage = {
                 id: String(MOCK_MESSAGES.length + 1),
                 role: "user",

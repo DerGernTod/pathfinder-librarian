@@ -55,19 +55,19 @@ test.describe("navigation e2e tests", () => {
 
         await sidebar.locator("conversation-item", { hasText: "Mitflit King Capture" }).click();
         await page.waitForTimeout(500);
-        const conv1FirstMessage = messageList.locator("chat-message").first();
+        const conv1FirstMessageText = await messageList.locator("chat-message").first().textContent();
 
         await sidebar.locator("conversation-item", { hasText: "Chandelier Assassination" }).click();
         await page.waitForTimeout(500);
-        const conv2FirstMessage = messageList.locator("chat-message").first();
+        const conv2FirstMessageText = await messageList.locator("chat-message").first().textContent();
 
         await sidebar.locator("conversation-item", { hasText: "Buying rare reagents" }).click();
         await page.waitForTimeout(500);
-        const conv3FirstMessage = messageList.locator("chat-message").first();
+        const conv3FirstMessageText = await messageList.locator("chat-message").first().textContent();
 
-        await expect(conv1FirstMessage).not.toEqual(conv2FirstMessage);
-        await expect(conv2FirstMessage).not.toEqual(conv3FirstMessage);
-        await expect(conv1FirstMessage).not.toEqual(conv3FirstMessage);
+        expect(conv1FirstMessageText).not.toEqual(conv2FirstMessageText);
+        expect(conv2FirstMessageText).not.toEqual(conv3FirstMessageText);
+        expect(conv1FirstMessageText).not.toEqual(conv3FirstMessageText);
 
         await sidebar.locator("conversation-item", { hasText: "Mitflit King Capture" }).click();
         await page.waitForTimeout(500);

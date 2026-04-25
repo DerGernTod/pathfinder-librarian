@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach } from "bun:test";
 import { MOCK_CONVERSATIONS, MOCK_MESSAGES } from "../utils/mock-data.js";
 
 describe("main-page", () => {
+    /** @type {any} */
     let element;
 
     beforeEach(() => {
@@ -66,8 +67,8 @@ describe("main-page", () => {
         const conv2Messages = element.filteredMessages;
 
         expect(conv1Messages).not.toEqual(conv2Messages);
-        expect(conv1Messages.every((m) => m.conversationId === "1")).toBe(true);
-        expect(conv2Messages.every((m) => m.conversationId === "2")).toBe(true);
+        expect(conv1Messages.every((/** @type {{conversationId: string}} */ m) => m.conversationId === "1")).toBe(true);
+        expect(conv2Messages.every((/** @type {{conversationId: string}} */ m) => m.conversationId === "2")).toBe(true);
     });
 
     it("should switch mode correctly", () => {
