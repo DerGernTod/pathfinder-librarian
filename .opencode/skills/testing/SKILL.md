@@ -68,3 +68,17 @@ Bad:
 ```js
 expect(elem1).toBe(elem2);
 ```
+
+When implementing visual regression tests, NEVER reduce the threshold:
+
+Good:
+```js
+await expect(sidebar).toHaveScreenshot("sidebar-collapsed.png");
+```
+
+Bad:
+```js
+await expect(sidebar).toHaveScreenshot("sidebar-collapsed.png", {
+    maxDiffPixelRatio: 0.01,
+});
+```
