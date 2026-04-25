@@ -36,9 +36,6 @@ class ChatSidebar extends LitElement {
                 width: 3.5rem;
                 padding: 0.5rem;
             }
-            .sidebar.collapsed .content {
-                display: none;
-            }
             .sidebar.collapsed new-chat-button {
             }
             .toggle-container {
@@ -49,6 +46,29 @@ class ChatSidebar extends LitElement {
                 flex: 1;
                 min-height: 0;
                 overflow: hidden;
+                opacity: 1;
+                transform: translateX(0);
+                transition:
+                    opacity 0.3s ease,
+                    transform 0.3s ease;
+            }
+            .content.collapsed {
+                opacity: 0;
+                transform: translateX(-1rem);
+                pointer-events: none;
+            }
+            .conversation-menu-wrapper {
+                opacity: 0;
+                transform: translateX(1rem);
+                transition:
+                    opacity 0.3s ease,
+                    transform 0.3s ease;
+                pointer-events: none;
+            }
+            .conversation-menu-wrapper.visible {
+                opacity: 1;
+                transform: translateX(0);
+                pointer-events: auto;
             }
         `,
     ];
@@ -71,6 +91,12 @@ class ChatSidebar extends LitElement {
         this.expanded = true;
     }
 
+    /**
+     * Renders the sidebar with session list and conversation menu.
+     * Both elements are always in the DOM; CSS transitions handle visibility.
+     * Session-list fades out left when collapsed, conversation-menu fades in from right.
+     * @returns {import("lit-html").TemplateResult}
+     */
     render() {
         return html`
             <aside class="sidebar ${!this.expanded ? "collapsed" : ""}">
@@ -84,25 +110,22 @@ class ChatSidebar extends LitElement {
                     @new-chat=${this.handleNewChat}
                     ?collapsed=${!this.expanded}
                 ></new-chat-button>
-                ${this.expanded
-                    ? html`
-                          <div class="content">
-                              <session-list
-                                  .mode=${this.mode}
-                                  .conversations=${this.conversations}
-                                  .activeId=${this.activeId}
-                                  @select-conversation=${this.handleSelectConversation}
-                              ></session-list>
-                          </div>
-                      `
-                    : html`
-                          <conversation-menu
-                              .conversations=${this.conversations}
-                              .activeId=${this.activeId}
-                              .mode=${this.mode}
-                              @select-conversation=${this.handleSelectConversation}
-                          ></conversation-menu>
-                      `}
+                <div class="content ${!this.expanded ? "collapsed" : ""}">
+                    <session-list
+                        .mode=${this.mode}
+                        .conversations=${this.conversations}
+                        .activeId=${this.activeId}
+                        @select-conversation=${this.handleSelectConversation}
+                    ></session-list>
+                </div>
+                <div class="conversation-menu-wrapper ${!this.expanded ? "visible" : ""}">
+                    <conversation-menu
+                        .conversations=${this.conversations}
+                        .activeId=${this.activeId}
+                        .mode=${this.mode}
+                        @select-conversation=${this.handleSelectConversation}
+                    ></conversation-menu>
+                </div>
                 <sidebar-profile
                     .mode=${this.mode}
                     .name=${"Game Master 01"}
