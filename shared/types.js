@@ -46,9 +46,9 @@
 
 /** @typedef {ParagraphBlock | CalloutBlock | StatBlockMessageBlock | ListBlock} MessageBlock */
 
-/** @typedef {{ id: string, role: "user", content: string, mode: Mode }} UserMessage */
+/** @typedef {{ id: string, role: "user", content: string, mode: Mode, conversationId?: string }} UserMessage */
 
-/** @typedef {{ id: string, role: "assistant", blocks: MessageBlock[], mode: Mode }} AssistantMessage */
+/** @typedef {{ id: string, role: "assistant", blocks: MessageBlock[], mode: Mode, conversationId?: string }} AssistantMessage */
 
 /** @typedef {UserMessage | AssistantMessage} Message */
 

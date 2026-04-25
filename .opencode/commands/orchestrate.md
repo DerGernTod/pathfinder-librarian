@@ -30,8 +30,8 @@ Always use caveman.
     - Verify no untracked artifacts in .opencode/skills/
 7. **PR Fixes:**
     - Run a wait script: `bun -e "await new Promise(r => setTimeout(r, 20000))"`
-    - Check if PR checks are still running. 
-      - Yes? Re-run wait script.
-      - No? Are checks failing?
-        - No? Done.
-        - Yes? Check results, analyze and go back to step 4 to fix issues.
+    - Check if PR checks are still running.
+        - Yes? Re-run wait script.
+        - No? Are checks failing?
+            - No? Done.
+            - Yes? Check results, analyze and go back to step 4 to fix issues.

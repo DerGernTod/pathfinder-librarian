@@ -92,7 +92,7 @@ class MainPage extends LitElement {
                         @mode-change=${this.handleModeChange}
                     ></chat-header>
                     <message-list
-                        .messages=${this.messages}
+                        .messages=${this.filteredMessages}
                         .loading=${this.loading}
                     ></message-list>
                     <chat-input
@@ -127,8 +127,20 @@ class MainPage extends LitElement {
         const text = e.detail.text;
         this.messages = [
             ...this.messages,
-            { id: String(this.messages.length + 1), role: "user", content: text, mode: this.mode },
+            {
+                id: String(this.messages.length + 1),
+                role: "user",
+                content: text,
+                mode: this.mode,
+                conversationId: this.activeConversationId,
+            },
         ];
+    }
+
+    get filteredMessages() {
+        return this.messages.filter(
+            (message) => message.conversationId === this.activeConversationId,
+        );
     }
 
     /** @param {CustomEvent<{ expanded: boolean }>} e */
