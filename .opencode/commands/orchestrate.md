@@ -2,7 +2,9 @@
 
 ## Objective
 
-Manage the lifecycle of a GitHub issue from command to final summary. Receive either GitHub issue ID or full text todo task.
+Manage the lifecycle of a GitHub issue from command to final summary. Receive either GitHub issue ID or full text todo task. If neither provided, pick a GitHub issue yourself.
+
+Always use caveman.
 
 ## Workflow Instructions
 
@@ -22,7 +24,7 @@ Manage the lifecycle of a GitHub issue from command to final summary. Receive ei
     - If `FAIL`, return to Implementor subagent with logs.
 5. **Finalization:**
     - Compile a summary of work, test results, and any remaining issues.
-    - Present summary to @user.
+    - Commit, push and open PR.
 6. **Cleanup:**
     - Remove PLAN.md if exists (documentary artifact, not production code)
     - Verify no untracked artifacts in .opencode/skills/
