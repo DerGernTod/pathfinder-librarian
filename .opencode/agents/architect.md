@@ -1,7 +1,7 @@
 ---
 description: Analyze the codebase to design a technical solution.
 mode: subagent
-model: z-ai/glm-5.1
+model: zai-coding-plan/glm-5.1
 temperature: 0.15
 ---
 
