@@ -1,0 +1,65 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+# Usage: trigger manually from Actions → "Update Snapshots" → Run workflow.
+# Select the PR branch in the "Branch" dropdown (or fill the branch input).
+# The workflow will update Playwright snapshots, commit them to the branch,
+# then trigger the main CI workflow so PR required checks are reported for
+# the new HEAD commit.
+#
+# Prerequisites: repository secret PAT_VR_PUSH must be a fine-grained PAT
+# with Contents: Read and Write AND Actions: Read and Write on this repository.
+name: Update Snapshots
+
+on:
+    workflow_dispatch:
+        inputs:
+            branch:
+                description: "Branch to update snapshots on"
+                required: true
+                default: ${{ github.ref_name }}
+                type: string
+
+jobs:
+    update-snapshots:
+        runs-on: ubuntu-latest
+        container:
+            image: mcr.microsoft.com/playwright:v1.59.1-noble
+            options: --user root
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  ref: ${{ inputs.branch }}
+                  # Use PAT so the subsequent push is not treated as a
+                  # GITHUB_TOKEN push (which does not trigger PR workflows).
+                  token: ${{ secrets.PAT_VR_PUSH }}
+            - name: Prepare Container
+              run: apt-get update && apt-get install -y unzip
+            - uses: oven-sh/setup-bun@v2
+            - uses: actions/cache@v4
+              with:
+                  path: ~/.bun/install/cache
+                  key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+            - run: bun install --frozen-lockfile
+            - name: Run Playwright with snapshot update
+              run: bun run e2e -- --update-snapshots
+            - name: Commit and push snapshot updates
+              env:
+                  PUSH_TOKEN: ${{ secrets.PAT_VR_PUSH }}
+              run: |
+                  # Fix "dubious ownership" error in containers.
+                  git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+                  git config --global user.name "github-actions[bot]"
+                  git config --global user.email "github-actions[bot]@users.noreply.github.com"
+                  git add vrtests/__snapshots__/**/*.png
+                  git commit -m "chore: Update Playwright snapshots (linux)" || echo "No changes to commit"
+
+                  # Authenticate with PAT so the push is treated as a normal
+                  # user push and triggers the pull_request "synchronize" event.
+                  git remote set-url origin "https://x-access-token:${PUSH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+                  git push origin "HEAD:${{ inputs.branch }}"
+            - name: Trigger CI for new commit
+              # After pushing, explicitly dispatch CI on the same branch so
+              # required PR checks are reported for the new HEAD SHA.
+              env:
+                  GH_TOKEN: ${{ secrets.PAT_VR_PUSH }}
+              run: gh workflow run ci.yml --repo "$GITHUB_REPOSITORY" --ref "${{ inputs.branch }}"
