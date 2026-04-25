@@ -77,6 +77,8 @@ jobs:
                   fi
             - name: Commit and Push Snapshot Updates
               if: github.event.inputs.update_snapshots == 'true'
+              env:
+                  PUSH_TOKEN: ${{ secrets.PAT_VR_PUSH }}
               run: |
                   # The fix for "dubious ownership" error:
                   git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -85,7 +87,8 @@ jobs:
                   git config --global user.email "github-actions[bot]@users.noreply.github.com"
                   git add vrtests/__snapshots__/**/*.png
                   git commit -m "chore: Update Playwright snapshots (linux)" || echo "No changes to commit"
-                  git push
+                  git remote set-url origin "https://x-access-token:${PUSH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+                  git push origin HEAD:${GITHUB_REF_NAME}
 
     check:
         runs-on: ubuntu-latest
