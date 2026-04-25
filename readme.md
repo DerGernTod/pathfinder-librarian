@@ -9,6 +9,7 @@ When a CI run fails on the `e2e` job because snapshots are outdated, use the **U
 3. Click **Run workflow**.
 
 The workflow will:
+
 - Run Playwright with `--update-snapshots` on the specified branch.
 - Commit any changed `.png` files and push them to the branch.
 - Trigger the main **CI** workflow for the new commit so PR required checks are reported.
