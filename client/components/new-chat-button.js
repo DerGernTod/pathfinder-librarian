@@ -36,7 +36,6 @@ class NewChatButton extends LitElement {
                 width: 2.5rem;
                 height: 2.5rem;
                 padding: 0.5rem;
-                margin-bottom: 0.5rem;
             }
             .btn:hover {
                 background: var(--secondary);
