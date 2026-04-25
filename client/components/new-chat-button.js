@@ -32,11 +32,6 @@ class NewChatButton extends LitElement {
                     height 0.3s ease,
                     background-color var(--accent-transition-speed);
             }
-            .btn.collapsed {
-                width: 2.5rem;
-                height: 2.5rem;
-                padding: 0.5rem;
-            }
             .btn:hover {
                 background: var(--secondary);
                 color: var(--secondary-foreground);
