@@ -64,24 +64,24 @@ describe("sidebar-profile", () => {
         expect(wrapper.classList.contains("collapsed")).toBe(true);
     });
 
-    it("hides name and subtitle when collapsed", async () => {
+    it("hides text container when collapsed", async () => {
         const el = createProfile("Game Master 01", "PF2e Remaster Rules", "GM");
         el.collapsed = true;
         await el.updateComplete;
-        const name = el.shadowRoot.querySelector(".name");
-        const subtitle = el.shadowRoot.querySelector(".subtitle");
-        expect(name.classList.contains("hidden")).toBe(true);
-        expect(subtitle.classList.contains("hidden")).toBe(true);
+        const wrapper = el.shadowRoot.querySelector(".profile");
+        expect(wrapper.classList.contains("collapsed")).toBe(true);
+        const textContainer = el.shadowRoot.querySelector(".text-container");
+        expect(textContainer).toBeTruthy();
     });
 
-    it("shows name and subtitle when expanded", async () => {
+    it("shows text container when expanded", async () => {
         const el = createProfile("Game Master 01", "PF2e Remaster Rules", "GM");
         el.collapsed = false;
         await el.updateComplete;
-        const name = el.shadowRoot.querySelector(".name");
-        const subtitle = el.shadowRoot.querySelector(".subtitle");
-        expect(name.classList.contains("hidden")).toBe(false);
-        expect(subtitle.classList.contains("hidden")).toBe(false);
+        const wrapper = el.shadowRoot.querySelector(".profile");
+        expect(wrapper.classList.contains("collapsed")).toBe(false);
+        const textContainer = el.shadowRoot.querySelector(".text-container");
+        expect(textContainer).toBeTruthy();
     });
 
     it("always shows avatar when collapsed", async () => {
@@ -91,5 +91,21 @@ describe("sidebar-profile", () => {
         const avatar = el.shadowRoot.querySelector(".avatar");
         expect(avatar).toBeTruthy();
         expect(avatar.classList.contains("hidden")).toBe(false);
+    });
+
+    it("provides aria-label when collapsed", async () => {
+        const el = createProfile("Game Master 01", "PF2e Remaster Rules", "GM");
+        el.collapsed = true;
+        await el.updateComplete;
+        const wrapper = el.shadowRoot.querySelector(".profile");
+        expect(wrapper.getAttribute("aria-label")).toBe("Game Master 01 - PF2e Remaster Rules");
+    });
+
+    it("does not provide aria-label when expanded", async () => {
+        const el = createProfile("Game Master 01", "PF2e Remaster Rules", "GM");
+        el.collapsed = false;
+        await el.updateComplete;
+        const wrapper = el.shadowRoot.querySelector(".profile");
+        expect(wrapper.getAttribute("aria-label")).toBe("");
     });
 });
