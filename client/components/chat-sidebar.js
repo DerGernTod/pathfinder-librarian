@@ -46,7 +46,6 @@ class ChatSidebar extends LitElement {
                 flex: 1;
                 min-height: 0;
                 position: relative;
-                overflow: hidden;
             }
             .content {
                 position: absolute;
@@ -72,7 +71,7 @@ class ChatSidebar extends LitElement {
                 right: 0;
                 bottom: 0;
                 display: flex;
-                align-items: center;
+                align-items: start;
                 justify-content: center;
                 opacity: 0;
                 transform: translateX(1rem);
