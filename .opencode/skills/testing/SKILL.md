@@ -64,6 +64,7 @@ expect(elem1 === elem2).toBeTrue(true);
 ```
 
 Bad:
+
 ```js
 expect(elem1).toBe(elem2);
 ```
