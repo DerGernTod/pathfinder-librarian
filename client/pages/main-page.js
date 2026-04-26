@@ -6,9 +6,10 @@ import { LitElement, css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
+import { DEFAULT_USER_ID } from "../../shared/constants.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
-import { MOCK_CONVERSATIONS, MOCK_MESSAGES } from "../utils/mock-data.js";
+import { client } from "../utils/rpc-client.js";
 
 /** @typedef {import("../../shared/types.js").Conversation} Conversation */
 /** @typedef {import("../../shared/types.js").Message} Message */
@@ -62,16 +63,37 @@ class MainPage extends LitElement {
     constructor() {
         super();
         /** @type {Conversation[]} */
-        this.conversations = MOCK_CONVERSATIONS;
+        this.conversations = [];
         /** @type {string} */
-        this.activeConversationId = "1";
+        this.activeConversationId = "";
         /** @type {Message[]} */
-        this.messages = MOCK_MESSAGES;
+        this.messages = [];
         /** @type {Mode} */
         this.mode = "player";
         /** @type {boolean} */
-        this.loading = false;
+        this.loading = true;
         this.sidebarExpanded = true;
+    }
+
+    async firstUpdated() {
+        try {
+            // Step 1: Fetch conversations list
+            const convRes = await client.api.conversations.$get();
+            this.conversations = await convRes.json();
+
+            // Step 2: Set active conversation from result (first conversation)
+            if (this.conversations.length > 0) {
+                this.activeConversationId = this.conversations[0].id;
+
+                // Step 3: Fetch messages for the active conversation
+                const msgRes = await client.api.conversations[":id"].messages.$get({
+                    param: { id: this.activeConversationId },
+                });
+                this.messages = await msgRes.json();
+            }
+        } finally {
+            this.loading = false;
+        }
     }
 
     render() {
@@ -104,13 +126,34 @@ class MainPage extends LitElement {
         `;
     }
 
-    handleNewChat() {}
+    async fetchConversations() {
+        const res = await client.api.conversations.$get();
+        this.conversations = await res.json();
+    }
+
+    async fetchMessages(convId) {
+        const res = await client.api.conversations[":id"].messages.$get({
+            param: { id: convId },
+        });
+        this.messages = await res.json();
+    }
+
+    async handleNewChat() {
+        const res = await client.api.conversations.$post({
+            json: { title: "New Conversation", userId: DEFAULT_USER_ID },
+        });
+        const conv = await res.json();
+        this.conversations = [...this.conversations, conv];
+        this.activeConversationId = conv.id;
+        await this.fetchMessages(conv.id);
+    }
 
     /**
      * @param {CustomEvent<{ id: string }>} e
      */
-    handleSelectConversation(e) {
+    async handleSelectConversation(e) {
         this.activeConversationId = e.detail.id;
+        await this.fetchMessages(e.detail.id);
     }
 
     /**
@@ -123,18 +166,13 @@ class MainPage extends LitElement {
     /**
      * @param {CustomEvent<{ text: string }>} e
      */
-    handleSendMessage(e) {
-        const text = e.detail.text;
-        this.messages = [
-            ...this.messages,
-            {
-                id: String(this.messages.length + 1),
-                role: "user",
-                content: text,
-                mode: this.mode,
-                conversationId: this.activeConversationId,
-            },
-        ];
+    async handleSendMessage(e) {
+        const res = await client.api.conversations[":id"].messages.$post({
+            param: { id: this.activeConversationId },
+            json: { content: e.detail.text, mode: this.mode },
+        });
+        const newMsg = await res.json();
+        this.messages = [...this.messages, newMsg];
     }
 
     get filteredMessages() {

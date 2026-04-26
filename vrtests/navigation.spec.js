@@ -2,6 +2,10 @@ import { expect, test } from "playwright/test";
 
 test.describe("navigation e2e tests", () => {
     test.beforeEach(async ({ page }) => {
+        // Reset DB to clean seeded state before each test
+        const res = await fetch("http://localhost:3000/api/test/reset-db", { method: "POST" });
+        expect(res.ok).toBe(true);
+
         await page.goto("/");
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
