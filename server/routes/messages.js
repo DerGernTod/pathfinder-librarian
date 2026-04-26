@@ -1,8 +1,6 @@
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
-import z from "zod";
-
-import { createMessageSchema, conversationIdSchema } from "../../shared/schemas.js";
+import { createMessageSchema } from "../../shared/schemas.js";
 import { db } from "../db/database.js";
 import * as queries from "../db/queries.js";
 import { paramSchema } from "./conversations-schema.js";
