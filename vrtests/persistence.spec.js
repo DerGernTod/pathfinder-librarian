@@ -22,7 +22,7 @@ test.describe("persistence e2e tests", () => {
     test("switching conversations fetches from API", async ({ page }) => {
         const sidebar = page.locator("chat-sidebar");
         await sidebar.locator("conversation-item", { hasText: "Chandelier" }).click();
-        await page.waitForTimeout(500);
+        await page.waitForLoadState("networkidle");
         await expect(page.locator("chat-message").first()).toContainText(/chandelier/i);
     });
 
@@ -30,7 +30,7 @@ test.describe("persistence e2e tests", () => {
         const input = page.locator("chat-input textarea");
         await input.fill("Persistent test message");
         await page.keyboard.press("Enter");
-        await page.waitForTimeout(1000);
+        await page.waitForLoadState("networkidle");
         await expect(page.locator("chat-message").last()).toContainText("Persistent test message");
 
         // Reload — message must survive
@@ -42,13 +42,12 @@ test.describe("persistence e2e tests", () => {
     test("new conversation persists across page reload", async ({ page }) => {
         // Click new chat button
         await page.locator("new-chat-button button").click();
-        await page.waitForTimeout(1000);
 
         // Send a unique message to identify this conversation
         const input = page.locator("chat-input textarea");
         await input.fill("Unique marker for new conv");
         await page.keyboard.press("Enter");
-        await page.waitForTimeout(1000);
+        await page.waitForLoadState("networkidle");
 
         // Reload — conversation and message must survive
         await page.reload();
@@ -64,10 +63,10 @@ test.describe("persistence e2e tests", () => {
 
         await input.fill("Conv 1 isolation test");
         await page.keyboard.press("Enter");
-        await page.waitForTimeout(1000);
+        await page.waitForLoadState("networkidle");
 
         await sidebar.locator("conversation-item", { hasText: "Chandelier" }).click();
-        await page.waitForTimeout(500);
+        await page.waitForLoadState("networkidle");
 
         // Verify message NOT in conv 2
         const conv2Messages = page.locator("chat-message");
@@ -77,7 +76,7 @@ test.describe("persistence e2e tests", () => {
 
         // Switch back — message IS in conv 1
         await sidebar.locator("conversation-item", { hasText: "Mitflit" }).click();
-        await page.waitForTimeout(500);
+        await page.waitForLoadState("networkidle");
         await expect(page.locator("chat-message").last()).toContainText("Conv 1 isolation test");
     });
 });

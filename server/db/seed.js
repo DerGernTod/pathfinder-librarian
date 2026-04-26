@@ -34,7 +34,7 @@ export function seedIfNeeded(database) {
         SEED_IDS.CONV_MITFLIT,
         "Mitflit King Capture",
         SEED_IDS.USER_DEFAULT,
-        "2025-01-01T10:00:00Z",
+        "2025-01-01T12:00:00Z",
     ]);
     database.run("INSERT INTO conversations (id, title, user_id, created_at) VALUES (?, ?, ?, ?)", [
         SEED_IDS.CONV_CHANDELIER,
@@ -46,7 +46,7 @@ export function seedIfNeeded(database) {
         SEED_IDS.CONV_REAGENTS,
         "Buying rare reagents",
         SEED_IDS.USER_DEFAULT,
-        "2025-01-01T12:00:00Z",
+        "2025-01-01T10:00:00Z",
     ]);
 
     // Seed messages for Mitflit conversation

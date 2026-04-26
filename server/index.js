@@ -11,10 +11,6 @@ import { usersRouter } from "./routes/users.js";
 seedIfNeeded(db);
 
 const app = new Hono()
-    .use(async (c, next) => {
-        c.set("db", db);
-        await next();
-    })
     .route("/api/conversations", conversationsRouter)
     .route("/api/rule-items", ruleItemsRouter)
     .route("/api/users", usersRouter);

@@ -4,6 +4,7 @@ import { createDb } from "./database.js";
 import { seedIfNeeded, resetAndReseedDb, SEED_IDS } from "./seed.js";
 
 describe("database", () => {
+    /** @type {import("bun:sqlite").Database} */
     let db;
 
     beforeEach(() => {

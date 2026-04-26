@@ -6,7 +6,6 @@ import { LitElement, css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
-import { DEFAULT_USER_ID } from "../../shared/constants.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
 import { client } from "../utils/rpc-client.js";
@@ -79,7 +78,8 @@ class MainPage extends LitElement {
         try {
             // Step 1: Fetch conversations list
             const convRes = await client.api.conversations.$get();
-            this.conversations = await convRes.json();
+            const convResult = await convRes.json();
+            this.conversations = convResult.data;
 
             // Step 2: Set active conversation from result (first conversation)
             if (this.conversations.length > 0) {
@@ -89,7 +89,8 @@ class MainPage extends LitElement {
                 const msgRes = await client.api.conversations[":id"].messages.$get({
                     param: { id: this.activeConversationId },
                 });
-                this.messages = await msgRes.json();
+                const msgResult = await msgRes.json();
+                this.messages = msgResult.data;
             }
         } finally {
             this.loading = false;
@@ -128,24 +129,29 @@ class MainPage extends LitElement {
 
     async fetchConversations() {
         const res = await client.api.conversations.$get();
-        this.conversations = await res.json();
+        const result = await res.json();
+        this.conversations = result.data;
     }
 
+    /**
+     * @param {string} convId the conversation id
+     */
     async fetchMessages(convId) {
         const res = await client.api.conversations[":id"].messages.$get({
             param: { id: convId },
         });
-        this.messages = await res.json();
+        const result = await res.json();
+        this.messages = result.data;
     }
 
     async handleNewChat() {
         const res = await client.api.conversations.$post({
-            json: { title: "New Conversation", userId: DEFAULT_USER_ID },
+            json: { title: "New Conversation", userId: "00000000-0000-4000-8000-000000000001" },
         });
         const conv = await res.json();
-        this.conversations = [...this.conversations, conv];
-        this.activeConversationId = conv.id;
-        await this.fetchMessages(conv.id);
+        this.conversations = [...this.conversations, conv.data];
+        this.activeConversationId = conv.data.id;
+        await this.fetchMessages(conv.data.id);
     }
 
     /**
@@ -172,7 +178,7 @@ class MainPage extends LitElement {
             json: { content: e.detail.text, mode: this.mode },
         });
         const newMsg = await res.json();
-        this.messages = [...this.messages, newMsg];
+        this.messages = [...this.messages, newMsg.data];
     }
 
     get filteredMessages() {
@@ -187,5 +193,5 @@ class MainPage extends LitElement {
     }
 }
 
-const element = customElement("main-page")(MainPage);
-export { element as MainPage };
+customElement("main-page")(MainPage);
+export { MainPage };

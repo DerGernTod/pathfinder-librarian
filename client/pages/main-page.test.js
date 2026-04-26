@@ -1,22 +1,35 @@
 import "./main-page.js";
 import { describe, it, expect, beforeEach, mock } from "bun:test";
 
+function createMainPage() {
+    return /** @type {import("./main-page.js").MainPage} */ (document.createElement("main-page"));
+}
+
+/** @type {Record<string, any>} */
+const baseClientMock = {
+    "/api/conversations": {
+        data: [],
+    },
+};
+
 describe("main-page", () => {
-    /** @type {any} */
+    /** @type {import("./main-page.js").MainPage} */
     let element;
 
     beforeEach(() => {
         document.body.innerHTML = "";
-        element = document.createElement("main-page");
+        // @ts-expect-error - override global fetch with our mock
+        globalThis.fetch = mock((url) => {
+            if (url in baseClientMock) {
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve(baseClientMock[url]),
+                });
+            }
+            throw new Error(`Unexpected fetch URL: ${url}`);
+        });
+        element = createMainPage();
         document.body.appendChild(element);
-
-        // Mock global fetch to prevent actual HTTP requests
-        globalThis.fetch = mock(() =>
-            Promise.resolve({
-                ok: true,
-                json: () => Promise.resolve([]),
-            }),
-        );
     });
 
     it("should initialize with empty state", () => {
@@ -81,7 +94,9 @@ describe("main-page", () => {
     it("should switch mode correctly", () => {
         expect(element.mode).toBe("player");
 
-        const event = new CustomEvent("mode-change", { detail: { mode: "gm" } });
+        const event = new CustomEvent("mode-change", {
+            detail: { mode: /** @type {import("../../shared/types.js").Mode} */ ("gm") },
+        });
         element.handleModeChange(event);
         expect(element.mode).toBe("gm");
     });
@@ -97,7 +112,8 @@ describe("main-page", () => {
     it("should handle select-conversation event", async () => {
         element.activeConversationId = "conv1";
 
-        const fetchMessagesMock = mock(() => Promise.resolve([]));
+        const fetchMessagesMock = mock((_arg) => Promise.resolve([]));
+        // @ts-expect-error - override fetchMessages with our mock
         element.fetchMessages = fetchMessagesMock;
 
         const event = new CustomEvent("select-conversation", { detail: { id: "conv2" } });
@@ -133,8 +149,9 @@ describe("main-page", () => {
         // Mock the RPC client
         const mockResponse = {
             ok: true,
-            json: () => Promise.resolve(mockMessage),
+            json: () => Promise.resolve({ result: "success", data: mockMessage }),
         };
+        // @ts-expect-error - override global fetch with our mock
         globalThis.fetch = mock(() => Promise.resolve(mockResponse));
 
         const event = new CustomEvent("send-message", { detail: { text: "Test message" } });
@@ -163,16 +180,17 @@ describe("main-page", () => {
                 // First call: create conversation
                 return Promise.resolve({
                     ok: true,
-                    json: () => Promise.resolve(mockConv),
+                    json: () => Promise.resolve({ result: "success", data: mockConv }),
                 });
             } else {
                 // Second call: fetch messages
                 return Promise.resolve({
                     ok: true,
-                    json: () => Promise.resolve([]),
+                    json: () => Promise.resolve({ result: "success", data: [] }),
                 });
             }
         });
+        // @ts-expect-error - override global fetch with our mock
         globalThis.fetch = mockFetch;
 
         await element.handleNewChat();

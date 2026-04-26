@@ -6,10 +6,14 @@ export default defineConfig({
     fullyParallel: true,
     retries: 2,
     snapshotDir: "./vrtests/__snapshots__",
+    workers: 1,
 
     use: {
         baseURL: "http://localhost:3000",
         trace: "on-first-retry",
+        launchOptions: {
+            args: ["--disable-blink-features=LayoutAnimations"],
+        },
     },
     projects: [
         {

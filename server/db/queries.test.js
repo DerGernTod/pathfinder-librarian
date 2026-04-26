@@ -5,6 +5,7 @@ import * as queries from "./queries.js";
 import { seedIfNeeded } from "./seed.js";
 
 describe("queries", () => {
+    /** @type {import("bun:sqlite").Database} */
     let db;
 
     beforeEach(() => {
@@ -67,8 +68,10 @@ describe("queries", () => {
 
             // Verify ordering
             for (let i = 1; i < messages.length; i++) {
-                expect(new Date(messages[i].createdAt).getTime()).toBeGreaterThanOrEqual(
-                    new Date(messages[i - 1].createdAt).getTime(),
+                expect(
+                    new Date(/** @type {string} */ (messages[i].createdAt)).getTime(),
+                ).toBeGreaterThanOrEqual(
+                    new Date(/** @type {string} */ (messages[i - 1].createdAt)).getTime(),
                 );
             }
 
@@ -89,7 +92,7 @@ describe("queries", () => {
     describe("createMessage", () => {
         it("creates and returns user message", () => {
             const conversations = queries.getAllConversations(db);
-            const msg = queries.createMessage(db, {
+            const msg = queries.createUserMessage(db, {
                 conversationId: conversations[0].id,
                 role: "user",
                 mode: "player",
@@ -100,25 +103,7 @@ describe("queries", () => {
             expect(msg.role).toBe("user");
             expect(msg.mode).toBe("player");
             expect(msg.content).toBe("Test message");
-            expect(msg.blocks).toBeNull();
-            expect(msg).toHaveProperty("createdAt");
-        });
-
-        it("creates and returns assistant message with blocks", () => {
-            const conversations = queries.getAllConversations(db);
-            const blocks = [{ type: "paragraph", text: "Test" }];
-            const msg = queries.createMessage(db, {
-                conversationId: conversations[0].id,
-                role: "assistant",
-                mode: "gm",
-                content: null,
-                blocksJson: JSON.stringify(blocks),
-            });
-            expect(msg).toHaveProperty("id");
-            expect(msg.role).toBe("assistant");
-            expect(msg.mode).toBe("gm");
-            expect(msg.content).toBeNull();
-            expect(msg.blocks).toEqual(blocks);
+            expect(msg.blocks).toBeUndefined();
         });
     });
 

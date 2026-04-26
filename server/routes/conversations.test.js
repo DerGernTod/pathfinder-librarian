@@ -1,27 +1,30 @@
-import { beforeEach, describe, expect, it } from "bun:test";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 
 import { Hono } from "hono";
 
 import { createDb } from "../db/database.js";
 import { seedIfNeeded, SEED_IDS } from "../db/seed.js";
-import { conversationsRouter } from "./conversations.js";
-import { ruleItemsRouter } from "./rule-items.js";
-import { usersRouter } from "./users.js";
 
 describe("conversations routes", () => {
+    /** @type {Hono<any>} */
     let app;
+    /** @type {ReturnType<typeof createDb>} */
     let db;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         db = createDb(":memory:");
         seedIfNeeded(db);
 
+        mock.module("../db/database.js", () => ({
+            db,
+        }));
+
+        const { conversationsRouter } = await import("./conversations.js");
+        const { ruleItemsRouter } = await import("./rule-items.js");
+        const { usersRouter } = await import("./users.js");
+
         // Create app with middleware that sets DB in context
         app = new Hono()
-            .use(async (c, next) => {
-                c.set("db", db);
-                await next();
-            })
             .route("/api/conversations", conversationsRouter)
             .route("/api/rule-items", ruleItemsRouter)
             .route("/api/users", usersRouter);
@@ -32,8 +35,8 @@ describe("conversations routes", () => {
             const res = await app.request("/api/conversations");
             expect(res.status).toBe(200);
             const data = await res.json();
-            expect(Array.isArray(data)).toBe(true);
-            expect(data).toHaveLength(3);
+            expect(Array.isArray(data.data)).toBe(true);
+            expect(data.data).toHaveLength(3);
         });
     });
 
@@ -43,7 +46,7 @@ describe("conversations routes", () => {
             const res = await app.request(`/api/conversations/${convs[0].id}`);
             expect(res.status).toBe(200);
             const data = await res.json();
-            expect(data.id).toBe(convs[0].id);
+            expect(data.data.id).toBe(convs[0].id);
         });
 
         it("returns 404 for non-existent conversation", async () => {
@@ -68,7 +71,7 @@ describe("conversations routes", () => {
                 body: JSON.stringify(newConv),
             });
             expect(res.status).toBe(201);
-            const data = await res.json();
+            const { data } = await res.json();
             expect(data.title).toBe(newConv.title);
             expect(data.userId).toBe(newConv.userId);
             expect(data).toHaveProperty("id");
@@ -101,7 +104,7 @@ describe("conversations routes", () => {
             const convs = await db.query("SELECT id FROM conversations").all();
             const res = await app.request(`/api/conversations/${convs[0].id}/messages`);
             expect(res.status).toBe(200);
-            const data = await res.json();
+            const { data } = await res.json();
             expect(Array.isArray(data)).toBe(true);
         });
     });
@@ -116,7 +119,7 @@ describe("conversations routes", () => {
                 body: JSON.stringify(newMsg),
             });
             expect(res.status).toBe(201);
-            const data = await res.json();
+            const { data } = await res.json();
             expect(data.content).toBe(newMsg.content);
             expect(data.mode).toBe(newMsg.mode);
             expect(data.role).toBe("user");
@@ -136,27 +139,26 @@ describe("conversations routes", () => {
 });
 
 describe("rule-items routes", () => {
+    /** @type {Hono<any>} */
     let app;
+    /** @type {ReturnType<typeof createDb>} */
     let db;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         db = createDb(":memory:");
         seedIfNeeded(db);
 
+        const { ruleItemsRouter } = await import("./rule-items.js");
+
         // Create app with middleware that sets DB in context
-        app = new Hono()
-            .use(async (c, next) => {
-                c.set("db", db);
-                await next();
-            })
-            .route("/api/rule-items", ruleItemsRouter);
+        app = new Hono().route("/api/rule-items", ruleItemsRouter);
     });
 
     describe("GET /api/rule-items", () => {
         it("returns all rule items", async () => {
             const res = await app.request("/api/rule-items");
             expect(res.status).toBe(200);
-            const data = await res.json();
+            const { data } = await res.json();
             expect(Array.isArray(data)).toBe(true);
             expect(data).toHaveLength(2);
         });
@@ -164,7 +166,7 @@ describe("rule-items routes", () => {
         it("filters by type", async () => {
             const res = await app.request("/api/rule-items?type=monster");
             expect(res.status).toBe(200);
-            const data = await res.json();
+            const { data } = await res.json();
             expect(data).toHaveLength(1);
             expect(data[0].type).toBe("monster");
         });
@@ -175,7 +177,7 @@ describe("rule-items routes", () => {
             const items = await db.query("SELECT id FROM rule_items").all();
             const res = await app.request(`/api/rule-items/${items[0].id}`);
             expect(res.status).toBe(200);
-            const data = await res.json();
+            const { data } = await res.json();
             expect(data.id).toBe(items[0].id);
         });
 
@@ -192,27 +194,24 @@ describe("rule-items routes", () => {
 });
 
 describe("users routes", () => {
+    /** @type {Hono<any>} */
     let app;
+    /** @type {import("bun:sqlite").Database} */
     let db;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         db = createDb(":memory:");
         seedIfNeeded(db);
-
+        const { usersRouter } = await import("./users.js");
         // Create app with middleware that sets DB in context
-        app = new Hono()
-            .use(async (c, next) => {
-                c.set("db", db);
-                await next();
-            })
-            .route("/api/users", usersRouter);
+        app = new Hono().route("/api/users", usersRouter);
     });
 
     describe("GET /api/users", () => {
         it("returns all users", async () => {
             const res = await app.request("/api/users");
             expect(res.status).toBe(200);
-            const data = await res.json();
+            const { data } = await res.json();
             expect(Array.isArray(data)).toBe(true);
             expect(data.length).toBeGreaterThanOrEqual(1);
         });
@@ -223,7 +222,7 @@ describe("users routes", () => {
             const users = await db.query("SELECT id FROM users").all();
             const res = await app.request(`/api/users/${users[0].id}`);
             expect(res.status).toBe(200);
-            const data = await res.json();
+            const { data } = await res.json();
             expect(data.id).toBe(users[0].id);
         });
 

@@ -60,7 +60,7 @@ export function createConversation(database, { title, userId }) {
  * Gets all messages for a conversation, ordered by created_at.
  * @param {import("bun:sqlite").Database} database - The database instance
  * @param {string} conversationId - The conversation ID
- * @returns {Array<{ id: string, conversationId: string, role: "user" | "assistant", mode: "player" | "gm", content: string | null, blocks: any[] | null, createdAt: string }>}
+ * @returns {Array<import("../../shared/types.js").Message>}
  */
 export function getMessagesByConversationId(database, conversationId) {
     const rows = database
@@ -82,10 +82,10 @@ export function getMessagesByConversationId(database, conversationId) {
 /**
  * Creates a new message.
  * @param {import("bun:sqlite").Database} database - The database instance
- * @param {{ conversationId: string, role: "user" | "assistant", mode: "player" | "gm", content: string | null, blocksJson: string | null }} data - The message data
- * @returns {{ id: string, conversationId: string, role: "user" | "assistant", mode: "player" | "gm", content: string | null, blocks: any[] | null, createdAt: string }}
+ * @param {Omit<import("../../shared/types.js").UserMessage, "id"> & { conversationId: string, content: string | null, blocksJson: string | null }} data - The message data
+ * @returns {import("../../shared/types.js").UserMessage} }}
  */
-export function createMessage(database, { conversationId, role, mode, content, blocksJson }) {
+export function createUserMessage(database, { conversationId, role, mode, content, blocksJson }) {
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
     database.run(
@@ -98,15 +98,13 @@ export function createMessage(database, { conversationId, role, mode, content, b
         role,
         mode,
         content,
-        blocks: blocksJson ? JSON.parse(blocksJson) : null,
-        createdAt: now,
     };
 }
 
 /**
  * Gets all rule items, optionally filtered by type.
  * @param {import("bun:sqlite").Database} database - The database instance
- * @param {"monster" | "spell" | "ability" | undefined} type - Optional type filter
+ * @param {"monster" | "spell" | "ability"} [type] - Optional type filter
  * @returns {Array<{ id: string, type: "monster" | "spell" | "ability", name: string, data: any, createdAt: string }>}
  */
 export function getRuleItems(database, type) {
