@@ -1,6 +1,6 @@
 /** @typedef {"player" | "gm"} Mode */
 
-/** @typedef {{ id: string, title: string, userId: string, createdAt: string }} Conversation */
+/** @typedef {{ id: string, title: string, userId?: string, createdAt?: string }} Conversation */
 
 /** @typedef {{ id: string, name: string, initials: string, subtitle: string, mode: Mode }} User */
 
