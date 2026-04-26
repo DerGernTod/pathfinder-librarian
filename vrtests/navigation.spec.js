@@ -2,9 +2,12 @@ import { expect, test } from "playwright/test";
 
 test.describe("navigation e2e tests", () => {
     test.beforeEach(async ({ page }) => {
+        // Reset DB to clean seeded state before each test
+        const res = await fetch("http://localhost:3000/api/test/reset-db", { method: "POST" });
+        expect(res.ok).toBe(true);
+
         await page.goto("/");
         await page.waitForSelector("main-page");
-        await page.waitForTimeout(1000);
     });
 
     test("load page with conversation 1 active and verify messages", async ({ page }) => {
@@ -25,7 +28,6 @@ test.describe("navigation e2e tests", () => {
 
         const sidebar = page.locator("chat-sidebar");
         await sidebar.locator("conversation-item", { hasText: "Chandelier Assassination" }).click();
-        await page.waitForTimeout(500);
 
         const newMessageCount = await messageList.locator("chat-message").count();
         expect(newMessageCount).toBeLessThan(initialMessageCount);
@@ -40,7 +42,6 @@ test.describe("navigation e2e tests", () => {
 
         const sidebar = page.locator("chat-sidebar");
         await sidebar.locator("conversation-item", { hasText: "Buying rare reagents" }).click();
-        await page.waitForTimeout(500);
 
         const newMessageCount = await messageList.locator("chat-message").count();
         expect(newMessageCount).toBeLessThan(initialMessageCount);
@@ -54,19 +55,15 @@ test.describe("navigation e2e tests", () => {
         const sidebar = page.locator("chat-sidebar");
 
         await sidebar.locator("conversation-item", { hasText: "Mitflit King Capture" }).click();
-        await page.waitForTimeout(500);
         await expect(messageList.locator("chat-message").first()).toContainText(/mitflit/i);
 
         await sidebar.locator("conversation-item", { hasText: "Chandelier Assassination" }).click();
-        await page.waitForTimeout(500);
         await expect(messageList.locator("chat-message").first()).toContainText(/chandelier/i);
 
         await sidebar.locator("conversation-item", { hasText: "Buying rare reagents" }).click();
-        await page.waitForTimeout(500);
         await expect(messageList.locator("chat-message").first()).toContainText(/dragon/i);
 
         await sidebar.locator("conversation-item", { hasText: "Mitflit King Capture" }).click();
-        await page.waitForTimeout(500);
         const backToConv1FirstMessage = messageList.locator("chat-message").first();
         await expect(backToConv1FirstMessage).toContainText(/mitflit king/i);
     });
@@ -78,7 +75,6 @@ test.describe("navigation e2e tests", () => {
         const input = page.locator("chat-input textarea");
         await input.fill("This is a test message");
         await page.keyboard.press("Enter");
-        await page.waitForTimeout(1000);
 
         const newCount = await messageList.locator("chat-message").count();
         expect(newCount).toBe(initialCount + 1);
@@ -96,12 +92,11 @@ test.describe("navigation e2e tests", () => {
 
         await input.fill("Test message for conv 1");
         await page.keyboard.press("Enter");
-        await page.waitForTimeout(1000);
-
+        await page.waitForLoadState("networkidle");
         const conv1Count = await messageList.locator("chat-message").count();
 
         await sidebar.locator("conversation-item", { hasText: "Chandelier Assassination" }).click();
-        await page.waitForTimeout(500);
+        await page.waitForLoadState("networkidle");
 
         const conv2Count = await messageList.locator("chat-message").count();
         expect(conv2Count).not.toBe(conv1Count);
@@ -114,10 +109,9 @@ test.describe("navigation e2e tests", () => {
         await expect(lastMessage).not.toContainText("Test message for conv 1");
 
         await sidebar.locator("conversation-item", { hasText: "Mitflit King Capture" }).click();
-        await page.waitForTimeout(500);
+        await page.waitForLoadState("networkidle");
 
-        const backToConv1Count = await messageList.locator("chat-message").count();
-        expect(backToConv1Count).toBe(conv1Count);
+        await expect(messageList.locator("chat-message")).toHaveCount(conv1Count);
     });
 
     test("search filters conversation list", async ({ page }) => {
@@ -127,14 +121,12 @@ test.describe("navigation e2e tests", () => {
         );
 
         await searchInput.fill("Mitflit");
-        await page.waitForTimeout(300);
 
         const visibleItems = sidebar.locator("conversation-item:not([hidden])");
         const count = await visibleItems.count();
         expect(count).toBe(1);
 
         await searchInput.fill("");
-        await page.waitForTimeout(300);
 
         const allItems = sidebar.locator("conversation-item:not([hidden])");
         const allCount = await allItems.count();

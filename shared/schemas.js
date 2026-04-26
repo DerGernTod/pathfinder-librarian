@@ -1,6 +1,10 @@
 import { z } from "zod";
 
-const conversationIdSchema = z.string().uuid().or(z.string().regex(/^\d+$/));
+const uuidSchema = z.string().uuid();
+
+const conversationIdSchema = z.string().uuid();
+
+const ruleItemTypeSchema = z.enum(["monster", "spell", "ability"]);
 
 const messageSchema = z.object({
     id: z.string(),
@@ -18,6 +22,7 @@ const conversationSchema = z.object({
 
 const createConversationSchema = z.object({
     title: z.string().min(1).max(200),
+    userId: z.string().uuid(),
 });
 
 const createMessageSchema = z.object({
@@ -26,7 +31,9 @@ const createMessageSchema = z.object({
 });
 
 export {
+    uuidSchema,
     conversationIdSchema,
+    ruleItemTypeSchema,
     messageSchema,
     conversationSchema,
     createConversationSchema,

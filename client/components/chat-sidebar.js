@@ -121,10 +121,7 @@ class ChatSidebar extends LitElement {
                         @toggle-sidebar=${this.handleToggle}
                     ></sidebar-toggle>
                 </div>
-                <new-chat-button
-                    @new-chat=${this.handleNewChat}
-                    ?collapsed=${!this.expanded}
-                ></new-chat-button>
+                <new-chat-button ?collapsed=${!this.expanded}></new-chat-button>
                 <div class="content-container">
                     <div class="content ${!this.expanded ? "collapsed" : ""}">
                         <session-list
@@ -154,22 +151,11 @@ class ChatSidebar extends LitElement {
         `;
     }
 
-    handleNewChat() {
-        this.dispatchEvent(new CustomEvent("new-chat", { bubbles: true, composed: true }));
-    }
-
     /**
      * @param {CustomEvent<{ id: string }>} e
      */
     handleSelectConversation(e) {
         this.activeId = e.detail.id;
-        this.dispatchEvent(
-            new CustomEvent("select-conversation", {
-                detail: { id: e.detail.id },
-                bubbles: true,
-                composed: true,
-            }),
-        );
     }
 
     handleToggle() {

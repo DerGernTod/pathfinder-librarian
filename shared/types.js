@@ -1,6 +1,10 @@
 /** @typedef {"player" | "gm"} Mode */
 
-/** @typedef {{ id: string, title: string }} Conversation */
+/** @typedef {{ id: string, title: string, userId?: string, createdAt?: string }} Conversation */
+
+/** @typedef {{ id: string, name: string, initials: string, subtitle: string, mode: Mode }} User */
+
+/** @typedef {{ id: string, type: "monster" | "spell" | "ability", name: string, data: any, createdAt: string }} RuleItem */
 
 /** @typedef {{ text: string, highlight?: boolean }} Segment */
 
@@ -46,9 +50,9 @@
 
 /** @typedef {ParagraphBlock | CalloutBlock | StatBlockMessageBlock | ListBlock} MessageBlock */
 
-/** @typedef {{ id: string, role: "user", content: string, mode: Mode, conversationId?: string }} UserMessage */
+/** @typedef {{ id: string, role: "user", content: string, blocks?: never, mode: Mode, conversationId?: string, createdAt?: string }} UserMessage */
 
-/** @typedef {{ id: string, role: "assistant", blocks: MessageBlock[], mode: Mode, conversationId?: string }} AssistantMessage */
+/** @typedef {{ id: string, role: "assistant", blocks: MessageBlock[], mode: Mode, conversationId?: string, content: null, createdAt?: string }} AssistantMessage */
 
 /** @typedef {UserMessage | AssistantMessage} Message */
 
