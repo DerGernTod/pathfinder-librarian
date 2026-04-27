@@ -2,7 +2,9 @@ name: PR Preview
 on:
     pull_request:
         types: [opened, synchronize, closed]
-
+permissions:
+    contents: read
+    pull-requests: write
 jobs:
     deploy:
         if: github.event.action != 'closed'
