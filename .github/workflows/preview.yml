@@ -1,0 +1,71 @@
+name: PR Preview
+on:
+  pull_request:
+    types: [opened, synchronize, closed]
+
+jobs:
+  deploy:
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # 1. Build and Push to GHCR
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          tags: ghcr.io/${{ github.repository }}:pr-${{ github.event.number }}
+
+      # 2. Setup SSH for Context
+      - name: Install SSH Key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
+
+      # 3. Create Docker Context and Deploy
+      - name: Deploy to Home Server
+        run: |
+          # Create a remote context pointing to your Windows machine
+          docker context create home-server --docker "host=ssh://${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}"
+          
+          # Use that context for all following commands
+          docker --context home-server pull ghcr.io/${{ github.repository }}:pr-${{ github.event.number }}
+          
+          # Stop/Remove old version if it exists
+          docker --context home-server stop pr-${{ github.event.number }}-pathfinder-librarian || true
+          docker --context home-server rm pr-${{ github.event.number }}-pathfinder-librarian || true
+          
+          # Start the new container
+          docker --context home-server run -d \
+            --name pr-${{ github.event.number }}-pathfinder-librarian \
+            --network opencode-server_default \
+            --restart unless-stopped \
+            ghcr.io/${{ github.repository }}:pr-${{ github.event.number }}
+
+  cleanup:
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install SSH Key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
+          
+      - name: Remove PR Container
+        run: |
+          docker context create home-server --docker "host=ssh://${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}"
+          docker --context home-server stop pr-${{ github.event.number }}-pathfinder-librarian || true
+          docker --context home-server rm pr-${{ github.event.number }}-pathfinder-librarian || true
