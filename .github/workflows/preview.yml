@@ -44,12 +44,12 @@ jobs:
           docker --context home-server pull ghcr.io/${{ github.repository }}:pr-${{ github.event.number }}
           
           # Stop/Remove old version if it exists
-          docker --context home-server stop pr-${{ github.event.number }}-pathfinder-librarian || true
-          docker --context home-server rm pr-${{ github.event.number }}-pathfinder-librarian || true
+          docker --context home-server stop pr-${{ github.event.number }}-pathfinderlibrarian || true
+          docker --context home-server rm pr-${{ github.event.number }}-pathfinderlibrarian || true
           
           # Start the new container
           docker --context home-server run -d \
-            --name pr-${{ github.event.number }}-pathfinder-librarian \
+            --name pr-${{ github.event.number }}-pathfinderlibrarian \
             --network opencode-server_default \
             --restart unless-stopped \
             ghcr.io/${{ github.repository }}:pr-${{ github.event.number }}
@@ -67,5 +67,5 @@ jobs:
       - name: Remove PR Container
         run: |
           docker context create home-server --docker "host=ssh://${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}"
-          docker --context home-server stop pr-${{ github.event.number }}-pathfinder-librarian || true
-          docker --context home-server rm pr-${{ github.event.number }}-pathfinder-librarian || true
+          docker --context home-server stop pr-${{ github.event.number }}-pathfinderlibrarian || true
+          docker --context home-server rm pr-${{ github.event.number }}-pathfinderlibrarian || true
