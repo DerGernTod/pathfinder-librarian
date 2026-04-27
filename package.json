@@ -12,6 +12,7 @@
     "main": "server/index.js",
     "scripts": {
         "start": "bun run --hot ./server/index.js --development",
+        "serve": "bun run ./server/index.js --development",
         "lint": "oxlint",
         "format": "oxfmt",
         "test": "bun test",

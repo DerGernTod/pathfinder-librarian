@@ -33,8 +33,14 @@ app.get("/", serveStatic({ path: "./client/index.html" })).get(
  * @typedef {typeof app} App
  */
 
-// oxlint-disable-next-line import/no-default-export -- required for running hono
-export default app;
+const port = 3000;
+
+// oxlint-disable-next-line import/no-default-export -- required by Bun
+export default {
+  port,
+  hostname: "0.0.0.0", // Forces Bun to listen on all interfaces
+  fetch: app.fetch,
+};
 
 // Export SEED_IDS for use in client (specifically DEFAULT_USER_ID for creating conversations)
 export { SEED_IDS };
