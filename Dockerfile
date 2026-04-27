@@ -1,4 +1,4 @@
-FROM oven-sh/bun:latest
+FROM oven/bun:latest
 WORKDIR /app
 COPY . .
 RUN bun install
