@@ -1,36 +1,39 @@
 name: Deploy Main
 
 on:
-  push:
-    branches:
-      - main
+    push:
+        branches:
+            - main
 
 permissions:
-  contents: read
-  packages: write
+    contents: read
+    packages: write
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    deploy:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - name: Lowercase repo name
+              run: |
+                  echo "REPO_LOWER=${GITHUB_REPOSITORY,,}" >> ${GITHUB_ENV}
 
-      - name: Log in to GHCR
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            - name: Log in to GHCR
+              run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-      - name: Build and Push
-        run: |
-          IMAGE_ID=ghcr.io/${{ github.repository_owner }}/project-pathfinder:latest
-          docker build . -t $IMAGE_ID
-          docker push $IMAGE_ID
+            - name: Build and Push
+              run: |
+                  IMAGE_ID=ghcr.io/${{ env.REPO_LOWER }}:latest
+                  docker build . -t $IMAGE_ID
+                  docker push $IMAGE_ID
 
-      - name: Deploy to Server
-        run: |
-          docker context create remote --docker "host=ssh://${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}"
-          docker --context remote run -d \
-            --name project-pathfinder \
-            --network opencode-server_backend \
-            --restart unless-stopped \
-            -v pathfinder_db:/app/data \
-            ghcr.io/${{ github.repository_owner }}/project-pathfinder:latest || \
-          docker --context remote start project-pathfinder
+            - name: Deploy to Server
+              run: |
+                  docker context create remote --docker "host=ssh://${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}"
+                  docker --context remote run -d \
+                    --name project-pathfinderlibrarian \
+                    --network opencode-server_backend \
+                    --restart unless-stopped \
+                    -v pathfinder_db:/app/data \
+                    ghcr.io/${{ env.REPO_LOWER }}:latest || \
+                  docker --context remote start project-pathfinderlibrarian
