@@ -13,7 +13,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 1. Build and Push to GHCR
+      # 1. Create a lowercase version of the repo name
+      - name: Lowercase repo name
+        run: |
+          echo "REPO_LOWER=${GITHUB_REPOSITORY,,}" >> ${GITHUB_ENV}
+
+      # 2. Login to GHCR
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
@@ -21,38 +26,37 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # 3. Build and push using the new REPO_LOWER variable
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
           push: true
-          tags: ghcr.io/${{ github.repository }}:pr-${{ github.event.number }}
+          # Note the use of env.REPO_LOWER here
+          tags: ghcr.io/${{ env.REPO_LOWER }}:pr-${{ github.event.number }}
 
-      # 2. Setup SSH for Context
+      # 4. Setup SSH for Context
       - name: Install SSH Key
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
 
-      # 3. Create Docker Context and Deploy
+      # 5. Deploy using the new REPO_LOWER variable
       - name: Deploy to Home Server
         run: |
-          # Create a remote context pointing to your Windows machine
           docker context create home-server --docker "host=ssh://${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}"
           
-          # Use that context for all following commands
-          docker --context home-server pull ghcr.io/${{ github.repository }}:pr-${{ github.event.number }}
+          # Pull using lowercase name
+          docker --context home-server pull ghcr.io/${{ env.REPO_LOWER }}:pr-${{ github.event.number }}
           
-          # Stop/Remove old version if it exists
-          docker --context home-server stop pr-${{ github.event.number }}-pathfinderlibrarian || true
-          docker --context home-server rm pr-${{ github.event.number }}-pathfinderlibrarian || true
+          docker --context home-server stop pr-${{ github.event.number }}-pathfinder || true
+          docker --context home-server rm pr-${{ github.event.number }}-pathfinder || true
           
-          # Start the new container
           docker --context home-server run -d \
-            --name pr-${{ github.event.number }}-pathfinderlibrarian \
+            --name pr-${{ github.event.number }}-pathfinder \
             --network opencode-server_default \
             --restart unless-stopped \
-            ghcr.io/${{ github.repository }}:pr-${{ github.event.number }}
+            ghcr.io/${{ env.REPO_LOWER }}:pr-${{ github.event.number }}
 
   cleanup:
     if: github.event.action == 'closed'
