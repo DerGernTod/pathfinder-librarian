@@ -49,11 +49,11 @@ jobs:
           # Pull using lowercase name
           docker --context home-server pull ghcr.io/${{ env.REPO_LOWER }}:pr-${{ github.event.number }}
           
-          docker --context home-server stop pr-${{ github.event.number }}-pathfinder || true
-          docker --context home-server rm pr-${{ github.event.number }}-pathfinder || true
+          docker --context home-server stop pr-${{ github.event.number }}-pathfinderlibrarian || true
+          docker --context home-server rm pr-${{ github.event.number }}-pathfinderlibrarian || true
           
           docker --context home-server run -d \
-            --name pr-${{ github.event.number }}-pathfinder \
+            --name pr-${{ github.event.number }}-pathfinderlibrarian \
             --network opencode-server_default \
             --restart unless-stopped \
             ghcr.io/${{ env.REPO_LOWER }}:pr-${{ github.event.number }}
