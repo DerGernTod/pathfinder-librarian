@@ -1,107 +1,107 @@
 name: PR Preview
 on:
-  pull_request:
-    types: [opened, synchronize, closed]
+    pull_request:
+        types: [opened, synchronize, closed]
 
 jobs:
-  deploy:
-    if: github.event.action != 'closed'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@v4
+    deploy:
+        if: github.event.action != 'closed'
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            packages: write
+        steps:
+            - uses: actions/checkout@v4
 
-      # 1. Create a lowercase version of the repo name
-      - name: Lowercase repo name
-        run: |
-          echo "REPO_LOWER=${GITHUB_REPOSITORY,,}" >> ${GITHUB_ENV}
+            # 1. Create a lowercase version of the repo name
+            - name: Lowercase repo name
+              run: |
+                  echo "REPO_LOWER=${GITHUB_REPOSITORY,,}" >> ${GITHUB_ENV}
 
-      # 2. Login to GHCR
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+            # 2. Login to GHCR
+            - name: Login to GHCR
+              uses: docker/login-action@v3
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 3. Build and push using the new REPO_LOWER variable
-      - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          push: true
-          # Note the use of env.REPO_LOWER here
-          tags: ghcr.io/${{ env.REPO_LOWER }}:pr-${{ github.event.number }}
+            # 3. Build and push using the new REPO_LOWER variable
+            - name: Build and push
+              uses: docker/build-push-action@v5
+              with:
+                  push: true
+                  # Note the use of env.REPO_LOWER here
+                  tags: ghcr.io/${{ env.REPO_LOWER }}:pr-${{ github.event.number }}
 
-      # 4. Setup SSH for Context
-      - name: Install SSH Key
-        uses: shimataro/ssh-key-action@v2
-        with:
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
+            # 4. Setup SSH for Context
+            - name: Install SSH Key
+              uses: shimataro/ssh-key-action@v2
+              with:
+                  key: ${{ secrets.SSH_PRIVATE_KEY }}
+                  known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
 
-      # 5. Deploy using the new REPO_LOWER variable
-      - name: Deploy to Home Server
-        run: |
-          docker context create home-server --docker "host=ssh://${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}"
-          
-          # Pull using lowercase name
-          docker --context home-server pull ghcr.io/${{ env.REPO_LOWER }}:pr-${{ github.event.number }}
-          
-          docker --context home-server stop pr-${{ github.event.number }}-pathfinderlibrarian || true
-          docker --context home-server rm pr-${{ github.event.number }}-pathfinderlibrarian || true
-          
-          docker --context home-server run -d \
-            --name pr-${{ github.event.number }}-pathfinderlibrarian \
-            --network opencode-server_backend \
-            --restart unless-stopped \
-            ghcr.io/${{ env.REPO_LOWER }}:pr-${{ github.event.number }}
-      - name: Post Preview URL to PR
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const prNumber = context.issue.number;
-            // Matching your Caddy regex: pr{number}-{name}
-            const url = `https://pr${prNumber}-pathfinderlibrarian.prs.raudner.dev`;
-            
-            const body = `🚀 **Preview Deployment Ready!**\n\n| Service | URL |\n| :--- | :--- |\n| **Pathfinder Librarian** | [${url}](${url}) |\n\n_Built from commit ${context.sha}_`;
+            # 5. Deploy using the new REPO_LOWER variable
+            - name: Deploy to Home Server
+              run: |
+                  docker context create home-server --docker "host=ssh://${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}"
 
-            // Check if a comment already exists to avoid spamming
-            const comments = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: prNumber,
-            });
-            const botComment = comments.data.find(comment => comment.body.includes('Preview Deployment Ready!'));
+                  # Pull using lowercase name
+                  docker --context home-server pull ghcr.io/${{ env.REPO_LOWER }}:pr-${{ github.event.number }}
 
-            if (botComment) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: botComment.id,
-                body: body
-              });
-            } else {
-              await github.rest.issues.createComment({
-                issue_number: prNumber,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: body
-              });
-            }
-  cleanup:
-    if: github.event.action == 'closed'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install SSH Key
-        uses: shimataro/ssh-key-action@v2
-        with:
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
-          
-      - name: Remove PR Container
-        run: |
-          docker context create home-server --docker "host=ssh://${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}"
-          docker --context home-server stop pr-${{ github.event.number }}-pathfinderlibrarian || true
-          docker --context home-server rm pr-${{ github.event.number }}-pathfinderlibrarian || true
+                  docker --context home-server stop pr-${{ github.event.number }}-pathfinderlibrarian || true
+                  docker --context home-server rm pr-${{ github.event.number }}-pathfinderlibrarian || true
+
+                  docker --context home-server run -d \
+                    --name pr-${{ github.event.number }}-pathfinderlibrarian \
+                    --network opencode-server_backend \
+                    --restart unless-stopped \
+                    ghcr.io/${{ env.REPO_LOWER }}:pr-${{ github.event.number }}
+            - name: Post Preview URL to PR
+              uses: actions/github-script@v7
+              with:
+                  script: |
+                      const prNumber = context.issue.number;
+                      // Matching your Caddy regex: pr{number}-{name}
+                      const url = `https://pr${prNumber}-pathfinderlibrarian.prs.raudner.dev`;
+
+                      const body = `🚀 **Preview Deployment Ready!**\n\n| Service | URL |\n| :--- | :--- |\n| **Pathfinder Librarian** | [${url}](${url}) |\n\n_Built from commit ${context.sha}_`;
+
+                      // Check if a comment already exists to avoid spamming
+                      const comments = await github.rest.issues.listComments({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        issue_number: prNumber,
+                      });
+                      const botComment = comments.data.find(comment => comment.body.includes('Preview Deployment Ready!'));
+
+                      if (botComment) {
+                        await github.rest.issues.updateComment({
+                          owner: context.repo.owner,
+                          repo: context.repo.repo,
+                          comment_id: botComment.id,
+                          body: body
+                        });
+                      } else {
+                        await github.rest.issues.createComment({
+                          issue_number: prNumber,
+                          owner: context.repo.owner,
+                          repo: context.repo.repo,
+                          body: body
+                        });
+                      }
+    cleanup:
+        if: github.event.action == 'closed'
+        runs-on: ubuntu-latest
+        steps:
+            - name: Install SSH Key
+              uses: shimataro/ssh-key-action@v2
+              with:
+                  key: ${{ secrets.SSH_PRIVATE_KEY }}
+                  known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
+
+            - name: Remove PR Container
+              run: |
+                  docker context create home-server --docker "host=ssh://${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}"
+                  docker --context home-server stop pr-${{ github.event.number }}-pathfinderlibrarian || true
+                  docker --context home-server rm pr-${{ github.event.number }}-pathfinderlibrarian || true

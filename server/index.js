@@ -37,9 +37,9 @@ const port = 3000;
 
 // oxlint-disable-next-line import/no-default-export -- required by Bun
 export default {
-  port,
-  hostname: "0.0.0.0", // Forces Bun to listen on all interfaces
-  fetch: app.fetch,
+    port,
+    hostname: "0.0.0.0", // Forces Bun to listen on all interfaces
+    fetch: app.fetch,
 };
 
 // Export SEED_IDS for use in client (specifically DEFAULT_USER_ID for creating conversations)
