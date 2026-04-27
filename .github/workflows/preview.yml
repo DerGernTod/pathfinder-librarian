@@ -54,7 +54,7 @@ jobs:
           
           docker --context home-server run -d \
             --name pr-${{ github.event.number }}-pathfinderlibrarian \
-            --network opencode-server_default \
+            --network opencode-server_backend \
             --restart unless-stopped \
             ghcr.io/${{ env.REPO_LOWER }}:pr-${{ github.event.number }}
 
