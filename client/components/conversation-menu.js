@@ -11,6 +11,13 @@ import { tokens } from "../styles/tokens.js";
 /** @typedef {import("../../shared/types.js").Conversation} Conversation */
 /** @typedef {import("../../shared/types.js").Mode} Mode */
 
+/**
+ * @customElement conversation-menu
+ * @property {Conversation[]} conversations - The list of conversations to display in the menu.
+ * @property {string} activeId - The ID of the currently active conversation.
+ * @property {Mode} mode - The current mode of the application (GM or Player).
+ * @fires select-conversation - Fired when the user selects a conversation from the menu, with the conversation ID in the event detail.
+ */
 class ConversationMenu extends LitElement {
     static styles = [
         tokens,

@@ -13,6 +13,12 @@ import { tokens } from "../styles/tokens.js";
 
 /** @typedef {import("../../shared/types.js").Mode} Mode */
 
+/**
+ * @customElement chat-input
+ * @property {string} value - The current value of the chat input.
+ * @property {Mode} mode - The current mode of the application (GM or Player).
+ * @fires send-message - Fired when the user submits a message, with the message text in the event detail.
+ */
 class ChatInput extends LitElement {
     static styles = [
         tokens,
@@ -95,6 +101,12 @@ class ChatInput extends LitElement {
         this.value = "";
         /** @type {Mode} */
         this.mode = "gm";
+        document.addEventListener("select-conversation", () => {
+            const textarea = /** @type {HTMLTextAreaElement | null} */ (
+                this.shadowRoot?.querySelector("sl-textarea")
+            );
+            textarea?.focus();
+        });
     }
 
     render() {
@@ -109,6 +121,7 @@ class ChatInput extends LitElement {
                         resize="auto"
                         rows="1"
                         class="textarea-flex"
+                        autofocus
                     ></sl-textarea>
                     <button @click=${this.handleSubmit} class="send-btn">
                         <svg

@@ -8,6 +8,11 @@ import { customElement } from "lit/decorators.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
 
+/**
+ * @customElement chat-header
+ * @property {Mode} mode - The current mode of the application (GM or Player).
+ * @fires mode-change - Fired when the user changes the mode using the mode toggle.
+ */
 class ChatHeader extends LitElement {
     static styles = [
         tokens,

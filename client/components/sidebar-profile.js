@@ -7,6 +7,14 @@ import { tokens } from "../styles/tokens.js";
 
 /** @typedef {import("../../shared/types.js").Mode} Mode */
 
+/**
+ * @customElement sidebar-profile
+ * @property {string} name - The name of the user to display in the profile section.
+ * @property {string} subtitle - The subtitle or role of the user.
+ * @property {string} initials - The initials of the user to display in the avatar.
+ * @property {Mode} mode - The current mode of the application (GM or Player).
+ * @property {boolean} collapsed - Whether the sidebar is currently collapsed, which affects the profile's appearance.
+ */
 class SidebarProfile extends LitElement {
     static styles = [
         tokens,

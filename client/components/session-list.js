@@ -14,6 +14,13 @@ import { tokens } from "../styles/tokens.js";
  * @typedef {InputEvent & { currentTarget: T }} TargetedInputEvent
  */
 
+/**
+ * @customElement session-list
+ * @property {Conversation[]} conversations - The list of conversations to display in the list.
+ * @property {string} activeId - The ID of the currently active conversation.
+ * @property {string} query - The current search query for filtering conversations.
+ * @fires select-conversation - Fired when the user selects a conversation from the list, with the conversation ID in the event detail.
+ */
 class SessionList extends LitElement {
     static styles = [
         tokens,

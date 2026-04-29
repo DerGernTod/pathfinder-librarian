@@ -42,6 +42,11 @@ import { tokens } from "../styles/tokens.js";
  * }} StatBlockData
  */
 
+/**
+ * @customElement stat-block
+ * @property {string} title - The title of the stat block, used in the details summary.
+ * @property {StatBlockData} data - The data for the stat block, containing all the relevant stats and information to display.
+ */
 class StatBlock extends LitElement {
     static styles = [
         tokens,

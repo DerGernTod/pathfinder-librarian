@@ -13,6 +13,13 @@ import { tokens } from "../styles/tokens.js";
 /** @typedef {import("../../shared/types.js").Conversation} Conversation */
 /** @typedef {import("../../shared/types.js").Mode} Mode */
 
+/**
+ * @customElement chat-sidebar
+ * @property {Conversation[]} conversations - The list of conversations to display in the sidebar.
+ * @property {string} activeId - The ID of the currently active conversation.
+ * @property {Mode} mode - The current mode of the application (GM or Player).
+ * @property {boolean} expanded - Whether the sidebar is expanded or collapsed.
+ */
 class ChatSidebar extends LitElement {
     static styles = [
         tokens,
@@ -35,8 +42,6 @@ class ChatSidebar extends LitElement {
             .sidebar.collapsed {
                 width: 3.5rem;
                 padding: 1rem 0.5rem;
-            }
-            .sidebar.collapsed new-chat-button {
             }
             .toggle-container {
                 display: flex;

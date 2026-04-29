@@ -9,6 +9,11 @@ import { tokens } from "../styles/tokens.js";
 
 /** @typedef {import("../../shared/types.js").Message} Message */
 
+/**
+ * @customElement message-list
+ * @property {Message[]} messages - The list of messages to display.
+ * @property {boolean} loading - Whether the assistant is currently generating a response.
+ */
 class MessageList extends LitElement {
     static styles = [
         tokens,
@@ -21,11 +26,15 @@ class MessageList extends LitElement {
             }
             .messages {
                 flex: 1;
+                flex-direction: column-reverse;
+                display: flex;
+                gap: 1rem;
                 overflow-y: auto;
                 padding: 1.5rem;
             }
-            .messages > * + * {
-                margin-top: 1.5rem;
+            .messages::before {
+                content: "";
+                margin-top: auto;
             }
             .messages::-webkit-scrollbar {
                 width: 6px;
@@ -62,37 +71,12 @@ class MessageList extends LitElement {
         this.loading = false;
     }
 
-    scrollToBottom() {
-        if (!this.shadowRoot) {
-            return;
-        }
-        const container = this.shadowRoot.querySelector(".messages");
-        if (!container) {
-            return;
-        }
-        container.scrollTo({
-            top: container.scrollHeight,
-            behavior: "smooth",
-        });
-    }
-
-    firstUpdated() {
-        this.scrollToBottom();
-    }
-
-    /**
-     * @param {Map<string, unknown>} changedProperties
-     */
-    updated(changedProperties) {
-        if (changedProperties.has("messages")) {
-            this.scrollToBottom();
-        }
-    }
-
     render() {
         return html`
             <div class="messages">
-                ${this.messages.map((msg) => html` <chat-message .message=${msg}></chat-message> `)}
+                ${this.messages
+                    .toReversed()
+                    .map((msg) => html` <chat-message .message=${msg}></chat-message> `)}
                 ${this.loading
                     ? html`
                           <div class="loading">

@@ -18,7 +18,8 @@ test.describe("navigation e2e tests", () => {
         const messageCount = await messages.count();
         expect(messageCount).toBeGreaterThan(0);
 
-        const firstMessage = messages.first();
+        // messages reversed to autoscroll to bottom
+        const firstMessage = messages.last();
         await expect(firstMessage).toContainText(/mitflit king/i);
     });
 
@@ -54,18 +55,19 @@ test.describe("navigation e2e tests", () => {
         const messageList = page.locator("message-list");
         const sidebar = page.locator("chat-sidebar");
 
+        // messages reversed to autoscroll to bottom
         await sidebar.locator("conversation-item", { hasText: "Mitflit King Capture" }).click();
-        await expect(messageList.locator("chat-message").first()).toContainText(/mitflit/i);
+        await expect(messageList.locator("chat-message").last()).toContainText(/mitflit/i);
 
         await sidebar.locator("conversation-item", { hasText: "Chandelier Assassination" }).click();
-        await expect(messageList.locator("chat-message").first()).toContainText(/chandelier/i);
+        await expect(messageList.locator("chat-message").last()).toContainText(/chandelier/i);
 
         await sidebar.locator("conversation-item", { hasText: "Buying rare reagents" }).click();
-        await expect(messageList.locator("chat-message").first()).toContainText(/dragon/i);
+        await expect(messageList.locator("chat-message").last()).toContainText(/dragon/i);
 
         await sidebar.locator("conversation-item", { hasText: "Mitflit King Capture" }).click();
-        const backToConv1FirstMessage = messageList.locator("chat-message").first();
-        await expect(backToConv1FirstMessage).toContainText(/mitflit king/i);
+        const backToConv1LastMessage = messageList.locator("chat-message").last();
+        await expect(backToConv1LastMessage).toContainText(/mitflit king/i);
     });
 
     test("send message and verify it appears in active conversation", async ({ page }) => {
@@ -75,12 +77,14 @@ test.describe("navigation e2e tests", () => {
         const input = page.locator("chat-input textarea");
         await input.fill("This is a test message");
         await page.keyboard.press("Enter");
+        await page.waitForLoadState("networkidle");
 
         const newCount = await messageList.locator("chat-message").count();
         expect(newCount).toBe(initialCount + 1);
 
-        const lastMessage = messageList.locator("chat-message").last();
-        await expect(lastMessage).toContainText("This is a test message");
+        // messages reversed to autoscroll to bottom
+        const firstMessage = messageList.locator("chat-message").first();
+        await expect(firstMessage).toContainText("This is a test message");
     });
 
     test("switch conversations and verify new message only in original conversation", async ({
@@ -101,12 +105,13 @@ test.describe("navigation e2e tests", () => {
         const conv2Count = await messageList.locator("chat-message").count();
         expect(conv2Count).not.toBe(conv1Count);
 
+        await page.waitForTimeout(10);
         const messages = messageList.locator("chat-message");
         const hasTestMessage = await messages.count();
         expect(hasTestMessage).toBeGreaterThan(0);
 
-        const lastMessage = messageList.locator("chat-message").last();
-        await expect(lastMessage).not.toContainText("Test message for conv 1");
+        const firstMessage = messageList.locator("chat-message").first();
+        await expect(firstMessage).not.toContainText("Test message for conv 1");
 
         await sidebar.locator("conversation-item", { hasText: "Mitflit King Capture" }).click();
         await page.waitForLoadState("networkidle");
