@@ -95,6 +95,10 @@ class ChatInput extends LitElement {
         this.value = "";
         /** @type {Mode} */
         this.mode = "gm";
+        document.addEventListener("select-conversation", () => {
+            const textarea = /** @type {HTMLTextAreaElement | null} */ (this.shadowRoot?.querySelector("sl-textarea"));
+            textarea?.focus();
+        });
     }
 
     render() {
@@ -109,6 +113,7 @@ class ChatInput extends LitElement {
                         resize="auto"
                         rows="1"
                         class="textarea-flex"
+                        autofocus
                     ></sl-textarea>
                     <button @click=${this.handleSubmit} class="send-btn">
                         <svg
