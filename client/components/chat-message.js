@@ -6,6 +6,10 @@ import { customElement } from "lit/decorators.js";
 
 /** @typedef {import("../../shared/types.js").Message} Message */
 
+/**
+ * @customElement chat-message
+ * @property {Message} message - The message to display, either from the user or the assistant.
+ */
 class ChatMessage extends LitElement {
     static styles = css`
         :host {

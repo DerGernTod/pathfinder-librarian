@@ -5,6 +5,11 @@ import { customElement } from "lit/decorators.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
 
+/**
+ * @customElement new-chat-button
+ * @property {boolean} collapsed - Whether the sidebar is currently collapsed, which affects the button's appearance.
+ * @fires new-chat - Fired when the user clicks the button to start a new chat.
+ */
 class NewChatButton extends LitElement {
     static properties = {
         collapsed: { type: Boolean },

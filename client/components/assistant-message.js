@@ -11,6 +11,10 @@ import { tokens } from "../styles/tokens.js";
 /** @typedef {import("../../shared/types.js").MessageBlock} MessageBlock */
 /** @typedef {import("../../shared/types.js").Segment} Segment */
 
+/**
+ * @customElement assistant-message
+ * @property {AssistantMessageType} message - The assistant message to display.
+ */
 class AssistantMessage extends LitElement {
     static styles = [
         tokens,

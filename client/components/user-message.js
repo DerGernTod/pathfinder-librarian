@@ -7,6 +7,10 @@ import { tokens } from "../styles/tokens.js";
 
 /** @typedef {import("../../shared/types.js").UserMessage} UserMessageType */
 
+/**
+ * @customElement user-message
+ * @property {UserMessageType} message - The user message to display, containing the content and mode (GM or Player) for styling.
+ */
 class UserMessage extends LitElement {
     static styles = [
         tokens,

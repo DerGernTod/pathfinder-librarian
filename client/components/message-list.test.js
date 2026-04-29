@@ -1,5 +1,5 @@
 import "../components/message-list.js";
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
 
 describe("message-list", () => {
     beforeEach(() => {
@@ -43,5 +43,4 @@ describe("message-list", () => {
         await el.updateComplete;
         expect(el.shadowRoot.querySelector(".loading")).toBeNull();
     });
-
 });

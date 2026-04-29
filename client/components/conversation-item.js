@@ -7,6 +7,12 @@ import { tokens } from "../styles/tokens.js";
 
 /** @typedef {import("../../shared/types.js").Conversation} Conversation */
 
+/**
+ * @customElement conversation-item
+ * @property {Conversation} conversation - The conversation to display in the item.
+ * @property {boolean} active - Whether this conversation is currently active/selected.
+ * @fires select - Fired when the user clicks on the conversation item, with the conversation ID in the event detail.
+ */
 class ConversationItem extends LitElement {
     static styles = [
         tokens,

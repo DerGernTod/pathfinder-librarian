@@ -9,6 +9,11 @@ import { tokens } from "../styles/tokens.js";
 
 /** @typedef {import("../../shared/types.js").Message} Message */
 
+/**
+ * @customElement message-list
+ * @property {Message[]} messages - The list of messages to display.
+ * @property {boolean} loading - Whether the assistant is currently generating a response.
+ */
 class MessageList extends LitElement {
     static styles = [
         tokens,
@@ -69,7 +74,9 @@ class MessageList extends LitElement {
     render() {
         return html`
             <div class="messages">
-                ${this.messages.toReversed().map((msg) => html` <chat-message .message=${msg}></chat-message> `)}
+                ${this.messages
+                    .toReversed()
+                    .map((msg) => html` <chat-message .message=${msg}></chat-message> `)}
                 ${this.loading
                     ? html`
                           <div class="loading">

@@ -16,7 +16,8 @@ test.describe("persistence e2e tests", () => {
         const messages = page.locator("chat-message");
         const count = await messages.count();
         expect(count).toBeGreaterThan(0);
-        await expect(messages.first()).toContainText(/mitflit king/i);
+        // messages reversed to autoscroll to bottom
+        await expect(messages.last()).toContainText(/mitflit king/i);
     });
 
     test("switching conversations fetches from API", async ({ page }) => {
@@ -31,12 +32,13 @@ test.describe("persistence e2e tests", () => {
         await input.fill("Persistent test message");
         await page.keyboard.press("Enter");
         await page.waitForLoadState("networkidle");
-        await expect(page.locator("chat-message").last()).toContainText("Persistent test message");
+        // messages reversed to autoscroll to bottom
+        await expect(page.locator("chat-message").first()).toContainText("Persistent test message");
 
         // Reload — message must survive
         await page.reload();
         await page.waitForSelector("chat-message", { timeout: 5000 });
-        await expect(page.locator("chat-message").last()).toContainText("Persistent test message");
+        await expect(page.locator("chat-message").first()).toContainText("Persistent test message");
     });
 
     test("new conversation persists across page reload", async ({ page }) => {
@@ -51,6 +53,7 @@ test.describe("persistence e2e tests", () => {
 
         // Reload — conversation and message must survive
         await page.reload();
+        await page.waitForLoadState("networkidle");
         await page.waitForSelector("chat-message", { timeout: 5000 });
         await expect(page.locator("chat-message").last()).toContainText(
             "Unique marker for new conv",
@@ -77,6 +80,7 @@ test.describe("persistence e2e tests", () => {
         // Switch back — message IS in conv 1
         await sidebar.locator("conversation-item", { hasText: "Mitflit" }).click();
         await page.waitForLoadState("networkidle");
-        await expect(page.locator("chat-message").last()).toContainText("Conv 1 isolation test");
+        // messages reversed to autoscroll to bottom
+        await expect(page.locator("chat-message").first()).toContainText("Conv 1 isolation test");
     });
 });
