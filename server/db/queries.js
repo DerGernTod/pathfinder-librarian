@@ -150,10 +150,14 @@ export function getRuleItemById(database, id) {
 /**
  * Gets all users.
  * @param {import("bun:sqlite").Database} database - The database instance
- * @returns {Array<{ id: string, name: string, initials: string, subtitle: string, mode: "gm" | "player" }>}
+ * @returns {Array<{ id: string, name: string, initials: string, subtitle: string, mode: "gm" | "player", email: string | null, isTestUser: number, webauthnUserId: string | null }>}
  */
 export function getUsers(database = db) {
-    const rows = database.query("SELECT id, name, initials, subtitle, mode FROM users").all();
+    const rows = database
+        .query(
+            "SELECT id, name, initials, subtitle, mode, email, is_test_user, webauthn_user_id FROM users",
+        )
+        .all();
     return rows;
 }
 
@@ -161,7 +165,7 @@ export function getUsers(database = db) {
  * Gets a user by ID.
  * @param {import("bun:sqlite").Database} database - The database instance
  * @param {string} id - The user ID
- * @returns {{ id: string, name: string, initials: string, subtitle: string, mode: "gm" | "player", email: string | null, isTestUser: number, webauthnUserId: string | null } | null}
+ * @returns {{ id: string, name: string, initials: string, subtitle: string, mode: string, email: string | null, isTestUser: boolean, webauthnUserId: string | null } | null}
  */
 export function getUserById(database, id) {
     const row = database
@@ -169,7 +173,19 @@ export function getUserById(database, id) {
             "SELECT id, name, initials, subtitle, mode, email, is_test_user, webauthn_user_id FROM users WHERE id = ?",
         )
         .get(id);
-    return row || null;
+    if (!row) {
+        return null;
+    }
+    return {
+        id: row.id,
+        name: row.name,
+        initials: row.initials,
+        subtitle: row.subtitle,
+        mode: row.mode,
+        email: row.email,
+        isTestUser: row.is_test_user === 1,
+        webauthnUserId: row.webauthn_user_id,
+    };
 }
 
 /**

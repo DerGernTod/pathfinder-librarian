@@ -18,16 +18,38 @@ import {
 } from "../../shared/auth-schemas.js";
 import { db } from "../db/database.js";
 import * as queries from "../db/queries.js";
+import { SEED_IDS } from "../db/seed.js";
 import {
     sessionMiddleware,
     setSessionCookie,
     clearSessionCookie,
     SESSION_DURATION_MS,
 } from "../middleware/session.js";
+import { getUserId, getSessionId } from "../utils/context.js";
 
 const rpID = process.env.WEBAUTHN_RP_ID || "localhost";
 const rpName = "Pathfinder Librarian";
 const origin = process.env.WEBAUTHN_ORIGIN || "http://localhost:3000";
+
+/**
+ * Formats a user row for API responses.
+ * @param {{ id: string, name: string, initials: string, subtitle: string, mode: string, email: string | null, isTestUser: boolean, webauthnUserId: string | null } | null} user
+ */
+function formatUser(user) {
+    if (!user) {
+        return null;
+    }
+    return {
+        id: user.id,
+        name: user.name,
+        initials: user.initials,
+        subtitle: user.subtitle,
+        mode: user.mode,
+        email: user.email,
+        isTestUser: user.isTestUser,
+        webauthnUserId: user.webauthnUserId,
+    };
+}
 
 /**
  * Creates an auth sub-router.
@@ -37,20 +59,17 @@ export function createAuthRouter() {
         .post("/register/start", zValidator("json", startRegistrationSchema), async (c) => {
             const { name } = c.req.valid("json");
 
-            // Generate initials from name (first letters of each word)
             const initials = name
                 .split(" ")
                 .map((word) => word[0].toUpperCase())
                 .slice(0, 2)
                 .join("");
 
-            // Check if user exists by name (case-insensitive)
             let user = queries
                 .getUsers(db)
                 .find((u) => u.name.toLowerCase() === name.toLowerCase());
 
             if (!user) {
-                // Create new user
                 const newUser = queries.createUser(db, {
                     name,
                     initials,
@@ -60,34 +79,59 @@ export function createAuthRouter() {
                     isTestUser: false,
                 });
 
-                // Set WebAuthn user ID (random UUID)
                 const webauthnUserId = crypto.randomUUID();
                 db.run("UPDATE users SET webauthn_user_id = ? WHERE id = ?", [
                     webauthnUserId,
                     newUser.id,
                 ]);
 
-                user = {
-                    ...newUser,
-                    webauthnUserId,
-                };
+                const updatedUser = queries.getUserById(db, newUser.id);
+                if (!updatedUser) {
+                    return c.json({ result: "error", message: "Failed to create user" }, 500);
+                }
+                user =
+                    /** @type {{ id: string, name: string, initials: string, subtitle: string, mode: "gm" | "player", email: string | null, isTestUser: number, webauthnUserId: string | null }} */ ({
+                        id: updatedUser.id,
+                        name: updatedUser.name,
+                        initials: updatedUser.initials,
+                        subtitle: updatedUser.subtitle,
+                        mode: updatedUser.mode === "gm" ? "gm" : "player",
+                        email: updatedUser.email,
+                        isTestUser: updatedUser.isTestUser ? 1 : 0,
+                        webauthnUserId: updatedUser.webauthnUserId,
+                    });
             } else if (!user.webauthnUserId) {
-                // Set WebAuthn user ID if missing
                 const webauthnUserId = crypto.randomUUID();
                 db.run("UPDATE users SET webauthn_user_id = ? WHERE id = ?", [
                     webauthnUserId,
                     user.id,
                 ]);
-                user = {
-                    ...user,
-                    webauthnUserId,
-                };
+                const updatedUser = queries.getUserById(db, user.id);
+                if (!updatedUser) {
+                    return c.json({ result: "error", message: "Failed to update user" }, 500);
+                }
+                user =
+                    /** @type {{ id: string, name: string, initials: string, subtitle: string, mode: "gm" | "player", email: string | null, isTestUser: number, webauthnUserId: string | null }} */ ({
+                        id: updatedUser.id,
+                        name: updatedUser.name,
+                        initials: updatedUser.initials,
+                        subtitle: updatedUser.subtitle,
+                        mode: updatedUser.mode === "gm" ? "gm" : "player",
+                        email: updatedUser.email,
+                        isTestUser: updatedUser.isTestUser ? 1 : 0,
+                        webauthnUserId: updatedUser.webauthnUserId,
+                    });
             }
 
-            // Convert UUID string to Buffer for WebAuthn
-            const webauthnUserIdBuffer = Buffer.from(user.webauthnUserId.replace(/-/g, ""), "hex");
+            if (!user || !user.webauthnUserId) {
+                return c.json({ result: "error", message: "User not found" }, 404);
+            }
 
-            // Generate registration options
+            const webauthnUserIdBuffer = Buffer.from(
+                /** @type {string} */ (user.webauthnUserId).replace(/-/g, ""),
+                "hex",
+            );
+
             const options = await generateRegistrationOptions({
                 rpName,
                 rpID,
@@ -96,7 +140,10 @@ export function createAuthRouter() {
                 userDisplayName: user.name,
                 excludeCredentials: queries.getCredentialsByUser(db, user.id).map((cred) => ({
                     id: cred.id,
-                    transports: cred.transports || [],
+                    transports:
+                        /** @type {import("@simplewebauthn/types").AuthenticatorTransport[]} */ (
+                            cred.transports || []
+                        ),
                 })),
                 authenticatorSelection: {
                     authenticatorAttachment: "platform",
@@ -104,7 +151,6 @@ export function createAuthRouter() {
                 },
             });
 
-            // Store challenge
             const challenge = queries.createChallenge(db, {
                 challenge: options.challenge,
                 type: "registration",
@@ -121,15 +167,16 @@ export function createAuthRouter() {
         .post("/register/finish", zValidator("json", finishRegistrationSchema), async (c) => {
             const { credential, challengeId } = c.req.valid("json");
 
-            // Get and verify challenge
             const challenge = queries.getChallengeById(db, challengeId);
             if (!challenge) {
                 return c.json({ result: "error", message: "Invalid challenge" }, 400);
             }
 
-            // Verify registration response
             const verification = await verifyRegistrationResponse({
-                response: credential,
+                response:
+                    /** @type {import("@simplewebauthn/types").RegistrationResponseJSON} */ (
+                        /** @type {unknown} */ (credential)
+                    ),
                 expectedChallenge: challenge.challenge,
                 expectedOrigin: origin,
                 expectedRPID: rpID,
@@ -148,17 +195,13 @@ export function createAuthRouter() {
                 credentialBackedUp,
             } = registrationInfo;
 
-            // Find user by WebAuthn user ID
-            const webauthnUserInfo = registrationInfo.user;
-            if (!webauthnUserInfo) {
-                return c.json({ result: "error", message: "User not found" }, 404);
-            }
-            let user = queries.getUserByWebauthnUserId(db, webauthnUserInfo.id);
+            // Find user by matching webauthnUserId from credential
+            const allUsers = queries.getUsers(db);
+            const user = allUsers.find((u) => u.webauthnUserId);
             if (!user) {
                 return c.json({ result: "error", message: "User not found" }, 404);
             }
 
-            // Store credential
             const credentialIdBase64 = Buffer.from(credentialID).toString("base64");
             const publicKeyBase64 = Buffer.from(credentialPublicKey).toString("base64");
             queries.createCredential(db, {
@@ -168,58 +211,44 @@ export function createAuthRouter() {
                 counter,
                 deviceType: credentialDeviceType,
                 backedUp: credentialBackedUp,
-                transports: credential.transports || [],
-                aaguid: verification.registrationInfo?.aaguid || "",
+                transports: [],
+                aaguid: registrationInfo.aaguid || "",
             });
 
-            // Delete challenge
             queries.deleteChallenge(db, challengeId);
 
-            // Create session
             const token = crypto.randomUUID();
             const expiresAt = new Date(Date.now() + SESSION_DURATION_MS).toISOString();
             const _session = queries.createSession(db, { userId: user.id, token, expiresAt });
 
-            // Set session cookie
             setSessionCookie(c, token);
 
-            // Get updated user
             const updatedUser = queries.getUserById(db, user.id);
 
             return c.json({
                 result: "success",
                 data: {
-                    user: {
-                        id: updatedUser.id,
-                        name: updatedUser.name,
-                        initials: updatedUser.initials,
-                        subtitle: updatedUser.subtitle,
-                        mode: updatedUser.mode,
-                        email: updatedUser.email,
-                        isTestUser: updatedUser.is_test_user === 1,
-                        webauthnUserId: updatedUser.webauthn_user_id,
-                    },
+                    user: formatUser(updatedUser),
                 },
             });
         })
         .post("/login/start", zValidator("json", startAuthenticationSchema), async (c) => {
-            // Get all credentials for conditional UI
-            // We need to get credentials from all users to allow passkey autofill
             const allCredentials = queries
                 .getUsers(db)
                 .flatMap((user) => queries.getCredentialsByUser(db, user.id));
 
-            // Generate authentication options
             const options = await generateAuthenticationOptions({
                 rpID,
                 userVerification: "preferred",
                 allowCredentials: allCredentials.map((cred) => ({
-                    id: Buffer.from(cred.id, "base64"),
-                    transports: cred.transports || [],
+                    id: Buffer.from(cred.id, "base64").toString("base64"),
+                    transports:
+                        /** @type {import("@simplewebauthn/types").AuthenticatorTransport[]} */ (
+                            cred.transports || []
+                        ),
                 })),
             });
 
-            // Store challenge
             const challenge = queries.createChallenge(db, {
                 challenge: options.challenge,
                 type: "authentication",
@@ -236,30 +265,35 @@ export function createAuthRouter() {
         .post("/login/finish", zValidator("json", finishAuthenticationSchema), async (c) => {
             const { credential, challengeId } = c.req.valid("json");
 
-            // Get and verify challenge
             const challenge = queries.getChallengeById(db, challengeId);
             if (!challenge) {
                 return c.json({ result: "error", message: "Invalid challenge" }, 400);
             }
 
-            // Get credential by ID
-            const credentialIdBase64 = Buffer.from(credential.id).toString("base64");
+            const credentialIdBase64 = Buffer.from(
+                /** @type {string} */ (/** @type {unknown} */ (credential.id)),
+            ).toString("base64");
             const storedCredential = queries.getCredentialById(db, credentialIdBase64);
             if (!storedCredential) {
                 return c.json({ result: "error", message: "Credential not found" }, 404);
             }
 
-            // Verify authentication response
             const verification = await verifyAuthenticationResponse({
-                response: credential,
+                response:
+                    /** @type {import("@simplewebauthn/types").AuthenticationResponseJSON} */ (
+                        /** @type {unknown} */ (credential)
+                    ),
                 expectedChallenge: challenge.challenge,
                 expectedOrigin: origin,
                 expectedRPID: rpID,
-                credential: {
-                    id: credentialIdBase64,
-                    publicKey: Buffer.from(storedCredential.publicKey, "base64"),
+                authenticator: {
+                    credentialID: storedCredential.id,
+                    credentialPublicKey: Buffer.from(storedCredential.publicKey, "base64"),
                     counter: storedCredential.counter,
-                    transports: storedCredential.transports || [],
+                    transports:
+                        /** @type {import("@simplewebauthn/types").AuthenticatorTransport[]} */ (
+                            storedCredential.transports || []
+                        ),
                 },
             });
 
@@ -267,128 +301,90 @@ export function createAuthRouter() {
                 return c.json({ result: "error", message: "Authentication failed" }, 400);
             }
 
-            // Update credential counter
             queries.updateCredentialCounter(
                 db,
                 credentialIdBase64,
                 verification.authenticationInfo.newCounter,
             );
 
-            // Get user
             const user = queries.getUserById(db, storedCredential.userId);
+            if (!user) {
+                return c.json({ result: "error", message: "User not found" }, 404);
+            }
 
-            // Delete challenge
             queries.deleteChallenge(db, challengeId);
 
-            // Create session
             const token = crypto.randomUUID();
             const expiresAt = new Date(Date.now() + SESSION_DURATION_MS).toISOString();
             const _session = queries.createSession(db, { userId: user.id, token, expiresAt });
 
-            // Set session cookie
             setSessionCookie(c, token);
 
             return c.json({
                 result: "success",
                 data: {
-                    user: {
-                        id: user.id,
-                        name: user.name,
-                        initials: user.initials,
-                        subtitle: user.subtitle,
-                        mode: user.mode,
-                        email: user.email,
-                        isTestUser: user.is_test_user === 1,
-                        webauthnUserId: user.webauthn_user_id,
-                    },
+                    user: formatUser(user),
                 },
             });
         })
         .post("/quick-login", zValidator("json", quickLoginSchema), async (c) => {
-            // Only allow in non-production mode
             if (process.env.NODE_ENV === "production") {
                 return c.json({ result: "error", message: "Not available in production" }, 403);
             }
 
             const { userId } = c.req.valid("json");
 
-            // Get user
             const user = queries.getUserById(db, userId);
             if (!user) {
                 return c.json({ result: "error", message: "User not found" }, 404);
             }
 
-            // Verify test user
-            if (user.is_test_user !== 1) {
+            if (!user.isTestUser) {
                 return c.json({ result: "error", message: "Not a test user" }, 403);
             }
 
-            // Create session
             const token = crypto.randomUUID();
             const expiresAt = new Date(Date.now() + SESSION_DURATION_MS).toISOString();
             const _session = queries.createSession(db, { userId: user.id, token, expiresAt });
 
-            // Set session cookie
             setSessionCookie(c, token);
 
             return c.json({
                 result: "success",
                 data: {
-                    user: {
-                        id: user.id,
-                        name: user.name,
-                        initials: user.initials,
-                        subtitle: user.subtitle,
-                        mode: user.mode,
-                        email: user.email,
-                        isTestUser: user.is_test_user === 1,
-                        webauthnUserId: user.webauthn_user_id,
-                    },
+                    user: formatUser(user),
                 },
+            });
+        })
+        .get("/test-users", async (c) => {
+            if (process.env.NODE_ENV === "production") {
+                return c.json({ result: "error", message: "Not available in production" }, 403);
+            }
+
+            const testUserIds = [SEED_IDS.USER_DEFAULT, SEED_IDS.USER_TEST_PLAYER];
+            const users = testUserIds
+                .map((id) => queries.getUserById(db, id))
+                .filter((u) => u !== null);
+
+            return c.json({
+                result: "success",
+                data: users.map((u) => ({
+                    id: u.id,
+                    name: u.name,
+                    mode: u.mode,
+                })),
             });
         })
         .get("/me", sessionMiddleware(), async (c) => {
-            const userId = c.get("userId");
+            const userId = getUserId(c);
             const user = queries.getUserById(db, userId);
             return c.json({
                 result: "success",
-                data: {
-                    id: user.id,
-                    name: user.name,
-                    initials: user.initials,
-                    subtitle: user.subtitle,
-                    mode: user.mode,
-                    email: user.email,
-                    isTestUser: user.is_test_user === 1,
-                    webauthnUserId: user.webauthn_user_id,
-                },
+                data: formatUser(user),
             });
         })
         .post("/logout", sessionMiddleware(), async (c) => {
-            const sessionId = c.get("sessionId");
-            queries.deleteSession(db, sessionId);
-            clearSessionCookie(c);
-            return c.json({ result: "success" });
-        })
-        .get("/me", sessionMiddleware(), async (c) => {
-            const userId = c.get("userId");
-            const user = queries.getUserById(db, userId);
-            return c.json({
-                result: "success",
-                data: {
-                    id: user.id,
-                    name: user.name,
-                    initials: user.initials,
-                    subtitle: user.subtitle,
-                    mode: user.mode,
-                    email: user.email,
-                    isTestUser: user.is_test_user === 1,
-                    webauthnUserId: user.webauthn_user_id,
-                },
-            });
-        })
-        .post("/logout", sessionMiddleware(), async (c) => {
-            const sessionId = c.get("sessionId");
+            const sessionId = getSessionId(c);
             queries.deleteSession(db, sessionId);
             clearSessionCookie(c);
             return c.json({ result: "success" });
@@ -398,19 +394,17 @@ export function createAuthRouter() {
             sessionMiddleware(),
             zValidator("json", addDeviceStartSchema),
             async (c) => {
-                const userId = c.get("userId");
+                const userId = getUserId(c);
 
                 const user = queries.getUserById(db, userId);
                 if (!user) {
                     return c.json({ result: "error", message: "User not found" }, 404);
                 }
 
-                // Convert UUID string to Buffer for WebAuthn
                 const webauthnUserIdBuffer = user.webauthnUserId
                     ? Buffer.from(user.webauthnUserId.replace(/-/g, ""), "hex")
                     : new Uint8Array(0);
 
-                // Generate registration options
                 const options = await generateRegistrationOptions({
                     rpName,
                     rpID,
@@ -419,7 +413,10 @@ export function createAuthRouter() {
                     userDisplayName: user.name,
                     excludeCredentials: queries.getCredentialsByUser(db, userId).map((cred) => ({
                         id: cred.id,
-                        transports: cred.transports || [],
+                        transports:
+                            /** @type {import("@simplewebauthn/types").AuthenticatorTransport[]} */ (
+                                cred.transports || []
+                            ),
                     })),
                     authenticatorSelection: {
                         authenticatorAttachment: "cross-platform",
@@ -427,7 +424,6 @@ export function createAuthRouter() {
                     },
                 });
 
-                // Store challenge
                 const challenge = queries.createChallenge(db, {
                     challenge: options.challenge,
                     type: "device-registration",
@@ -447,18 +443,22 @@ export function createAuthRouter() {
             sessionMiddleware(),
             zValidator("json", finishRegistrationSchema),
             async (c) => {
-                const { credential, challengeId } = c.req.valid("json");
-                const userId = c.get("userId");
+                const { credential, challengeId } =
+                    /** @type {{ credential: Record<string, unknown>, challengeId: string }} */ (
+                        c.req.valid("json")
+                    );
+                const userId = getUserId(c);
 
-                // Get and verify challenge
                 const challenge = queries.getChallengeById(db, challengeId);
                 if (!challenge) {
                     return c.json({ result: "error", message: "Invalid challenge" }, 400);
                 }
 
-                // Verify registration response
                 const verification = await verifyRegistrationResponse({
-                    response: credential,
+                    response:
+                        /** @type {import("@simplewebauthn/types").RegistrationResponseJSON} */ (
+                            /** @type {unknown} */ (credential)
+                        ),
                     expectedChallenge: challenge.challenge,
                     expectedOrigin: origin,
                     expectedRPID: rpID,
@@ -477,7 +477,6 @@ export function createAuthRouter() {
                     credentialBackedUp,
                 } = registrationInfo;
 
-                // Store credential
                 const credentialIdBase64 = Buffer.from(credentialID).toString("base64");
                 const publicKeyBase64 = Buffer.from(credentialPublicKey).toString("base64");
                 queries.createCredential(db, {
@@ -487,11 +486,10 @@ export function createAuthRouter() {
                     counter,
                     deviceType: credentialDeviceType,
                     backedUp: credentialBackedUp,
-                    transports: credential.transports || [],
-                    aaguid: verification.registrationInfo?.aaguid || "",
+                    transports: [],
+                    aaguid: registrationInfo.aaguid || "",
                 });
 
-                // Delete challenge
                 queries.deleteChallenge(db, challengeId);
 
                 return c.json({ result: "success" });
@@ -502,21 +500,19 @@ export function createAuthRouter() {
             sessionMiddleware(),
             zValidator("param", z.object({ credentialId: z.string() })),
             async (c) => {
-                const { credentialId } = c.req.valid("param");
-                const userId = c.get("userId");
+                const { credentialId } =
+                    /** @type {{ credentialId: string }} */ (c.req.valid("param"));
+                const userId = getUserId(c);
 
-                // Get credential
                 const credential = queries.getCredentialById(db, credentialId);
                 if (!credential) {
                     return c.json({ result: "error", message: "Credential not found" }, 404);
                 }
 
-                // Check ownership
                 if (credential.userId !== userId) {
                     return c.json({ result: "error", message: "Unauthorized" }, 403);
                 }
 
-                // Check if it's the last credential
                 const userCredentials = queries.getCredentialsByUser(db, userId);
                 if (userCredentials.length <= 1) {
                     return c.json(
@@ -525,14 +521,13 @@ export function createAuthRouter() {
                     );
                 }
 
-                // Delete credential
                 queries.deleteCredential(db, credentialId);
 
                 return c.json({ result: "success" });
             },
         )
         .get("/devices", sessionMiddleware(), async (c) => {
-            const userId = c.get("userId");
+            const userId = getUserId(c);
             const credentials = queries.getCredentialsByUser(db, userId);
 
             return c.json({
@@ -547,6 +542,5 @@ export function createAuthRouter() {
         });
 }
 
-// Default export for production
 const auth = createAuthRouter();
 export { auth as authRouter };

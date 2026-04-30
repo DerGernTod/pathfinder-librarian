@@ -73,13 +73,13 @@ describe("login-page", () => {
         expect(dispatchedEvent.user).toEqual(mockUser);
     });
 
-    test("shows test users section in dev mode", async () => {
-        process.env.NODE_ENV = "development";
+    test("hides test users section when no test users available", async () => {
         const el = document.createElement("login-page");
         container.appendChild(el);
         await el.updateComplete;
+        await el.updateComplete;
 
         const testUsersSection = el.shadowRoot.querySelector(".test-users");
-        expect(testUsersSection).toBeTruthy();
+        expect(testUsersSection).toBeNull();
     });
 });

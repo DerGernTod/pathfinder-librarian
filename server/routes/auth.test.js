@@ -109,7 +109,10 @@ describe("GET /auth/me", () => {
 
         const setCookieHeader = loginRes.headers.get("set-cookie");
         const cookieMatch = setCookieHeader?.match(/session_token=([^;]+)/);
-        expect(cookieMatch).toBeTruthy();
+        expect(cookieMatch).not.toBeNull();
+        if (!cookieMatch) {
+            throw new Error("No session token found");
+        }
 
         // Try using a custom header for testing
         const res = await authRouter.request("/auth/me", {
@@ -140,7 +143,10 @@ describe("POST /auth/logout", () => {
 
         const setCookieHeader = loginRes.headers.get("set-cookie");
         const cookieMatch = setCookieHeader?.match(/session_token=([^;]+)/);
-        expect(cookieMatch).toBeTruthy();
+        expect(cookieMatch).not.toBeNull();
+        if (!cookieMatch) {
+            throw new Error("No session token found");
+        }
 
         // Now logout using custom header
         const res = await authRouter.request("/auth/logout", {

@@ -8,7 +8,10 @@ import { db as defaultDb } from "../db/database.js";
 export function databaseMiddleware(options = {}) {
     const database = options.database || defaultDb;
 
-    return async (c, next) => {
+    return async (
+        /** @type {import("hono").Context} */ c,
+        /** @type {import("hono").Next} */ next,
+    ) => {
         c.set("db", database);
         return next();
     };

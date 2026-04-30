@@ -5,8 +5,7 @@
         "module": "esnext",
         "target": "esnext",
         "moduleResolution": "bundler",
-        "strict": true,
-        "types": ["bun"]
+        "strict": true
     },
-    "exclude": ["node_modules", "client"]
+    "exclude": ["node_modules"]
 }

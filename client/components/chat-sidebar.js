@@ -98,7 +98,7 @@ class ChatSidebar extends LitElement {
         activeId: { type: String },
         mode: { type: String },
         expanded: { type: Boolean },
-        /** @type {import("../../shared/types.js").AuthUser} */ user: { type: Object },
+        user: { type: Object },
     };
 
     constructor() {

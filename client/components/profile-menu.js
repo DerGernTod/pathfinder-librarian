@@ -49,7 +49,7 @@ class ProfileMenu extends LitElement {
     ];
 
     static properties = {
-        /** @type {Mode} */ mode: { type: String },
+        mode: { type: String },
     };
 
     constructor() {
@@ -74,8 +74,9 @@ class ProfileMenu extends LitElement {
     }
 
     get initials() {
-        // Get initials from parent sidebar-profile component
-        const sidebarProfile = this.closest("sidebar-profile");
+        const sidebarProfile = /** @type {HTMLElement & { initials?: string }} */ (
+            this.closest("sidebar-profile")
+        );
         if (sidebarProfile) {
             return sidebarProfile.initials || "U";
         }

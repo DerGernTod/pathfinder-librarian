@@ -7,8 +7,7 @@ export const startRegistrationSchema = z.object({
 
 /** Schema for finishing passkey registration (client sends credential payload) */
 export const finishRegistrationSchema = z.object({
-    // The full AuthenticationenticatorAttestationJSONResponse — validated by @simplewebauthn/server
-    credential: z.record(z.unknown()),
+    credential: z.object({}).passthrough(),
     challengeId: z.string().uuid(),
 });
 
@@ -17,7 +16,7 @@ export const startAuthenticationSchema = z.object({});
 
 /** Schema for finishing passkey authentication */
 export const finishAuthenticationSchema = z.object({
-    credential: z.record(z.unknown()),
+    credential: z.object({}).passthrough(),
     challengeId: z.string().uuid(),
 });
 

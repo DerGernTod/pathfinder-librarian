@@ -91,7 +91,7 @@ class SidebarProfile extends LitElement {
         initials: { type: String },
         mode: { type: String },
         collapsed: { type: Boolean },
-        /** @type {AuthUser} */ user: { type: Object },
+        user: { type: Object },
     };
 
     constructor() {

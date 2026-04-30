@@ -1,15 +1,7 @@
-import { db } from "./database.js";
+import { SEED_IDS } from "../../shared/constants.js";
+export { SEED_IDS };
 
-/** Deterministic UUIDs for seed data — stable across restarts, usable in tests */
-export const SEED_IDS = {
-    USER_DEFAULT: "00000000-0000-4000-8000-000000000001",
-    USER_TEST_PLAYER: "00000000-0000-4000-8000-000000000002",
-    CONV_MITFLIT: "00000000-0000-4000-8000-000000000010",
-    CONV_CHANDELIER: "00000000-0000-4000-8000-000000000011",
-    CONV_REAGENTS: "00000000-0000-4000-8000-000000000012",
-    RULE_MITFLIT_KING: "00000000-0000-4000-8000-000000000020",
-    RULE_SAMPLE_SPELL: "00000000-0000-4000-8000-000000000021",
-};
+import { db } from "./database.js";
 
 /**
  * Seeds the database with initial data if conversations table is empty.

@@ -9,8 +9,9 @@ describe("conversations routes", () => {
     let app;
     /** @type {ReturnType<typeof createDb>} */
     let db;
+    /** @type {string} */
     let sessionToken;
-    /** @type {import("../db/seed.js").SEED_IDS} */
+    /** @type {{ USER_DEFAULT: string, USER_TEST_PLAYER: string }} */
     let SEED_IDS;
 
     beforeEach(async () => {
@@ -258,8 +259,8 @@ describe("users routes", () => {
     let app;
     /** @type {import("bun:sqlite").Database} */
     let db;
+    /** @type {string} */
     let sessionToken;
-    /** @type {import("../db/seed.js").SEED_IDS} */
     let SEED_IDS;
 
     beforeEach(async () => {

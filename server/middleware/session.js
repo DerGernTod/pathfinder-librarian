@@ -19,7 +19,10 @@ const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 export function sessionMiddleware(options = {}) {
     const database = options.database || defaultDb;
 
-    return async (c, next) => {
+    return async (
+        /** @type {import("hono").Context} */ c,
+        /** @type {import("hono").Next} */ next,
+    ) => {
         // Try to get cookie using getCookie, or fall back to manual parsing
         let token = getCookie(c, SESSION_COOKIE_NAME);
 
@@ -30,7 +33,7 @@ export function sessionMiddleware(options = {}) {
                 const match = cookieHeader.match(
                     new RegExp(`(^|;\\s*)${SESSION_COOKIE_NAME}=([^;]*)`),
                 );
-                token = match ? match[2] : null;
+                token = match ? match[2] : undefined;
             }
         }
 

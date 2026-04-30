@@ -54,7 +54,7 @@ test.describe("main page visual regression", () => {
 });
 
 test.describe("stat block visual regression", () => {
-    test.beforeEach(async ({ _page, context }) => {
+    test.beforeEach(async ({ page: _page, context }) => {
         // Reset DB and login
         const res = await fetch("http://localhost:3000/api/test/reset-db", { method: "POST" });
         expect(res.ok).toBe(true);
@@ -155,7 +155,7 @@ test.describe("stat block visual regression", () => {
 });
 
 test.describe("mode toggle visual regression", () => {
-    test.beforeEach(async ({ _page, context }) => {
+    test.beforeEach(async ({ page: _page, context }) => {
         // Reset DB and login
         const res = await fetch("http://localhost:3000/api/test/reset-db", { method: "POST" });
         expect(res.ok).toBe(true);
@@ -239,7 +239,7 @@ test.describe("mode toggle visual regression", () => {
 });
 
 test.describe("sidebar toggle visual regression", () => {
-    test.beforeEach(async ({ _page, context }) => {
+    test.beforeEach(async ({ page: _page, context }) => {
         // Reset DB and login
         const res = await fetch("http://localhost:3000/api/test/reset-db", { method: "POST" });
         expect(res.ok).toBe(true);

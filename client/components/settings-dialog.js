@@ -99,15 +99,13 @@ class SettingsDialog extends LitElement {
     ];
 
     static properties = {
-        /** @type {boolean} */ open: { type: Boolean },
-        /** @type {AuthUser} */ user: { type: Object },
-        /** @type {Array<{id: string, deviceType: string, createdAt: string}>} */ devices: {
-            type: Array,
-        },
-        /** @type {string} */ nameInput: { type: String },
-        /** @type {Mode} */ modeInput: { type: String },
-        /** @type {boolean} */ loading: { type: Boolean },
-        /** @type {string} */ error: { type: String },
+        open: { type: Boolean },
+        user: { type: Object },
+        devices: { type: Array },
+        nameInput: { type: String },
+        modeInput: { type: String },
+        loading: { type: Boolean },
+        error: { type: String },
     };
 
     constructor() {
@@ -128,6 +126,7 @@ class SettingsDialog extends LitElement {
         this.error = "";
     }
 
+    /** @param {Map<string, unknown>} changedProperties */
     updated(changedProperties) {
         super.updated(changedProperties);
 

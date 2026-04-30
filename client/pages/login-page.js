@@ -2,7 +2,6 @@ import { LitElement, css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
-import { SEED_IDS } from "../../server/db/seed.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
 import { registerWithPasskey, loginWithPasskey, quickLogin } from "../utils/auth-client.js";
@@ -66,22 +65,6 @@ class LoginPage extends LitElement {
             sl-button {
                 width: 100%;
             }
-            .divider {
-                display: flex;
-                align-items: center;
-                margin: 1.5rem 0;
-                color: var(--muted-foreground);
-                font-size: 0.875rem;
-            }
-            .divider::before,
-            .divider::after {
-                content: "";
-                flex: 1;
-                border-bottom: 1px solid var(--border);
-            }
-            .divider span {
-                padding: 0 1rem;
-            }
             .test-users {
                 margin-top: 1.5rem;
                 padding-top: 1.5rem;
@@ -130,22 +113,31 @@ class LoginPage extends LitElement {
     ];
 
     static properties = {
-        /** @type {string} */ name: { type: String },
-        /** @type {boolean} */ loading: { type: Boolean },
-        /** @type {string} */ error: { type: String },
-        /** @type {boolean} */ isRegistering: { type: Boolean },
+        name: { type: String },
+        loading: { type: Boolean },
+        error: { type: String },
+        testUsers: { type: Array },
     };
 
     constructor() {
         super();
-        /** @type {string} */
         this.name = "";
-        /** @type {boolean} */
         this.loading = false;
-        /** @type {string} */
         this.error = "";
-        /** @type {boolean} */
-        this.isRegistering = false;
+        /** @type {Array<{id: string, name: string, mode: string}>} */
+        this.testUsers = [];
+    }
+
+    async firstUpdated() {
+        try {
+            const res = await fetch("/api/auth/test-users");
+            if (res.ok) {
+                const data = await res.json();
+                this.testUsers = data.data;
+            }
+        } catch {
+            // Not in dev mode or endpoint unavailable
+        }
     }
 
     render() {
@@ -188,40 +180,32 @@ class LoginPage extends LitElement {
                         </div>
                     </div>
 
-                    ${process.env.NODE_ENV !== "production"
+                    ${this.testUsers.length > 0
                         ? html`
                               <div class="test-users">
                                   <h3>Quick Login (Dev Only)</h3>
-                                  <div class="test-user-item">
-                                      <span>
-                                          <span class="test-user-name">Pathfinder GM</span>
-                                          <span class="test-user-mode">GM Mode</span>
-                                      </span>
-                                      <sl-button
-                                          class="quick-login-button"
-                                          size="small"
-                                          @click=${() =>
-                                              this.handleQuickLogin(SEED_IDS.USER_DEFAULT)}
-                                          ?disabled=${this.loading}
-                                      >
-                                          Quick Login
-                                      </sl-button>
-                                  </div>
-                                  <div class="test-user-item">
-                                      <span>
-                                          <span class="test-user-name">Valeros</span>
-                                          <span class="test-user-mode">Player Mode</span>
-                                      </span>
-                                      <sl-button
-                                          class="quick-login-button"
-                                          size="small"
-                                          @click=${() =>
-                                              this.handleQuickLogin(SEED_IDS.USER_TEST_PLAYER)}
-                                          ?disabled=${this.loading}
-                                      >
-                                          Quick Login
-                                      </sl-button>
-                                  </div>
+                                  ${this.testUsers.map(
+                                      (user) => html`
+                                          <div class="test-user-item">
+                                              <span>
+                                                  <span class="test-user-name">${user.name}</span>
+                                                  <span class="test-user-mode"
+                                                      >${user.mode === "gm"
+                                                          ? "GM Mode"
+                                                          : "Player Mode"}</span
+                                                  >
+                                              </span>
+                                              <sl-button
+                                                  class="quick-login-button"
+                                                  size="small"
+                                                  @click=${() => this.handleQuickLogin(user.id)}
+                                                  ?disabled=${this.loading}
+                                              >
+                                                  Quick Login
+                                              </sl-button>
+                                          </div>
+                                      `,
+                                  )}
                               </div>
                           `
                         : ""}
@@ -230,6 +214,7 @@ class LoginPage extends LitElement {
         `;
     }
 
+    /** @param {Event & { target: HTMLInputElement }} e */
     handleNameInput(e) {
         this.name = e.target.value;
     }
@@ -247,7 +232,7 @@ class LoginPage extends LitElement {
                     composed: true,
                 }),
             );
-        } catch (err) {
+        } catch (/** @type {Error} */ err) {
             this.error = err.message || "Failed to sign in. Please try again.";
         } finally {
             this.loading = false;
@@ -272,13 +257,14 @@ class LoginPage extends LitElement {
                     composed: true,
                 }),
             );
-        } catch (err) {
+        } catch (/** @type {Error} */ err) {
             this.error = err.message || "Failed to create account. Please try again.";
         } finally {
             this.loading = false;
         }
     }
 
+    /** @param {string} userId */
     async handleQuickLogin(userId) {
         this.loading = true;
         this.error = "";
@@ -292,7 +278,7 @@ class LoginPage extends LitElement {
                     composed: true,
                 }),
             );
-        } catch (err) {
+        } catch (/** @type {Error} */ err) {
             this.error = err.message || "Failed to sign in. Please try again.";
         } finally {
             this.loading = false;
