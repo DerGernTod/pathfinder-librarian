@@ -2,17 +2,20 @@ import "../components/chat-header.js";
 import "../components/chat-input.js";
 import "../components/chat-sidebar.js";
 import "../components/message-list.js";
+import "../components/settings-dialog.js";
 import { LitElement, css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
+import { logout } from "../utils/auth-client.js";
 import { client } from "../utils/rpc-client.js";
 
 /** @typedef {import("../../shared/types.js").Conversation} Conversation */
 /** @typedef {import("../../shared/types.js").Message} Message */
 /** @typedef {import("../../shared/types.js").Mode} Mode */
+/** @typedef {import("../../shared/types.js").AuthUser} AuthUser */
 
 class MainPage extends LitElement {
     static styles = [
@@ -57,6 +60,8 @@ class MainPage extends LitElement {
         mode: { type: String },
         loading: { type: Boolean },
         sidebarExpanded: { type: Boolean },
+        /** @type {AuthUser} */ user: { type: Object },
+        /** @type {boolean} */ settingsOpen: { type: Boolean },
     };
 
     constructor() {
@@ -72,10 +77,19 @@ class MainPage extends LitElement {
         /** @type {boolean} */
         this.loading = true;
         this.sidebarExpanded = true;
+        /** @type {AuthUser | null} */
+        this.user = null;
+        /** @type {boolean} */
+        this.settingsOpen = false;
     }
 
     async firstUpdated() {
         try {
+            // Set mode from user
+            if (this.user) {
+                this.mode = this.user.mode;
+            }
+
             // Step 1: Fetch conversations list
             const convRes = await client.api.conversations.$get();
             const convResult = await convRes.json();
@@ -105,9 +119,14 @@ class MainPage extends LitElement {
                     .activeId=${this.activeConversationId}
                     .mode=${this.mode}
                     .expanded=${this.sidebarExpanded}
+                    .user=${this.user}
                     @new-chat=${this.handleNewChat}
                     @select-conversation=${this.handleSelectConversation}
                     @toggle-sidebar=${this.handleSidebarToggle}
+                    @logout=${this.handleLogout}
+                    @open-settings=${() => {
+                        this.settingsOpen = true;
+                    }}
                 ></chat-sidebar>
                 <main class="main">
                     <chat-header
@@ -124,6 +143,15 @@ class MainPage extends LitElement {
                     ></chat-input>
                 </main>
             </div>
+            <settings-dialog
+                .open=${this.settingsOpen}
+                .user=${this.user}
+                @settings-closed=${() => {
+                    this.settingsOpen = false;
+                }}
+                @settings-updated=${this.handleSettingsUpdated}
+                @account-deleted=${this.handleAccountDeleted}
+            ></settings-dialog>
         `;
     }
 
@@ -146,7 +174,7 @@ class MainPage extends LitElement {
 
     async handleNewChat() {
         const res = await client.api.conversations.$post({
-            json: { title: "New Conversation", userId: "00000000-0000-4000-8000-000000000001" },
+            json: { title: "New Conversation" },
         });
         const conv = await res.json();
         this.conversations = [...this.conversations, conv.data];
@@ -190,6 +218,34 @@ class MainPage extends LitElement {
     /** @param {CustomEvent<{ expanded: boolean }>} e */
     handleSidebarToggle(e) {
         this.sidebarExpanded = e.detail.expanded;
+    }
+
+    async handleLogout() {
+        await logout();
+        this.dispatchEvent(
+            new CustomEvent("user-logged-out", {
+                bubbles: true,
+                composed: true,
+            }),
+        );
+    }
+
+    /**
+     * @param {CustomEvent<{ user: AuthUser }>} e
+     */
+    handleSettingsUpdated(e) {
+        this.user = e.detail.user;
+        this.mode = this.user.mode;
+    }
+
+    async handleAccountDeleted() {
+        await logout();
+        this.dispatchEvent(
+            new CustomEvent("user-logged-out", {
+                bubbles: true,
+                composed: true,
+            }),
+        );
     }
 }
 

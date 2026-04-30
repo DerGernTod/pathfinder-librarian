@@ -22,12 +22,17 @@ const conversationSchema = z.object({
 
 const createConversationSchema = z.object({
     title: z.string().min(1).max(200),
-    userId: z.string().uuid(),
 });
 
 const createMessageSchema = z.object({
     content: z.string().min(1),
     mode: z.enum(["player", "gm"]),
+});
+
+const updateUserSchema = z.object({
+    name: z.string().min(1).max(100).optional(),
+    mode: z.enum(["gm", "player"]).optional(),
+    subtitle: z.string().max(200).optional(),
 });
 
 export {
@@ -38,4 +43,5 @@ export {
     conversationSchema,
     createConversationSchema,
     createMessageSchema,
+    updateUserSchema,
 };

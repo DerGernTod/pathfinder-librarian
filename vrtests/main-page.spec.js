@@ -1,11 +1,36 @@
 import { expect, test } from "playwright/test";
 
 test.describe("main page visual regression", () => {
-    test.beforeEach(async ({ page }) => {
-        await page.goto("/");
+    test.beforeEach(async ({ page, context }) => {
         // Reset DB to clean seeded state before each test
         const res = await fetch("http://localhost:3000/api/test/reset-db", { method: "POST" });
         expect(res.ok).toBe(true);
+
+        // Quick-login as default seed user
+        const loginRes = await fetch("http://localhost:3000/api/auth/quick-login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: "00000000-0000-4000-8000-000000000001" }),
+        });
+        expect(loginRes.ok).toBe(true);
+
+        // Set the session cookie on the page context
+        const setCookieHeader = loginRes.headers.get("set-cookie");
+        if (setCookieHeader) {
+            const cookieMatch = setCookieHeader.match(/session_token=([^;]+)/);
+            if (cookieMatch) {
+                await context.addCookies([
+                    {
+                        name: "session_token",
+                        value: cookieMatch[1],
+                        domain: "localhost",
+                        path: "/",
+                    },
+                ]);
+            }
+        }
+
+        await page.goto("/");
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
     });
@@ -29,6 +54,34 @@ test.describe("main page visual regression", () => {
 });
 
 test.describe("stat block visual regression", () => {
+    test.beforeEach(async ({ _page, context }) => {
+        // Reset DB and login
+        const res = await fetch("http://localhost:3000/api/test/reset-db", { method: "POST" });
+        expect(res.ok).toBe(true);
+
+        const loginRes = await fetch("http://localhost:3000/api/auth/quick-login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: "00000000-0000-4000-8000-000000000001" }),
+        });
+        expect(loginRes.ok).toBe(true);
+
+        const setCookieHeader = loginRes.headers.get("set-cookie");
+        if (setCookieHeader) {
+            const cookieMatch = setCookieHeader.match(/session_token=([^;]+)/);
+            if (cookieMatch) {
+                await context.addCookies([
+                    {
+                        name: "session_token",
+                        value: cookieMatch[1],
+                        domain: "localhost",
+                        path: "/",
+                    },
+                ]);
+            }
+        }
+    });
+
     test("full stat block with all features", async ({ page }) => {
         await page.goto("/");
         await page.waitForSelector("main-page");
@@ -102,6 +155,34 @@ test.describe("stat block visual regression", () => {
 });
 
 test.describe("mode toggle visual regression", () => {
+    test.beforeEach(async ({ _page, context }) => {
+        // Reset DB and login
+        const res = await fetch("http://localhost:3000/api/test/reset-db", { method: "POST" });
+        expect(res.ok).toBe(true);
+
+        const loginRes = await fetch("http://localhost:3000/api/auth/quick-login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: "00000000-0000-4000-8000-000000000001" }),
+        });
+        expect(loginRes.ok).toBe(true);
+
+        const setCookieHeader = loginRes.headers.get("set-cookie");
+        if (setCookieHeader) {
+            const cookieMatch = setCookieHeader.match(/session_token=([^;]+)/);
+            if (cookieMatch) {
+                await context.addCookies([
+                    {
+                        name: "session_token",
+                        value: cookieMatch[1],
+                        domain: "localhost",
+                        path: "/",
+                    },
+                ]);
+            }
+        }
+    });
+
     test("player mode header", async ({ page }) => {
         await page.goto("/");
         await page.waitForSelector("chat-header");
@@ -158,6 +239,34 @@ test.describe("mode toggle visual regression", () => {
 });
 
 test.describe("sidebar toggle visual regression", () => {
+    test.beforeEach(async ({ _page, context }) => {
+        // Reset DB and login
+        const res = await fetch("http://localhost:3000/api/test/reset-db", { method: "POST" });
+        expect(res.ok).toBe(true);
+
+        const loginRes = await fetch("http://localhost:3000/api/auth/quick-login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: "00000000-0000-4000-8000-000000000001" }),
+        });
+        expect(loginRes.ok).toBe(true);
+
+        const setCookieHeader = loginRes.headers.get("set-cookie");
+        if (setCookieHeader) {
+            const cookieMatch = setCookieHeader.match(/session_token=([^;]+)/);
+            if (cookieMatch) {
+                await context.addCookies([
+                    {
+                        name: "session_token",
+                        value: cookieMatch[1],
+                        domain: "localhost",
+                        path: "/",
+                    },
+                ]);
+            }
+        }
+    });
+
     test("sidebar expanded state", async ({ page }) => {
         await page.goto("/");
         await page.waitForSelector("main-page");

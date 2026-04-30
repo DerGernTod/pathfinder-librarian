@@ -3,7 +3,6 @@ import { Hono } from "hono";
 import z from "zod";
 
 import { uuidSchema, ruleItemTypeSchema } from "../../shared/schemas.js";
-import { db } from "../db/database.js";
 import * as queries from "../db/queries.js";
 
 /**
@@ -15,6 +14,7 @@ export function createRuleItemsRouter() {
             "/",
             zValidator("query", z.object({ type: ruleItemTypeSchema.optional() })),
             async (c) => {
+                const db = c.get("db");
                 const { type } = c.req.valid("query");
                 return c.json({
                     result: /** @type {"success"} */ ("success"),
@@ -23,6 +23,7 @@ export function createRuleItemsRouter() {
             },
         )
         .get("/:id", zValidator("param", z.object({ id: uuidSchema })), async (c) => {
+            const db = c.get("db");
             const { id } = c.req.valid("param");
             const item = queries.getRuleItemById(db, id);
             if (!item) {

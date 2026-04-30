@@ -98,6 +98,7 @@ class ChatSidebar extends LitElement {
         activeId: { type: String },
         mode: { type: String },
         expanded: { type: Boolean },
+        /** @type {import("../../shared/types.js").AuthUser} */ user: { type: Object },
     };
 
     constructor() {
@@ -109,6 +110,8 @@ class ChatSidebar extends LitElement {
         /** @type {Mode} */
         this.mode = "gm";
         this.expanded = true;
+        /** @type {import("../../shared/types.js").AuthUser | null} */
+        this.user = null;
     }
 
     /**
@@ -147,9 +150,7 @@ class ChatSidebar extends LitElement {
                 </div>
                 <sidebar-profile
                     .mode=${this.mode}
-                    .name=${"Game Master 01"}
-                    .subtitle=${"PF2e Remaster Rules"}
-                    .initials=${"GM"}
+                    .user=${this.user}
                     ?collapsed=${!this.expanded}
                 ></sidebar-profile>
             </aside>
@@ -168,6 +169,24 @@ class ChatSidebar extends LitElement {
         this.dispatchEvent(
             new CustomEvent("toggle-sidebar", {
                 detail: { expanded: this.expanded },
+                bubbles: true,
+                composed: true,
+            }),
+        );
+    }
+
+    handleLogout() {
+        this.dispatchEvent(
+            new CustomEvent("logout", {
+                bubbles: true,
+                composed: true,
+            }),
+        );
+    }
+
+    handleOpenSettings() {
+        this.dispatchEvent(
+            new CustomEvent("open-settings", {
                 bubbles: true,
                 composed: true,
             }),

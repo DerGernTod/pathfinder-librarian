@@ -3,6 +3,9 @@ import { serveStatic } from "hono/bun";
 
 import { db } from "./db/database.js";
 import { seedIfNeeded, resetAndReseedDb, SEED_IDS } from "./db/seed.js";
+import { databaseMiddleware } from "./middleware/database.js";
+import { sessionMiddleware } from "./middleware/session.js";
+import { authRouter } from "./routes/auth.js";
 import { conversationsRouter } from "./routes/conversations.js";
 import { ruleItemsRouter } from "./routes/rule-items.js";
 import { usersRouter } from "./routes/users.js";
@@ -11,6 +14,13 @@ import { usersRouter } from "./routes/users.js";
 seedIfNeeded(db);
 
 const app = new Hono()
+    // Database middleware (sets db in context for all routes)
+    .use("/api/*", databaseMiddleware())
+    // Auth routes (no session required for most)
+    .route("/api/auth", authRouter)
+    // Session-protected API routes
+    .use("/api/conversations/*", sessionMiddleware())
+    .use("/api/rule-items/*", sessionMiddleware())
     .route("/api/conversations", conversationsRouter)
     .route("/api/rule-items", ruleItemsRouter)
     .route("/api/users", usersRouter);
@@ -42,5 +52,5 @@ export default {
     fetch: app.fetch,
 };
 
-// Export SEED_IDS for use in client (specifically DEFAULT_USER_ID for creating conversations)
+// Export SEED_IDS for use in client
 export { SEED_IDS };

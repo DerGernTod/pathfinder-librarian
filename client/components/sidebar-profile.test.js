@@ -35,10 +35,11 @@ describe("sidebar-profile", () => {
         expect(getByText(el.shadowRoot, "PF2e Remaster Rules")).toBeTruthy();
     });
 
-    it("renders initials in avatar", async () => {
+    it("renders profile menu with initials", async () => {
         const el = createProfile("", "", "GM");
         await el.updateComplete;
-        expect(getByText(el.shadowRoot, "GM")).toBeTruthy();
+        const profileMenu = el.shadowRoot.querySelector("profile-menu");
+        expect(profileMenu).toBeTruthy();
     });
 
     it("renders with profile wrapper", async () => {
@@ -84,13 +85,12 @@ describe("sidebar-profile", () => {
         expect(textContainer).toBeTruthy();
     });
 
-    it("always shows avatar when collapsed", async () => {
+    it("always shows profile menu when collapsed", async () => {
         const el = createProfile("Game Master 01", "PF2e Remaster Rules", "GM");
         el.collapsed = true;
         await el.updateComplete;
-        const avatar = el.shadowRoot.querySelector(".avatar");
-        expect(avatar).toBeTruthy();
-        expect(avatar.classList.contains("hidden")).toBe(false);
+        const profileMenu = el.shadowRoot.querySelector("profile-menu");
+        expect(profileMenu).toBeTruthy();
     });
 
     it("provides aria-label when collapsed", async () => {

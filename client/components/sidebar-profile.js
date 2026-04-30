@@ -4,8 +4,10 @@ import { customElement } from "lit/decorators.js";
 
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
+import "./profile-menu.js";
 
 /** @typedef {import("../../shared/types.js").Mode} Mode */
+/** @typedef {import("../../shared/types.js").AuthUser} AuthUser */
 
 /**
  * @customElement sidebar-profile
@@ -89,6 +91,7 @@ class SidebarProfile extends LitElement {
         initials: { type: String },
         mode: { type: String },
         collapsed: { type: Boolean },
+        /** @type {AuthUser} */ user: { type: Object },
     };
 
     constructor() {
@@ -103,6 +106,17 @@ class SidebarProfile extends LitElement {
         this.mode = "gm";
         /** @type {boolean} */
         this.collapsed = false;
+        /** @type {AuthUser | null} */
+        this.user = null;
+    }
+
+    willUpdate(changedProperties) {
+        // Sync user object properties to individual properties when user changes
+        if (changedProperties.has("user") && this.user) {
+            this.name = this.user.name || "";
+            this.subtitle = this.user.subtitle || "";
+            this.initials = this.user.initials || "";
+        }
     }
 
     render() {
@@ -111,13 +125,35 @@ class SidebarProfile extends LitElement {
                 class="profile ${this.collapsed ? "collapsed" : ""}"
                 aria-label=${this.collapsed ? `${this.name} - ${this.subtitle}` : ""}
             >
-                <div class="avatar">${this.initials}</div>
+                <profile-menu
+                    .mode=${this.mode}
+                    @logout=${this.handleLogout}
+                    @open-settings=${this.handleOpenSettings}
+                ></profile-menu>
                 <div class="text-container">
                     <p class="name">${this.name}</p>
                     <p class="subtitle">${this.subtitle}</p>
                 </div>
             </div>
         `;
+    }
+
+    handleLogout() {
+        this.dispatchEvent(
+            new CustomEvent("logout", {
+                bubbles: true,
+                composed: true,
+            }),
+        );
+    }
+
+    handleOpenSettings() {
+        this.dispatchEvent(
+            new CustomEvent("open-settings", {
+                bubbles: true,
+                composed: true,
+            }),
+        );
     }
 }
 

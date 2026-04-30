@@ -23,6 +23,7 @@
     "dependencies": {
         "@hono/zod-validator": "0.7.6",
         "@shoelace-style/shoelace": "2.20.1",
+        "@simplewebauthn/server": "10.0.0",
         "hono": "4.12.14",
         "lit": "3.3.2",
         "lit-element": "4.2.2",
