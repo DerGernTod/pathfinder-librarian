@@ -150,7 +150,7 @@ export function getRuleItemById(database, id) {
 /**
  * Gets all users.
  * @param {import("bun:sqlite").Database} database - The database instance
- * @returns {Array<{ id: string, name: string, initials: string, subtitle: string, mode: "gm" | "player", email: string | null, isTestUser: number, webauthnUserId: string | null }>}
+ * @returns {Array<{ id: string, name: string, initials: string, subtitle: string, mode: string, email: string | null, isTestUser: boolean, webauthnUserId: string | null }>}
  */
 export function getUsers(database = db) {
     const rows = database
@@ -158,7 +158,16 @@ export function getUsers(database = db) {
             "SELECT id, name, initials, subtitle, mode, email, is_test_user, webauthn_user_id FROM users",
         )
         .all();
-    return rows;
+    return rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        initials: row.initials,
+        subtitle: row.subtitle,
+        mode: row.mode,
+        email: row.email,
+        isTestUser: row.is_test_user === 1,
+        webauthnUserId: row.webauthn_user_id,
+    }));
 }
 
 /**

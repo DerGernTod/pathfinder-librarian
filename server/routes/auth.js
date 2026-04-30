@@ -65,6 +65,7 @@ export function createAuthRouter() {
                 .slice(0, 2)
                 .join("");
 
+            /** @type {{ id: string, name: string, initials: string, subtitle: string, mode: string, email: string | null, isTestUser: boolean, webauthnUserId: string | null } | undefined} */
             let user = queries
                 .getUsers(db)
                 .find((u) => u.name.toLowerCase() === name.toLowerCase());
@@ -85,42 +86,14 @@ export function createAuthRouter() {
                     newUser.id,
                 ]);
 
-                const updatedUser = queries.getUserById(db, newUser.id);
-                if (!updatedUser) {
-                    return c.json({ result: "error", message: "Failed to create user" }, 500);
-                }
-                user =
-                    /** @type {{ id: string, name: string, initials: string, subtitle: string, mode: "gm" | "player", email: string | null, isTestUser: number, webauthnUserId: string | null }} */ ({
-                        id: updatedUser.id,
-                        name: updatedUser.name,
-                        initials: updatedUser.initials,
-                        subtitle: updatedUser.subtitle,
-                        mode: updatedUser.mode === "gm" ? "gm" : "player",
-                        email: updatedUser.email,
-                        isTestUser: updatedUser.isTestUser ? 1 : 0,
-                        webauthnUserId: updatedUser.webauthnUserId,
-                    });
+                user = queries.getUserById(db, newUser.id) ?? undefined;
             } else if (!user.webauthnUserId) {
                 const webauthnUserId = crypto.randomUUID();
                 db.run("UPDATE users SET webauthn_user_id = ? WHERE id = ?", [
                     webauthnUserId,
                     user.id,
                 ]);
-                const updatedUser = queries.getUserById(db, user.id);
-                if (!updatedUser) {
-                    return c.json({ result: "error", message: "Failed to update user" }, 500);
-                }
-                user =
-                    /** @type {{ id: string, name: string, initials: string, subtitle: string, mode: "gm" | "player", email: string | null, isTestUser: number, webauthnUserId: string | null }} */ ({
-                        id: updatedUser.id,
-                        name: updatedUser.name,
-                        initials: updatedUser.initials,
-                        subtitle: updatedUser.subtitle,
-                        mode: updatedUser.mode === "gm" ? "gm" : "player",
-                        email: updatedUser.email,
-                        isTestUser: updatedUser.isTestUser ? 1 : 0,
-                        webauthnUserId: updatedUser.webauthnUserId,
-                    });
+                user = queries.getUserById(db, user.id) ?? undefined;
             }
 
             if (!user || !user.webauthnUserId) {

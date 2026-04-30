@@ -5,6 +5,11 @@ import { customElement } from "lit/decorators.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
 
+import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/dropdown/dropdown.js?deps=lit@3.3.2";
+import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/menu/menu.js?deps=lit@3.3.2";
+import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/menu-item/menu-item.js?deps=lit@3.3.2";
+import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/divider/divider.js?deps=lit@3.3.2";
+
 /** @typedef {import("../../shared/types.js").Mode} Mode */
 
 class ProfileMenu extends LitElement {
@@ -60,7 +65,7 @@ class ProfileMenu extends LitElement {
 
     render() {
         return html`
-            <sl-dropdown placement="top-end">
+            <sl-dropdown placement="bottom-end" distance="4">
                 <button class="avatar" slot="trigger" aria-label="User menu">
                     ${this.initials}
                 </button>
