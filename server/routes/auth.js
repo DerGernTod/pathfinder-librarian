@@ -93,7 +93,7 @@ export function createAuthRouter() {
                 excludeCredentials: queries.getCredentialsByUser(db, user.id).map((cred) => ({
                     id: cred.id,
                     transports:
-                        /** @type {import("@simplewebauthn/types").AuthenticatorTransport[]} */ (
+                        /** @type {import("@simplewebauthn/server").AuthenticatorTransport[]} */ (
                             cred.transports || []
                         ),
                 })),
@@ -134,7 +134,7 @@ export function createAuthRouter() {
 
             const verification = await verifyRegistrationResponse({
                 response:
-                    /** @type {import("@simplewebauthn/types").RegistrationResponseJSON} */ (
+                    /** @type {import("@simplewebauthn/server").RegistrationResponseJSON} */ (
                         /** @type {unknown} */ (credential)
                     ),
                 expectedChallenge: challenge.challenge,
@@ -206,7 +206,7 @@ export function createAuthRouter() {
                 allowCredentials: allCredentials.map((cred) => ({
                     id: cred.id,
                     transports:
-                        /** @type {import("@simplewebauthn/types").AuthenticatorTransport[]} */ (
+                        /** @type {import("@simplewebauthn/server").AuthenticatorTransport[]} */ (
                             cred.transports || []
                         ),
                 })),
@@ -243,7 +243,7 @@ export function createAuthRouter() {
 
             const verification = await verifyAuthenticationResponse({
                 response:
-                    /** @type {import("@simplewebauthn/types").AuthenticationResponseJSON} */ (
+                    /** @type {import("@simplewebauthn/server").AuthenticationResponseJSON} */ (
                         /** @type {unknown} */ (credential)
                     ),
                 expectedChallenge: challenge.challenge,
@@ -254,7 +254,7 @@ export function createAuthRouter() {
                     publicKey: Buffer.from(storedCredential.publicKey, "base64"),
                     counter: storedCredential.counter,
                     transports:
-                        /** @type {import("@simplewebauthn/types").AuthenticatorTransport[]} */ (
+                        /** @type {import("@simplewebauthn/server").AuthenticatorTransport[]} */ (
                             storedCredential.transports || []
                         ),
                 },
@@ -392,7 +392,7 @@ export function createAuthRouter() {
                     excludeCredentials: queries.getCredentialsByUser(db, userId).map((cred) => ({
                         id: cred.id,
                         transports:
-                            /** @type {import("@simplewebauthn/types").AuthenticatorTransport[]} */ (
+                            /** @type {import("@simplewebauthn/server").AuthenticatorTransport[]} */ (
                                 cred.transports || []
                             ),
                     })),
@@ -434,7 +434,7 @@ export function createAuthRouter() {
 
                 const verification = await verifyRegistrationResponse({
                     response:
-                        /** @type {import("@simplewebauthn/types").RegistrationResponseJSON} */ (
+                        /** @type {import("@simplewebauthn/server").RegistrationResponseJSON} */ (
                             /** @type {unknown} */ (credential)
                         ),
                     expectedChallenge: challenge.challenge,

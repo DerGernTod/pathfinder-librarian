@@ -189,28 +189,28 @@ class LoginPage extends LitElement {
                               <div class="test-users">
                                   <h4>Quick Login (Dev Only)</h4>
                                   <div class="test-user-list">
-                                    ${this.testUsers.map(
-                                        (user) => html`
-                                            <div class="test-user-item">
-                                                <span>
-                                                    <div class="test-user-name">${user.name}</div>
-                                                    <div class="test-user-mode"
-                                                        >${user.mode === "gm"
-                                                            ? "GM Mode"
-                                                            : "Player Mode"}</div
-                                                    >
-                                                </span>
-                                                <sl-button
-                                                    class="quick-login-button"
-                                                    size="small"
-                                                    @click=${() => this.handleQuickLogin(user.id)}
-                                                    ?disabled=${this.loading}
-                                                >
-                                                    Quick Login
-                                                </sl-button>
-                                            </div>
-                                        `,
-                                    )}
+                                      ${this.testUsers.map(
+                                          (user) => html`
+                                              <div class="test-user-item">
+                                                  <span>
+                                                      <div class="test-user-name">${user.name}</div>
+                                                      <div class="test-user-mode">
+                                                          ${user.mode === "gm"
+                                                              ? "GM Mode"
+                                                              : "Player Mode"}
+                                                      </div>
+                                                  </span>
+                                                  <sl-button
+                                                      class="quick-login-button"
+                                                      size="small"
+                                                      @click=${() => this.handleQuickLogin(user.id)}
+                                                      ?disabled=${this.loading}
+                                                  >
+                                                      Quick Login
+                                                  </sl-button>
+                                              </div>
+                                          `,
+                                      )}
                                   </div>
                               </div>
                           `

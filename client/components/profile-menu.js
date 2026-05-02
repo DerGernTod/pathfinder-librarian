@@ -43,9 +43,9 @@ class ProfileMenu extends LitElement {
                 box-shadow: 0 0 0 3px hsla(262, 83%, 58%, 0.3);
             }
             sl-dropdown::part(panel) {
-                    min-height: 2rem;
-                    max-height: none;
-                    overflow: visible;
+                min-height: 2rem;
+                max-height: none;
+                overflow: visible;
             }
             sl-menu-item {
                 display: flex;
