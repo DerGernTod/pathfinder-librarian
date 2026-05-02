@@ -1,7 +1,6 @@
 ---
 description: Transform the approved `PLAN.md` into functional, tested code.
 mode: subagent
-model: zai-coding-plan/glm-4.7
 temperature: 0.5
 ---
 
