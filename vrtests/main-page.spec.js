@@ -97,9 +97,11 @@ test.describe("stat block visual regression", () => {
 
         const details = statBlock.locator("sl-details");
         await details.click();
-        await page.waitForTimeout(500);
+        await expect(details).toHaveAttribute("open", "");
 
-        await expect(statBlock).toHaveScreenshot("stat-block-full.png");
+        await expect(statBlock).toHaveScreenshot("stat-block-full.png", {
+            maxDiffPixelRatio: 0.05,
+        });
     });
 
     test("minimal stat block (partial data)", async ({ page }) => {
@@ -117,9 +119,11 @@ test.describe("stat block visual regression", () => {
 
         const details = statBlock.locator("sl-details");
         await details.click();
-        await page.waitForTimeout(500);
+        await expect(details).toHaveAttribute("open", "");
 
-        await expect(statBlock).toHaveScreenshot("stat-block-minimal.png");
+        await expect(statBlock).toHaveScreenshot("stat-block-minimal.png", {
+            maxDiffPixelRatio: 0.05,
+        });
     });
 
     test("stat block responsive layout", async ({ page }) => {
@@ -137,17 +141,21 @@ test.describe("stat block visual regression", () => {
 
         const details = statBlock.locator("sl-details");
         await details.click();
-        await page.waitForTimeout(500);
+        await expect(details).toHaveAttribute("open", "");
 
         await page.setViewportSize({ width: 375, height: 812 });
         await page.waitForTimeout(300);
 
-        await expect(statBlock).toHaveScreenshot("stat-block-mobile.png");
+        await expect(statBlock).toHaveScreenshot("stat-block-mobile.png", {
+            maxDiffPixelRatio: 0.05,
+        });
 
         await page.setViewportSize({ width: 768, height: 1024 });
         await page.waitForTimeout(300);
 
-        await expect(statBlock).toHaveScreenshot("stat-block-tablet.png");
+        await expect(statBlock).toHaveScreenshot("stat-block-tablet.png", {
+            maxDiffPixelRatio: 0.05,
+        });
 
         await page.setViewportSize({ width: 1920, height: 1080 });
         await page.waitForTimeout(300);

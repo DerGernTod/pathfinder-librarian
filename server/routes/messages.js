@@ -49,26 +49,37 @@ export const messagesRouter = new Hono()
                     );
 
                     const blocks = [];
-                    for await (const block of streamMockResponse()) {
-                        blocks.push(block);
-                        controller.enqueue(
-                            JSON.stringify({ type: "assistantChunk", data: block }) + "\n",
-                        );
+                    try {
+                        for await (const block of streamMockResponse()) {
+                            blocks.push(block);
+                            controller.enqueue(
+                                JSON.stringify({ type: "assistantChunk", data: block }) + "\n",
+                            );
+                            // Add additional delay here
+                            await new Promise((resolve) => setTimeout(resolve, 100));
+                        }
+                    } catch {
+                        // Streaming interrupted
+                    } finally {
+                        // Save assistant message to DB
+                        const assistantMsg = queries.createMessage(db, {
+                            conversationId: convId,
+                            role: "assistant",
+                            mode: data.mode,
+                            content: null,
+                            blocksJson: JSON.stringify(blocks),
+                        });
+
+                        try {
+                            controller.enqueue(
+                                JSON.stringify({ type: "assistantComplete", data: assistantMsg }) +
+                                    "\n",
+                            );
+                            controller.close();
+                        } catch {
+                            // Controller might already be closed if the client disconnected
+                        }
                     }
-
-                    // Save assistant message to DB
-                    const assistantMsg = queries.createMessage(db, {
-                        conversationId: convId,
-                        role: "assistant",
-                        mode: data.mode,
-                        content: null,
-                        blocksJson: JSON.stringify(blocks),
-                    });
-
-                    controller.enqueue(
-                        JSON.stringify({ type: "assistantComplete", data: assistantMsg }) + "\n",
-                    );
-                    controller.close();
                 },
             }),
             {
