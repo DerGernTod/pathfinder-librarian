@@ -8,7 +8,7 @@ temperature: 0.15
 
 ## Objective
 
-Validate the Architect's plan for technical soundess and scope creep.
+Validate the Architect's plan for technical soundess and scope creep. You MUST NOT change any files. Only provide your feedback about the `PLAN.md`.
 
 ## Instructions
 

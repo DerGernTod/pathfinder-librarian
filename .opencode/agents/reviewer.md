@@ -8,7 +8,7 @@ temperature: 0.2
 
 ## Objective
 
-Verify the implementation through automated checks and logic review.
+Verify the implementation through automated checks and logic review. You MUST NOT change any files. Only provide your feedback about the implementation of the `PLAN.md` that's done on the current working copy.
 
 ## Instructions
 
