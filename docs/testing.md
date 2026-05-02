@@ -6,16 +6,25 @@ Existing tests mock `globalThis.fetch` via `bun:test`'s `mock()`, not `client.ap
 
 ```js
 // Conversation responses: { result: "success", data: {...} }
-mock(() => Promise.resolve({
-    ok: true,
-    json: () => Promise.resolve({ result: "success", data: mockData }),
-}));
+mock(() =>
+    Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ result: "success", data: mockData }),
+    }),
+);
 
 // SSE stream responses: ReadableStream body
-mock(() => Promise.resolve({
-    ok: true,
-    body: new ReadableStream({ start(c) { c.enqueue(chunk); c.close(); } }),
-}));
+mock(() =>
+    Promise.resolve({
+        ok: true,
+        body: new ReadableStream({
+            start(c) {
+                c.enqueue(chunk);
+                c.close();
+            },
+        }),
+    }),
+);
 ```
 
 ## happy-dom limitations
@@ -39,6 +48,7 @@ await new Promise((r) => setTimeout(r, 100));
 ## SSE event type names
 
 The server emits SSE events via newline-delimited JSON with the following `type` field values (camelCase):
+
 - `"userMessage"` — user message data
 - `"assistantChunk"` — streaming assistant block (incremental)
 - `"assistantComplete"` — final assistant message object
@@ -50,6 +60,7 @@ These are processed in `handleSendMessage` (main-page.js).
 Run unit tests with `bun run test` (Bun test runner). Tests use happy-dom for DOM APIs. Follow existing test patterns in `client/pages/*.test.js` and `client/components/*.test.js`.
 
 When writing tests:
+
 - Consolidate tests with same GIVEN/WHEN, differing THEN only
 - Test production code — never implement logic inside a test
 - Never export internals just for testing

@@ -50,19 +50,19 @@ The Hono RPC client is typed via JSDoc from `client/utils/rpc-client.js`. Call p
 
 ```js
 // GET with no params
-client.api.conversations.$get()
+client.api.conversations.$get();
 
 // POST with JSON body
-client.api.conversations.$post({ json: { title: "..." } })
+client.api.conversations.$post({ json: { title: "..." } });
 
 // Parameterized routes: GET with path param
-client.api.conversations[":id"].messages.$get({ param: { id: convId } })
+client.api.conversations[":id"].messages.$get({ param: { id: convId } });
 
 // Parameterized routes: POST with path param + JSON body
 client.api.conversations[":id"].messages.$post(
     { param: { id: convId }, json: { content: "...", mode: this.mode } },
     { init: { signal: controller.signal } },
-)
+);
 ```
 
 All RPC methods return raw `Response` objects — call `.json()` for JSON endpoints or access `.body` (ReadableStream) for SSE/streaming endpoints.

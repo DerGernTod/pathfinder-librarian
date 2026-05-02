@@ -78,7 +78,7 @@ test.describe("persistence e2e tests", () => {
         await page.locator("new-chat-button button").click();
 
         // Send a unique message to identify this conversation
-        const input = page.locator("chat-input textarea");
+        const input = page.locator('[data-test="landing-input"]');
         await input.fill("Unique marker for new conv");
         await page.keyboard.press("Enter");
         await page.waitForLoadState("networkidle");

@@ -28,12 +28,14 @@ test.beforeEach(async ({ page, context }) => {
     if (setCookieHeader) {
         const cookieMatch = setCookieHeader.match(/session_token=([^;]+)/);
         if (cookieMatch) {
-            await context.addCookies([{
-                name: "session_token",
-                value: cookieMatch[1],
-                domain: "localhost",
-                path: "/",
-            }]);
+            await context.addCookies([
+                {
+                    name: "session_token",
+                    value: cookieMatch[1],
+                    domain: "localhost",
+                    path: "/",
+                },
+            ]);
         }
     }
 
@@ -104,7 +106,8 @@ Disable all animations and transitions before taking snapshots for deterministic
 ```js
 await page.evaluate(() => {
     const s = document.createElement("style");
-    s.textContent = "*, *::before, *::after { animation: none !important; transition: none !important; }";
+    s.textContent =
+        "*, *::before, *::after { animation: none !important; transition: none !important; }";
     document.head.appendChild(s);
 });
 ```
@@ -112,6 +115,7 @@ await page.evaluate(() => {
 ## Selector patterns
 
 Prefer stable selectors:
+
 - `data-test` attributes added to Lit components for test targeting
 - `aria-label` attributes for accessible elements
 - `role` attribute selectors (e.g., `[role="region"]`)
@@ -123,7 +127,10 @@ Check accessibility by asserting DOM elements with correct roles and labels:
 
 ```js
 await expect(page.locator('[role="region"][aria-label="Welcome"]')).toBeVisible();
-await expect(page.locator('[data-test="landing-input"]')).toHaveAttribute("aria-label", "Type your first prompt");
+await expect(page.locator('[data-test="landing-input"]')).toHaveAttribute(
+    "aria-label",
+    "Type your first prompt",
+);
 ```
 
 ## Snapshot conventions
@@ -136,10 +143,10 @@ await expect(page.locator('[data-test="landing-input"]')).toHaveAttribute("aria-
 
 ## Common failures
 
-| Symptom | Likely cause | Fix |
-|---------|-------------|-----|
-| Snapshot mismatch | Animations/transitions running | Add animation-disabling CSS |
-| `page.accessibility.snapshot` undefined | Older Playwright version | Use DOM-based a11y assertions instead |
-| Route not intercepting | Method mismatch (GET vs POST) | Check `route.request().method()` |
-| `body.getReader` crashes | `route.fulfill` creates null body | Ensure `contentType: "text/event-stream"` and string body |
-| Landing page never shows | Seeded user has conversations | Intercept `GET /api/conversations` to return `data: []` |
+| Symptom                                 | Likely cause                      | Fix                                                       |
+| --------------------------------------- | --------------------------------- | --------------------------------------------------------- |
+| Snapshot mismatch                       | Animations/transitions running    | Add animation-disabling CSS                               |
+| `page.accessibility.snapshot` undefined | Older Playwright version          | Use DOM-based a11y assertions instead                     |
+| Route not intercepting                  | Method mismatch (GET vs POST)     | Check `route.request().method()`                          |
+| `body.getReader` crashes                | `route.fulfill` creates null body | Ensure `contentType: "text/event-stream"` and string body |
+| Landing page never shows                | Seeded user has conversations     | Intercept `GET /api/conversations` to return `data: []`   |
