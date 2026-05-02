@@ -227,8 +227,11 @@ class MainPage extends LitElement {
             const body = res.body;
             const reader = body.getReader();
             const decoder = new TextDecoder();
+            /** @type {import("../../shared/types.js").Message | null} */
             let userMessage = null;
+            /** @type {import("../../shared/types.js").AssistantMessage | null} */
             let assistantMessage = null;
+            let assistantMessageAdded = false;
 
             while (true) {
                 const result = await reader.read();
@@ -251,20 +254,42 @@ class MainPage extends LitElement {
                         /** @type {{ type: string, data: unknown }} */
                         const typedData = /** @type {{ type: string, data: unknown }} */ (data);
                         if (typedData.type === "userMessage") {
-                            userMessage = typedData.data;
+                            userMessage = /** @type {import("../../shared/types.js").Message} */ (typedData.data);
+                            this.messages = [...this.messages, userMessage];
+                        } else if (typedData.type === "assistantChunk") {
+                            if (!assistantMessage) {
+                                assistantMessage = {
+                                    id: "temp-assistant-" + Date.now(),
+                                    role: "assistant",
+                                    blocks: [],
+                                    mode: this.mode,
+                                    conversationId: this.activeConversationId,
+                                    content: null,
+                                };
+                            }
+                            assistantMessage = {
+                                ...assistantMessage,
+                                blocks: [...(assistantMessage.blocks ?? []), /** @type {import("../../shared/types.js").MessageBlock} */ (typedData.data)],
+                            };
+
+                            if (!assistantMessageAdded) {
+                                this.messages = [...this.messages, assistantMessage];
+                                assistantMessageAdded = true;
+                            } else {
+                                this.messages = [...this.messages.slice(0, -1), assistantMessage];
+                            }
                         } else if (typedData.type === "assistantComplete") {
-                            assistantMessage = typedData.data;
+                            assistantMessage = /** @type {import("../../shared/types.js").AssistantMessage} */ (typedData.data);
+                            if (!assistantMessageAdded) {
+                                this.messages = [...this.messages, assistantMessage];
+                                assistantMessageAdded = true;
+                            } else {
+                                this.messages = [...this.messages.slice(0, -1), assistantMessage];
+                            }
                         }
                     }
                 }
             }
-            /** @type {Message[]} */
-            const newMessages = [
-                ...this.messages,
-                /** @type {Message} */ (userMessage),
-                /** @type {Message} */ (assistantMessage),
-            ];
-            this.messages = newMessages;
         } catch (err) {
             if (Error.isError(err) && err.name !== "AbortError") {
                 // Ignore error
