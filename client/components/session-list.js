@@ -95,6 +95,7 @@ class SessionList extends LitElement {
                             .conversation=${conv}
                             .active=${conv.id === this.activeId}
                             @select=${this.handleSelect}
+                            data-test="session-item"
                         ></conversation-item>
                     `,
                 )}

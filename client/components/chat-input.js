@@ -131,6 +131,7 @@ class ChatInput extends LitElement {
                         rows="1"
                         class="textarea-flex"
                         autofocus
+                        data-test="composer-input"
                     ></sl-textarea>
                     ${this.responding
                         ? html`

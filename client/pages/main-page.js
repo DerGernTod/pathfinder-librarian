@@ -50,6 +50,79 @@ class MainPage extends LitElement {
                 display: flex;
                 flex-direction: column;
             }
+            .landing-welcome {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding: 2rem;
+                max-width: 40rem;
+                margin: 0 auto;
+                width: 100%;
+            }
+            .landing-welcome h1 {
+                font-size: 1.875rem;
+                font-weight: 700;
+                margin-bottom: 0.5rem;
+            }
+            .landing-welcome p {
+                color: var(--muted-foreground);
+                font-size: 1rem;
+                margin-bottom: 2rem;
+            }
+            .landing-input-row {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                width: 100%;
+                max-width: 36rem;
+                background: var(--secondary);
+                border-radius: 0.75rem;
+                border: 1px solid var(--border);
+                padding: 0.75rem 1rem;
+            }
+            .landing-input-row:focus-within {
+                outline: none;
+                box-shadow: 0 0 0 1px var(--accent);
+            }
+            .landing-prompt {
+                flex: 1;
+                background: transparent;
+                border: none;
+                outline: none;
+                font-size: 1.125rem;
+                line-height: 1.5rem;
+                color: var(--foreground);
+            }
+            .landing-prompt::placeholder {
+                color: var(--muted-foreground);
+            }
+            .landing-send-btn {
+                color: white;
+                border-radius: 0.5rem;
+                padding: 0.5rem 1rem;
+                border: none;
+                cursor: pointer;
+                background: var(--accent);
+                font-size: 0.875rem;
+            }
+            .landing-send-btn:hover {
+                opacity: 0.9;
+            }
+            .landing-send-btn:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+            .landing-hint {
+                font-size: 0.75rem;
+                color: var(--muted-foreground);
+                margin-top: 0.75rem;
+            }
+            :focus-visible {
+                outline: 2px solid var(--accent);
+                outline-offset: 2px;
+            }
         `,
     ];
 
@@ -63,6 +136,8 @@ class MainPage extends LitElement {
         sidebarExpanded: { type: Boolean },
         user: { type: Object },
         settingsOpen: { type: Boolean },
+        _pendingPrompt: { type: String },
+        _submitting: { type: Boolean },
     };
 
     constructor() {
@@ -86,6 +161,14 @@ class MainPage extends LitElement {
         this.user = null;
         /** @type {boolean} */
         this.settingsOpen = false;
+        /** @type {string} */
+        this._pendingPrompt = "";
+        /** @type {boolean} */
+        this._submitting = false;
+    }
+
+    get isLanding() {
+        return !this.loading && this.conversations.length === 0;
     }
 
     async firstUpdated() {
@@ -136,20 +219,49 @@ class MainPage extends LitElement {
                     }}
                 ></chat-sidebar>
                 <main class="main">
-                    <chat-header
-                        .mode=${this.mode}
-                        @mode-change=${this.handleModeChange}
-                    ></chat-header>
-                    <message-list
-                        .messages=${this.filteredMessages}
-                        .loading=${this.loading || this.responding}
-                    ></message-list>
-                    <chat-input
-                        .mode=${this.mode}
-                        .responding=${this.responding}
-                        @send-message=${this.handleSendMessage}
-                        @stop-message=${this.handleStopMessage}
-                    ></chat-input>
+                    ${this.isLanding
+                        ? html`
+                              <section role="region" aria-label="Welcome" class="landing-welcome">
+                                  <h1>Pathfinder Librarian</h1>
+                                  <p>Ask about rules, lore, or mechanics...</p>
+                                  <div class="landing-input-row">
+                                      <input
+                                          aria-label="Type your first prompt"
+                                          data-test="landing-input"
+                                          class="landing-prompt"
+                                          .value=${this._pendingPrompt}
+                                          @input=${this._handleLandingInput}
+                                          @keydown=${this._handleLandingKeydown}
+                                          placeholder="e.g. How does flanking work?"
+                                      />
+                                      <button
+                                          aria-label="Send prompt"
+                                          class="landing-send-btn"
+                                          data-test="landing-send"
+                                          @click=${this._handleLandingSubmit}
+                                      >
+                                          Send
+                                      </button>
+                                  </div>
+                                  <p class="landing-hint">Press Enter to send</p>
+                              </section>
+                          `
+                        : html`
+                              <chat-header
+                                  .mode=${this.mode}
+                                  @mode-change=${this.handleModeChange}
+                              ></chat-header>
+                              <message-list
+                                  .messages=${this.filteredMessages}
+                                  .loading=${this.loading || this.responding}
+                              ></message-list>
+                              <chat-input
+                                  .mode=${this.mode}
+                                  .responding=${this.responding}
+                                  @send-message=${this.handleSendMessage}
+                                  @stop-message=${this.handleStopMessage}
+                              ></chat-input>
+                          `}
                 </main>
             </div>
             <settings-dialog
@@ -357,6 +469,176 @@ class MainPage extends LitElement {
                 composed: true,
             }),
         );
+    }
+
+    /**
+     * @param {InputEvent & { currentTarget: HTMLInputElement }} e
+     */
+    _handleLandingInput(e) {
+        this._pendingPrompt = e.currentTarget.value;
+    }
+
+    /**
+     * @param {KeyboardEvent} e
+     */
+    _handleLandingKeydown(e) {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            void this._handleLandingSubmit();
+        }
+    }
+
+    async _handleLandingSubmit() {
+        if (this._submitting) {
+            return;
+        }
+        const text = this._pendingPrompt.trim();
+        if (!text) {
+            return;
+        }
+        this._submitting = true;
+
+        try {
+            const res = await client.api.conversations.$post({
+                json: { title: text.slice(0, 80) },
+            });
+            const conv = await res.json();
+            const convData = conv.data;
+
+            this.conversations = [convData, ...this.conversations];
+            this.activeConversationId = convData.id;
+            await this.fetchMessages(convData.id);
+
+            this.responding = true;
+            const controller = new AbortController();
+            this._currentAssistantController = controller;
+
+            try {
+                const msgRes = await client.api.conversations[":id"].messages.$post(
+                    {
+                        param: { id: convData.id },
+                        json: { content: text, mode: this.mode },
+                    },
+                    {
+                        init: { signal: controller.signal },
+                    },
+                );
+
+                /** @type {ReadableStream<Uint8Array>} */
+                const body = /** @type {ReadableStream<Uint8Array>} */ (msgRes.body);
+                if (!body) {
+                    throw new Error("No response body");
+                }
+                const reader = body.getReader();
+                const decoder = new TextDecoder();
+                /** @type {import("../../shared/types.js").Message | null} */
+                let userMessage = null;
+                /** @type {import("../../shared/types.js").AssistantMessage | null} */
+                let assistantMessage = null;
+                let assistantMessageAdded = false;
+
+                while (true) {
+                    const result = await reader.read();
+                    if (result.done) {
+                        break;
+                    }
+                    const value = result.value;
+                    const chunk = decoder.decode(value, { stream: true });
+                    const lines = chunk.split("\n").filter(Boolean);
+                    for (const line of lines) {
+                        /** @type {unknown} */
+                        const data = JSON.parse(line);
+                        if (
+                            typeof data === "object" &&
+                            data !== null &&
+                            "type" in data &&
+                            typeof data.type === "string" &&
+                            "data" in data
+                        ) {
+                            /** @type {{ type: string, data: unknown }} */
+                            const typedData = /** @type {{ type: string, data: unknown }} */ (data);
+                            if (typedData.type === "userMessage") {
+                                userMessage =
+                                    /** @type {import("../../shared/types.js").Message} */ (
+                                        typedData.data
+                                    );
+                                this.messages = [...this.messages, userMessage];
+                            } else if (typedData.type === "assistantChunk") {
+                                if (!assistantMessage) {
+                                    assistantMessage = {
+                                        id: "temp-assistant-" + Date.now(),
+                                        role: "assistant",
+                                        blocks: [],
+                                        mode: this.mode,
+                                        conversationId: this.activeConversationId,
+                                        content: null,
+                                        createdAt: new Date().toISOString(),
+                                    };
+                                }
+                                assistantMessage = {
+                                    ...assistantMessage,
+                                    blocks: [
+                                        ...(assistantMessage?.blocks ?? []),
+                                        /** @type {import("../../shared/types.js").MessageBlock} */ (
+                                            typedData.data
+                                        ),
+                                    ],
+                                };
+
+                                if (!assistantMessageAdded) {
+                                    this.messages = [...this.messages, assistantMessage];
+                                    assistantMessageAdded = true;
+                                } else {
+                                    this.messages = [
+                                        ...this.messages.slice(0, -1),
+                                        assistantMessage,
+                                    ];
+                                }
+                            } else if (typedData.type === "assistantComplete") {
+                                assistantMessage =
+                                    /** @type {import("../../shared/types.js").AssistantMessage} */ (
+                                        typedData.data
+                                    );
+                                if (!assistantMessageAdded) {
+                                    this.messages = [...this.messages, assistantMessage];
+                                    assistantMessageAdded = true;
+                                } else {
+                                    this.messages = [
+                                        ...this.messages.slice(0, -1),
+                                        assistantMessage,
+                                    ];
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (err) {
+                if (Error.isError(err) && err.name !== "AbortError") {
+                    // Ignore error
+                }
+            } finally {
+                this.responding = false;
+                this._currentAssistantController = null;
+            }
+        } catch {
+            // Error creating conversation or posting message — _submitting reset in finally
+        } finally {
+            this._submitting = false;
+            this._pendingPrompt = "";
+        }
+
+        await this.updateComplete;
+        await new Promise((r) => requestAnimationFrame(r));
+        const chatInput = this.shadowRoot?.querySelector("chat-input");
+        if (chatInput && "updateComplete" in chatInput) {
+            await /** @type {import("lit-element").LitElement} */ (chatInput).updateComplete;
+        }
+        const inner =
+            chatInput?.shadowRoot?.querySelector("sl-textarea") ??
+            chatInput?.shadowRoot?.querySelector("textarea");
+        if (inner && "focus" in inner) {
+            /** @type {HTMLElement} */ (inner).focus();
+        }
     }
 }
 
