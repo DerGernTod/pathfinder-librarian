@@ -71,7 +71,7 @@ class MainPage extends LitElement {
         this.conversations = [];
         /** @type {string} */
         this.activeConversationId = "";
-        /** @type {import("zod").z.infer<typeof import("../../server/db/queries.js").MessageItemListSchema>} */
+        /** @type {import("../../shared/types.js").Message[]} */
         this.messages = [];
         /** @type {Mode} */
         this.mode = "player";
@@ -109,7 +109,7 @@ class MainPage extends LitElement {
                     param: { id: this.activeConversationId },
                 });
                 const msgResult = await msgRes.json();
-                this.messages = msgResult.data;
+                this.messages = /** @type {import("../../shared/types.js").Message[]} */ (msgResult.data);
             }
         } finally {
             this.loading = false;
@@ -176,7 +176,7 @@ class MainPage extends LitElement {
             param: { id: convId },
         });
         const result = await res.json();
-        this.messages = result.data;
+        this.messages = /** @type {import("../../shared/types.js").Message[]} */ (result.data);
     }
 
     async handleNewChat() {
@@ -224,7 +224,10 @@ class MainPage extends LitElement {
             );
 
             /** @type {ReadableStream<Uint8Array>} */
-            const body = res.body;
+            const body = /** @type {ReadableStream<Uint8Array>} */ (res.body);
+            if (!body) {
+                throw new Error("No response body");
+            }
             const reader = body.getReader();
             const decoder = new TextDecoder();
             /** @type {import("../../shared/types.js").Message | null} */
@@ -254,7 +257,9 @@ class MainPage extends LitElement {
                         /** @type {{ type: string, data: unknown }} */
                         const typedData = /** @type {{ type: string, data: unknown }} */ (data);
                         if (typedData.type === "userMessage") {
-                            userMessage = /** @type {import("../../shared/types.js").Message} */ (typedData.data);
+                            userMessage = /** @type {import("../../shared/types.js").Message} */ (
+                                typedData.data
+                            );
                             this.messages = [...this.messages, userMessage];
                         } else if (typedData.type === "assistantChunk") {
                             if (!assistantMessage) {
@@ -265,11 +270,17 @@ class MainPage extends LitElement {
                                     mode: this.mode,
                                     conversationId: this.activeConversationId,
                                     content: null,
+                                    createdAt: new Date().toISOString(),
                                 };
                             }
                             assistantMessage = {
                                 ...assistantMessage,
-                                blocks: [...(assistantMessage.blocks ?? []), /** @type {import("../../shared/types.js").MessageBlock} */ (typedData.data)],
+                                blocks: [
+                                    ...(assistantMessage?.blocks ?? []),
+                                    /** @type {import("../../shared/types.js").MessageBlock} */ (
+                                        typedData.data
+                                    ),
+                                ],
                             };
 
                             if (!assistantMessageAdded) {
@@ -279,7 +290,10 @@ class MainPage extends LitElement {
                                 this.messages = [...this.messages.slice(0, -1), assistantMessage];
                             }
                         } else if (typedData.type === "assistantComplete") {
-                            assistantMessage = /** @type {import("../../shared/types.js").AssistantMessage} */ (typedData.data);
+                            assistantMessage =
+                                /** @type {import("../../shared/types.js").AssistantMessage} */ (
+                                    typedData.data
+                                );
                             if (!assistantMessageAdded) {
                                 this.messages = [...this.messages, assistantMessage];
                                 assistantMessageAdded = true;

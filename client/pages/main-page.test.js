@@ -52,7 +52,6 @@ describe("main-page", () => {
                 content: "Test 1",
                 role: "user",
                 mode: "player",
-                blocks: null,
                 createdAt: new Date().toISOString(),
             },
             {
@@ -61,7 +60,6 @@ describe("main-page", () => {
                 content: "Test 2",
                 role: "user",
                 mode: "player",
-                blocks: null,
                 createdAt: new Date().toISOString(),
             },
             {
@@ -70,7 +68,6 @@ describe("main-page", () => {
                 content: "Test 3",
                 role: "user",
                 mode: "player",
-                blocks: null,
                 createdAt: new Date().toISOString(),
             },
         ];
@@ -90,7 +87,6 @@ describe("main-page", () => {
                 content: "Test",
                 role: "user",
                 mode: "player",
-                blocks: null,
                 createdAt: new Date().toISOString(),
             },
         ];
@@ -143,7 +139,6 @@ describe("main-page", () => {
                 content: "Old",
                 role: "user",
                 mode: "player",
-                blocks: null,
                 createdAt: new Date().toISOString(),
             },
         ];
@@ -155,7 +150,6 @@ describe("main-page", () => {
             role: "user",
             mode: "player",
             createdAt: new Date().toISOString(),
-            blocks: null,
         };
 
         const mockAssistantMessage = {
@@ -223,7 +217,6 @@ describe("main-page", () => {
             role: "user",
             mode: "player",
             createdAt: new Date().toISOString(),
-            blocks: null,
         };
 
         const mockAssistantMessage = {
