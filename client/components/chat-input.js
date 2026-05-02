@@ -76,6 +76,10 @@ class ChatInput extends LitElement {
             .send-btn:hover {
                 opacity: 0.9;
             }
+            .send-btn:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
             .send-icon {
                 width: 1rem;
                 height: 1rem;
@@ -94,6 +98,8 @@ class ChatInput extends LitElement {
     static properties = {
         value: { type: String },
         mode: { type: String },
+        /** @type {boolean} Whether the input is disabled (while assistant is responding) */
+        disabled: { type: Boolean },
     };
 
     constructor() {
@@ -101,6 +107,8 @@ class ChatInput extends LitElement {
         this.value = "";
         /** @type {Mode} */
         this.mode = "gm";
+        /** @type {boolean} */
+        this.disabled = false;
         document.addEventListener("select-conversation", () => {
             const textarea = /** @type {HTMLTextAreaElement | null} */ (
                 this.shadowRoot?.querySelector("sl-textarea")
@@ -122,8 +130,9 @@ class ChatInput extends LitElement {
                         rows="1"
                         class="textarea-flex"
                         autofocus
+                        ?disabled=${this.disabled}
                     ></sl-textarea>
-                    <button @click=${this.handleSubmit} class="send-btn">
+                    <button @click=${this.handleSubmit} class="send-btn" ?disabled=${this.disabled}>
                         <svg
                             class="send-icon"
                             fill="none"
@@ -164,6 +173,9 @@ class ChatInput extends LitElement {
     }
 
     handleSubmit() {
+        if (this.disabled) {
+            return;
+        }
         const text = this.value.trim();
         if (!text) {
             return;

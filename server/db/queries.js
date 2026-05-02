@@ -204,12 +204,12 @@ export function getMessagesByConversationId(database, conversationId) {
 }
 
 /**
- * Creates a new message.
+ * Creates a new message (user or assistant).
  * @param {import("bun:sqlite").Database} database - The database instance
- * @param {Omit<import("../../shared/types.js").UserMessage, "id"> & { conversationId: string, content: string | null, blocksJson: string | null }} data - The message data
- * @returns {import("../../shared/types.js").UserMessage} }}
+ * @param {{ conversationId: string, role: "user" | "assistant", mode: "player" | "gm", content: string | null, blocksJson: string | null }} data - The message data
+ * @returns {{ id: string, conversationId: string, role: string, mode: string, content: string | null, blocks: import("../../shared/types.js").MessageBlock[] | null }}
  */
-export function createUserMessage(database, { conversationId, role, mode, content, blocksJson }) {
+export function createMessage(database, { conversationId, role, mode, content, blocksJson }) {
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
     database.run(
@@ -222,8 +222,14 @@ export function createUserMessage(database, { conversationId, role, mode, conten
         role,
         mode,
         content,
+        blocks: blocksJson
+            ? /** @type {import("../../shared/types.js").MessageBlock[]} */ (JSON.parse(blocksJson))
+            : null,
     };
 }
+
+/** @deprecated Use createMessage instead */
+export const createUserMessage = createMessage;
 
 /**
  * Gets all rule items, optionally filtered by type.

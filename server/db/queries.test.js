@@ -92,7 +92,7 @@ describe("queries", () => {
     describe("createMessage", () => {
         it("creates and returns user message", () => {
             const conversations = queries.getAllConversations(db);
-            const msg = queries.createUserMessage(db, {
+            const msg = queries.createMessage(db, {
                 conversationId: conversations[0].id,
                 role: "user",
                 mode: "player",
@@ -103,7 +103,48 @@ describe("queries", () => {
             expect(msg.role).toBe("user");
             expect(msg.mode).toBe("player");
             expect(msg.content).toBe("Test message");
-            expect(msg.blocks).toBeUndefined();
+            expect(msg.blocks).toBeNull();
+        });
+
+        it("creates and returns assistant message with blocks", () => {
+            const conversations = queries.getAllConversations(db);
+            const blocks = [
+                { type: "paragraph", text: "Test paragraph" },
+                {
+                    type: "callout",
+                    title: "Test",
+                    segments: [{ text: "Test segment", highlight: false }],
+                },
+            ];
+            const msg = queries.createMessage(db, {
+                conversationId: conversations[0].id,
+                role: "assistant",
+                mode: "gm",
+                content: null,
+                blocksJson: JSON.stringify(blocks),
+            });
+            expect(msg).toHaveProperty("id");
+            expect(msg.role).toBe("assistant");
+            expect(msg.mode).toBe("gm");
+            expect(msg.content).toBeNull();
+            expect(Array.isArray(msg.blocks)).toBe(true);
+            expect(msg.blocks).toHaveLength(2);
+            expect(msg.blocks[0]).toEqual({ type: "paragraph", text: "Test paragraph" });
+        });
+
+        it("maintains backward compatibility with createUserMessage alias", () => {
+            const conversations = queries.getAllConversations(db);
+            const msg = queries.createUserMessage(db, {
+                conversationId: conversations[0].id,
+                role: "user",
+                mode: "player",
+                content: "Backward compat test",
+                blocksJson: null,
+            });
+            expect(msg).toHaveProperty("id");
+            expect(msg.role).toBe("user");
+            expect(msg.content).toBe("Backward compat test");
+            expect(msg.blocks).toBeNull();
         });
     });
 

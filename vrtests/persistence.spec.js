@@ -51,18 +51,26 @@ test.describe("persistence e2e tests", () => {
         await expect(page.locator("chat-message").first()).toContainText(/chandelier/i);
     });
 
-    test("submitted prompt persists across page reload", async ({ page }) => {
+    test("submitted prompt and response persist across page reload", async ({ page }) => {
         const input = page.locator("chat-input textarea");
         await input.fill("Persistent test message");
         await page.keyboard.press("Enter");
+
+        // Wait for assistant response
+        await page.waitForSelector("assistant-message", { timeout: 5000 });
         await page.waitForLoadState("networkidle");
+
         // messages reversed to autoscroll to bottom
         await expect(page.locator("chat-message").first()).toContainText("Persistent test message");
 
-        // Reload — message must survive
+        // Reload — both messages must survive
         await page.reload();
         await page.waitForSelector("chat-message", { timeout: 5000 });
         await expect(page.locator("chat-message").first()).toContainText("Persistent test message");
+
+        // Verify assistant message also present
+        const assistantMessages = page.locator("assistant-message");
+        await expect(assistantMessages).toHaveCount(1);
     });
 
     test("new conversation persists across page reload", async ({ page }) => {

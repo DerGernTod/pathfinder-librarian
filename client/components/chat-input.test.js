@@ -84,6 +84,45 @@ describe("chat-input", () => {
         expect(dispatched).toBe(false);
     });
 
+    it("does not dispatch send-message when disabled", async () => {
+        const el = createInput();
+        el.disabled = true;
+        await el.updateComplete;
+
+        el.value = "Hello";
+        el.requestUpdate();
+        await el.updateComplete;
+
+        let dispatched = false;
+        el.addEventListener("send-message", () => {
+            dispatched = true;
+        });
+
+        const button = /** @type {HTMLElement} */ (el.shadowRoot.querySelector("button"));
+        fireEvent.click(button);
+        expect(dispatched).toBe(false);
+    });
+
+    it("applies disabled attribute to textarea", async () => {
+        const el = createInput();
+        el.disabled = true;
+        await el.updateComplete;
+
+        const textarea = el.shadowRoot.querySelector("sl-textarea");
+        expect(textarea).toBeTruthy();
+        expect(textarea.hasAttribute("disabled")).toBe(true);
+    });
+
+    it("applies disabled attribute to button", async () => {
+        const el = createInput();
+        el.disabled = true;
+        await el.updateComplete;
+
+        const button = el.shadowRoot.querySelector("button");
+        expect(button).toBeTruthy();
+        expect(button.hasAttribute("disabled")).toBe(true);
+    });
+
     it("renders disclaimer text", async () => {
         const el = createInput();
         await el.updateComplete;

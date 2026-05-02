@@ -59,6 +59,8 @@ class MainPage extends LitElement {
         messages: { type: Array },
         mode: { type: String },
         loading: { type: Boolean },
+        /** @type {boolean} Whether the assistant is currently generating a response */
+        responding: { type: Boolean },
         sidebarExpanded: { type: Boolean },
         /** @type {AuthUser} */ user: { type: Object },
         /** @type {boolean} */ settingsOpen: { type: Boolean },
@@ -76,6 +78,8 @@ class MainPage extends LitElement {
         this.mode = "player";
         /** @type {boolean} */
         this.loading = true;
+        /** @type {boolean} */
+        this.responding = false;
         this.sidebarExpanded = true;
         /** @type {AuthUser | null} */
         this.user = null;
@@ -135,10 +139,11 @@ class MainPage extends LitElement {
                     ></chat-header>
                     <message-list
                         .messages=${this.filteredMessages}
-                        .loading=${this.loading}
+                        .loading=${this.loading || this.responding}
                     ></message-list>
                     <chat-input
                         .mode=${this.mode}
+                        .disabled=${this.responding}
                         @send-message=${this.handleSendMessage}
                     ></chat-input>
                 </main>
@@ -201,12 +206,19 @@ class MainPage extends LitElement {
      * @param {CustomEvent<{ text: string }>} e
      */
     async handleSendMessage(e) {
-        const res = await client.api.conversations[":id"].messages.$post({
-            param: { id: this.activeConversationId },
-            json: { content: e.detail.text, mode: this.mode },
-        });
-        const newMsg = await res.json();
-        this.messages = [...this.messages, newMsg.data];
+        this.responding = true;
+
+        try {
+            const res = await client.api.conversations[":id"].messages.$post({
+                param: { id: this.activeConversationId },
+                json: { content: e.detail.text, mode: this.mode },
+            });
+            const result = await res.json();
+            const { userMessage, assistantMessage } = result.data;
+            this.messages = [...this.messages, userMessage, assistantMessage];
+        } finally {
+            this.responding = false;
+        }
     }
 
     get filteredMessages() {

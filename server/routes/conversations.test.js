@@ -155,7 +155,7 @@ describe("conversations routes", () => {
     });
 
     describe("POST /api/conversations/:id/messages", () => {
-        it("creates message for conversation", async () => {
+        it("creates user message and returns mock assistant response", async () => {
             const convs = db
                 .query("SELECT id FROM conversations WHERE user_id = ?")
                 .all(SEED_IDS.USER_DEFAULT);
@@ -170,9 +170,59 @@ describe("conversations routes", () => {
             });
             expect(res.status).toBe(201);
             const { data } = await res.json();
-            expect(data.content).toBe(newMsg.content);
-            expect(data.mode).toBe(newMsg.mode);
-            expect(data.role).toBe("user");
+
+            // Verify user message
+            expect(data.userMessage.content).toBe(newMsg.content);
+            expect(data.userMessage.mode).toBe(newMsg.mode);
+            expect(data.userMessage.role).toBe("user");
+            expect(data.userMessage.blocks).toBeNull();
+
+            // Verify assistant message
+            expect(data.assistantMessage.role).toBe("assistant");
+            expect(data.assistantMessage.mode).toBe(newMsg.mode);
+            expect(data.assistantMessage.content).toBeNull();
+            expect(Array.isArray(data.assistantMessage.blocks)).toBe(true);
+            expect(data.assistantMessage.blocks.length).toBeGreaterThan(0);
+
+            // Verify both messages have the same conversation ID
+            expect(data.userMessage.conversationId).toBe(data.assistantMessage.conversationId);
+        });
+
+        it("stores both messages in database", async () => {
+            const convs = db
+                .query("SELECT id FROM conversations WHERE user_id = ?")
+                .all(SEED_IDS.USER_DEFAULT);
+            const newMsg = { content: "Test message", mode: "gm" };
+            const res = await app.request(`/api/conversations/${convs[0].id}/messages`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-session-token": sessionToken,
+                },
+                body: JSON.stringify(newMsg),
+            });
+            await res.json();
+
+            // Query messages table directly
+            const messages = db
+                .query(
+                    "SELECT id, role, mode, content, blocks_json FROM messages WHERE conversation_id = ? ORDER BY created_at DESC LIMIT 2",
+                )
+                .all(convs[0].id);
+
+            expect(messages).toHaveLength(2);
+
+            // First message should be assistant (newest)
+            expect(messages[0].role).toBe("assistant");
+            expect(messages[0].mode).toBe("gm");
+            expect(messages[0].content).toBeNull();
+            expect(messages[0].blocks_json).toBeTruthy();
+
+            // Second message should be user
+            expect(messages[1].role).toBe("user");
+            expect(messages[1].mode).toBe("gm");
+            expect(messages[1].content).toBe("Test message");
+            expect(messages[1].blocks_json).toBeNull();
         });
 
         it("rejects invalid mode", async () => {
