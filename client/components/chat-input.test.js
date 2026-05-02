@@ -86,7 +86,7 @@ describe("chat-input", () => {
 
     it("does not dispatch send-message when disabled", async () => {
         const el = createInput();
-        el.disabled = true;
+        el.responding = true;
         await el.updateComplete;
 
         el.value = "Hello";
@@ -103,24 +103,15 @@ describe("chat-input", () => {
         expect(dispatched).toBe(false);
     });
 
-    it("applies disabled attribute to textarea", async () => {
+    it("renders stop button when responding", async () => {
         const el = createInput();
-        el.disabled = true;
+        el.responding = true;
         await el.updateComplete;
 
-        const textarea = el.shadowRoot.querySelector("sl-textarea");
-        expect(textarea).toBeTruthy();
-        expect(textarea.hasAttribute("disabled")).toBe(true);
-    });
-
-    it("applies disabled attribute to button", async () => {
-        const el = createInput();
-        el.disabled = true;
-        await el.updateComplete;
-
-        const button = el.shadowRoot.querySelector("button");
-        expect(button).toBeTruthy();
-        expect(button.hasAttribute("disabled")).toBe(true);
+        const stop = Array.from(el.shadowRoot.querySelectorAll("button")).find((b) =>
+            /Stop/.test(b.textContent || ""),
+        );
+        expect(stop).toBeTruthy();
     });
 
     it("renders disclaimer text", async () => {
