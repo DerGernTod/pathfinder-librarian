@@ -116,6 +116,7 @@ describe("queries", () => {
                     segments: [{ text: "Test segment", highlight: false }],
                 },
             ];
+
             const msg = queries.createMessage(db, {
                 conversationId: conversations[0].id,
                 role: "assistant",
@@ -129,7 +130,11 @@ describe("queries", () => {
             expect(msg.content).toBeNull();
             expect(Array.isArray(msg.blocks)).toBe(true);
             expect(msg.blocks).toHaveLength(2);
-            expect(msg.blocks[0]).toEqual({ type: "paragraph", text: "Test paragraph" });
+            expect(
+                /** @type {import("../../shared/types.js").AssistantMessage} */ (
+                    /** @type {unknown} */ (msg)
+                ).blocks[0],
+            ).toEqual({ type: "paragraph", text: "Test paragraph" });
         });
 
         it("maintains backward compatibility with createUserMessage alias", () => {

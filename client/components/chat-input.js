@@ -98,7 +98,6 @@ class ChatInput extends LitElement {
     static properties = {
         value: { type: String },
         mode: { type: String },
-        /** @type {boolean} Whether the input is disabled (while assistant is responding) */
         disabled: { type: Boolean },
     };
 

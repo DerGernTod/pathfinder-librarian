@@ -88,10 +88,10 @@ test.describe("navigation e2e tests", () => {
         await page.waitForLoadState("networkidle");
 
         const newCount = await messageList.locator("chat-message").count();
-        expect(newCount).toBe(initialCount + 1);
+        expect(newCount).toBe(initialCount + 2); // user message + assistant response
 
         // messages reversed to autoscroll to bottom
-        const firstMessage = messageList.locator("chat-message").first();
+        const firstMessage = messageList.locator("chat-message").nth(1);
         await expect(firstMessage).toContainText("This is a test message");
     });
 

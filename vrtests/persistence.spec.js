@@ -61,16 +61,16 @@ test.describe("persistence e2e tests", () => {
         await page.waitForLoadState("networkidle");
 
         // messages reversed to autoscroll to bottom
-        await expect(page.locator("chat-message").first()).toContainText("Persistent test message");
+        await expect(page.locator("chat-message").nth(1)).toContainText("Persistent test message");
 
         // Reload — both messages must survive
         await page.reload();
         await page.waitForSelector("chat-message", { timeout: 5000 });
-        await expect(page.locator("chat-message").first()).toContainText("Persistent test message");
+        await expect(page.locator("chat-message").nth(1)).toContainText("Persistent test message");
 
         // Verify assistant message also present
         const assistantMessages = page.locator("assistant-message");
-        await expect(assistantMessages).toHaveCount(1);
+        await expect(assistantMessages).toHaveCount(4); // 3 seeded + 1 new
     });
 
     test("new conversation persists across page reload", async ({ page }) => {
@@ -112,7 +112,7 @@ test.describe("persistence e2e tests", () => {
         // Switch back — message IS in conv 1
         await sidebar.locator("conversation-item", { hasText: "Mitflit" }).click();
         await page.waitForLoadState("networkidle");
-        // messages reversed to autoscroll to bottom
-        await expect(page.locator("chat-message").first()).toContainText("Conv 1 isolation test");
+        // messages reversed to autoscroll to bottom, message 0 is assistant response, message 1 is user prompt
+        await expect(page.locator("chat-message").nth(1)).toContainText("Conv 1 isolation test");
     });
 });

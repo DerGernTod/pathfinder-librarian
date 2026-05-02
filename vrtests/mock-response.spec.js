@@ -70,6 +70,7 @@ test.describe("mock LLM response visual regression", () => {
         await expect(page.locator("sl-spinner")).toBeVisible();
 
         const chatInput = page.locator("chat-input");
+        await expect(chatInput).toHaveAttribute("disabled", "true");
         await expect(chatInput).toHaveScreenshot("chat-input-disabled.png");
     });
 
@@ -83,6 +84,7 @@ test.describe("mock LLM response visual regression", () => {
         await page.waitForTimeout(500);
 
         const chatInput = page.locator("chat-input");
+        await expect(chatInput).toHaveAttribute("disabled", "false");
         await expect(chatInput).toHaveScreenshot("chat-input-enabled.png");
     });
 });
