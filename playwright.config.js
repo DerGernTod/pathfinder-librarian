@@ -12,7 +12,14 @@ export default defineConfig({
         baseURL: "http://localhost:3000",
         trace: "on-first-retry",
         launchOptions: {
-            args: ["--disable-blink-features=LayoutAnimations"],
+            args: [
+                "--disable-blink-features=LayoutAnimations",
+                "--font-render-hinting=none",
+                "--disable-font-subpixel-positioning",
+                "--disable-lcd-text",
+                "--disable-threaded-scrolling",
+                "--disable-gpu",
+            ],
         },
     },
     projects: [
