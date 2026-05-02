@@ -223,12 +223,51 @@ class MainPage extends LitElement {
                 },
             );
 
-            const result = await res.json();
-            const { userMessage, assistantMessage } = result.data;
-            this.messages = [...this.messages, userMessage, assistantMessage];
+            /** @type {ReadableStream<Uint8Array>} */
+            const body = res.body;
+            const reader = body.getReader();
+            const decoder = new TextDecoder();
+            let userMessage = null;
+            let assistantMessage = null;
+
+            while (true) {
+                const result = await reader.read();
+                if (result.done) {
+                    break;
+                }
+                const value = result.value;
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split("\n").filter(Boolean);
+                for (const line of lines) {
+                    /** @type {unknown} */
+                    const data = JSON.parse(line);
+                    if (
+                        typeof data === "object" &&
+                        data !== null &&
+                        "type" in data &&
+                        typeof data.type === "string" &&
+                        "data" in data
+                    ) {
+                        /** @type {{ type: string, data: unknown }} */
+                        const typedData = /** @type {{ type: string, data: unknown }} */ (data);
+                        if (typedData.type === "userMessage") {
+                            userMessage = typedData.data;
+                        } else if (typedData.type === "assistantComplete") {
+                            assistantMessage = typedData.data;
+                        }
+                    }
+                }
+            }
+            /** @type {Message[]} */
+            const newMessages = [
+                ...this.messages,
+                /** @type {Message} */ (userMessage),
+                /** @type {Message} */ (assistantMessage),
+            ];
+            this.messages = newMessages;
         } catch (err) {
             if (Error.isError(err) && err.name !== "AbortError") {
-                console.error("Error sending message:", err);
+                // Ignore error
             }
         } finally {
             this.responding = false;

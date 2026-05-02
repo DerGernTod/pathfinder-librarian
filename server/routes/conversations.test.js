@@ -168,8 +168,17 @@ describe("conversations routes", () => {
                 },
                 body: JSON.stringify(newMsg),
             });
-            expect(res.status).toBe(201);
-            const { data } = await res.json();
+            expect(res.status).toBe(200);
+            const text = await res.text();
+            const lines = text
+                .trim()
+                .split("\n")
+                .map((l) => JSON.parse(l));
+
+            const userMsg = lines.find((l) => l.type === "userMessage").data;
+            const assistantMsg = lines.find((l) => l.type === "assistantComplete").data;
+
+            const data = { userMessage: userMsg, assistantMessage: assistantMsg };
 
             // Verify user message
             expect(data.userMessage.content).toBe(newMsg.content);
@@ -181,8 +190,9 @@ describe("conversations routes", () => {
             expect(data.assistantMessage.role).toBe("assistant");
             expect(data.assistantMessage.mode).toBe(newMsg.mode);
             expect(data.assistantMessage.content).toBeNull();
-            expect(Array.isArray(data.assistantMessage.blocks)).toBe(true);
-            expect(data.assistantMessage.blocks.length).toBeGreaterThan(0);
+            const blocks = data.assistantMessage.blocks;
+            expect(Array.isArray(blocks)).toBe(true);
+            expect(blocks.length).toBeGreaterThan(0);
 
             // Verify both messages have the same conversation ID
             expect(data.userMessage.conversationId).toBe(data.assistantMessage.conversationId);
@@ -201,7 +211,7 @@ describe("conversations routes", () => {
                 },
                 body: JSON.stringify(newMsg),
             });
-            await res.json();
+            await res.text(); // Consume stream
 
             // Query messages table directly
             const messages = db

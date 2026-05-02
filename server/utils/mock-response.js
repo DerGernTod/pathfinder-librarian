@@ -297,3 +297,18 @@ export function getMockResponse() {
     const index = Math.floor(Math.random() * MOCK_RESPONSES.length);
     return MOCK_RESPONSES[index];
 }
+
+/**
+ * Returns an async generator that yields chunks of a mock response.
+ * @returns {AsyncGenerator<MessageBlock, void, unknown>}
+ */
+export async function* streamMockResponse() {
+    const index = Math.floor(Math.random() * MOCK_RESPONSES.length);
+    const response = MOCK_RESPONSES[index];
+
+    for (const block of response) {
+        // Simulate network/generation delay
+        await new Promise((resolve) => setTimeout(resolve, 200 + Math.random() * 300));
+        yield block;
+    }
+}

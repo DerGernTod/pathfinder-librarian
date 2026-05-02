@@ -58,7 +58,7 @@
 
 /** @typedef {{ id: string, role: "user", content: string, blocks?: never, mode: Mode, conversationId?: string, createdAt?: string }} UserMessage */
 
-/** @typedef {{ id: string, role: "assistant", blocks: MessageBlock[], mode: Mode, conversationId?: string, content: null, createdAt?: string }} AssistantMessage */
+/** @typedef {{ id: string, role: "assistant", blocks?: MessageBlock[], blocksJson?: string, mode: Mode, conversationId?: string, content: null, createdAt?: string }} AssistantMessage */
 
 /** @typedef {UserMessage | AssistantMessage} Message */
 
