@@ -168,7 +168,7 @@ class MainPage extends LitElement {
     }
 
     get isLanding() {
-        return !this.loading && this.conversations.length === 0;
+        return !this.loading && this.filteredMessages.length === 0;
     }
 
     async firstUpdated() {
@@ -498,16 +498,22 @@ class MainPage extends LitElement {
         }
         this._submitting = true;
 
-        try {
-            const res = await client.api.conversations.$post({
-                json: { title: text.slice(0, 80) },
-            });
-            const conv = await res.json();
-            const convData = conv.data;
+        /** @type {string} */
+        let targetConvId = this.activeConversationId;
 
-            this.conversations = [convData, ...this.conversations];
-            this.activeConversationId = convData.id;
-            await this.fetchMessages(convData.id);
+        try {
+            if (this.conversations.length === 0) {
+                const res = await client.api.conversations.$post({
+                    json: { title: text.slice(0, 80) },
+                });
+                const conv = await res.json();
+                const convData = conv.data;
+
+                this.conversations = [convData, ...this.conversations];
+                this.activeConversationId = convData.id;
+                targetConvId = convData.id;
+                await this.fetchMessages(convData.id);
+            }
 
             this.responding = true;
             const controller = new AbortController();
@@ -516,7 +522,7 @@ class MainPage extends LitElement {
             try {
                 const msgRes = await client.api.conversations[":id"].messages.$post(
                     {
-                        param: { id: convData.id },
+                        param: { id: targetConvId },
                         json: { content: text, mode: this.mode },
                     },
                     {

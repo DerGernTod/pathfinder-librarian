@@ -369,14 +369,24 @@ describe("main-page", () => {
             expect(region).toBeNull();
         });
 
-        it("does not render landing when conversations exist", async () => {
+        it("does not render landing when conversations exist with messages", async () => {
             // Wait for firstUpdated to complete
             await new Promise((r) => setTimeout(r, 100));
-            element.conversations = [
+            const conv = {
+                id: "c1",
+                title: "Test",
+                userId: "u1",
+                createdAt: new Date().toISOString(),
+            };
+            element.conversations = [conv];
+            element.activeConversationId = "c1";
+            element.messages = [
                 {
-                    id: "c1",
-                    title: "Test",
-                    userId: "u1",
+                    id: "m1",
+                    conversationId: "c1",
+                    content: "Hello",
+                    role: "user",
+                    mode: "player",
                     createdAt: new Date().toISOString(),
                 },
             ];
@@ -384,6 +394,25 @@ describe("main-page", () => {
 
             const region = element.shadowRoot?.querySelector('[role="region"]');
             expect(region).toBeNull();
+        });
+
+        it("renders landing for new empty conversation", async () => {
+            // Wait for firstUpdated to complete
+            await new Promise((r) => setTimeout(r, 100));
+            const conv = {
+                id: "c1",
+                title: "New Chat",
+                userId: "u1",
+                createdAt: new Date().toISOString(),
+            };
+            element.conversations = [conv];
+            element.activeConversationId = "c1";
+            element.messages = [];
+            await element.updateComplete;
+
+            const region = element.shadowRoot?.querySelector('[role="region"]');
+            expect(region).toBeTruthy();
+            expect(region?.getAttribute("aria-label")).toBe("Welcome");
         });
 
         it("enter key triggers landing submit", async () => {
@@ -451,6 +480,61 @@ describe("main-page", () => {
             await element._handleLandingSubmit();
 
             expect(element._submitting).toBe(false);
+        });
+
+        it("submits landing prompt into existing empty conversation", async () => {
+            // Wait for firstUpdated to complete
+            await new Promise((r) => setTimeout(r, 100));
+            const conv = {
+                id: "conv-existing",
+                title: "Existing",
+                userId: "u1",
+                createdAt: new Date().toISOString(),
+            };
+            element.conversations = [conv];
+            element.activeConversationId = "conv-existing";
+            element.messages = [];
+            element.loading = false;
+            element._pendingPrompt = "Hello existing";
+            element._submitting = false;
+            await element.updateComplete;
+
+            const mockUserMessage = {
+                id: "um1",
+                conversationId: "conv-existing",
+                content: "Hello existing",
+                role: "user",
+                mode: "player",
+                createdAt: new Date().toISOString(),
+            };
+
+            const mockAssistantMessage = {
+                id: "am1",
+                conversationId: "conv-existing",
+                content: null,
+                role: "assistant",
+                mode: "player",
+                createdAt: new Date().toISOString(),
+                blocks: [{ type: "paragraph", text: "Response" }],
+            };
+
+            // @ts-expect-error - override global fetch with our mock
+            globalThis.fetch = mock(() => {
+                return Promise.resolve(
+                    mockSSEResponse([
+                        { type: "userMessage", data: mockUserMessage },
+                        { type: "assistantComplete", data: mockAssistantMessage },
+                    ]),
+                );
+            });
+
+            await element._handleLandingSubmit();
+
+            expect(element.conversations.length).toBe(1);
+            expect(element.activeConversationId).toBe("conv-existing");
+            expect(element.responding).toBe(false);
+            expect(element._submitting).toBe(false);
+            expect(element._pendingPrompt).toBe("");
         });
 
         it("submits landing prompt and swaps to normal UI", async () => {
