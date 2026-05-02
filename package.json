@@ -23,7 +23,8 @@
     "dependencies": {
         "@hono/zod-validator": "0.7.6",
         "@shoelace-style/shoelace": "2.20.1",
-        "@simplewebauthn/server": "10.0.0",
+        "@simplewebauthn/browser": "13.3.0",
+        "@simplewebauthn/server": "13.3.0",
         "hono": "4.12.14",
         "lit": "3.3.2",
         "lit-element": "4.2.2",
@@ -38,6 +39,7 @@
         "@typescript/native-preview": "7.0.0-dev.20260426.1",
         "oxfmt": "0.46.0",
         "oxlint": "1.61.0",
+        "oxlint-tsgolint": "^0.22.1",
         "playwright": "1.59.1"
     }
 }

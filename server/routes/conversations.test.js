@@ -235,7 +235,7 @@ describe("rule-items routes", () => {
 
     describe("GET /api/rule-items/:id", () => {
         it("returns rule item by id", async () => {
-            const items = await db.query("SELECT id FROM rule_items").all();
+            const items = db.query("SELECT id FROM rule_items").all();
             const res = await app.request(`/api/rule-items/${items[0].id}`);
             expect(res.status).toBe(200);
             const { data } = await res.json();

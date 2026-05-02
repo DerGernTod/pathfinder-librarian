@@ -110,6 +110,9 @@ class SidebarProfile extends LitElement {
         this.user = null;
     }
 
+    /**
+     * @param {Map<string, unknown>} changedProperties
+     */
     willUpdate(changedProperties) {
         // Sync user object properties to individual properties when user changes
         if (changedProperties.has("user") && this.user) {

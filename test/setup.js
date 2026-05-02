@@ -23,14 +23,14 @@ const components = [
 ];
 
 for (const comp of components) {
-    mock.module(
+    await mock.module(
         `https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/${comp}.js?deps=lit@3.3.2`,
         () => import(`@shoelace-style/shoelace/dist/components/${comp}.js`),
     );
 }
 
 // Mock @simplewebauthn/browser module for client-side tests
-mock.module("https://esm.sh/@simplewebauthn/browser@10.0.0", () => ({
+await mock.module("https://esm.sh/@simplewebauthn/browser@10.0.0", () => ({
     startRegistration: async (/** @type {unknown} */ _options) => ({
         id: "mock-credential-id",
         rawId: "mock-raw-id",

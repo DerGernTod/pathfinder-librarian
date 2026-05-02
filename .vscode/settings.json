@@ -2,5 +2,7 @@
     "html.customData": [
         "./node_modules/@shoelace-style/shoelace/dist/vscode.html-custom-data.json"
     ],
-    "js/ts.experimental.useTsgo": true
+    "js/ts.experimental.useTsgo": true,
+    "oxc.tsConfigPath": "jsconfig.json",
+    "oxc.typeAware": true
 }

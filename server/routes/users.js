@@ -20,7 +20,7 @@ export function createUsersRouter() {
                 const user = queries.getUserById(db, userId);
                 return c.json({
                     result: "success",
-                    data: formatUser(user),
+                    data: user,
                 });
             })
             .put("/me", sessionMiddleware(), zValidator("json", updateUserSchema), async (c) => {
@@ -34,7 +34,7 @@ export function createUsersRouter() {
                 const updated = queries.getUserById(db, userId);
                 return c.json({
                     result: "success",
-                    data: formatUser(updated),
+                    data: updated,
                 });
             })
             .delete("/me", sessionMiddleware(), async (c) => {
@@ -63,25 +63,6 @@ export function createUsersRouter() {
                 return c.json({ result: /** @type {"success"} */ ("success"), data: user });
             })
     );
-}
-
-/**
- * @param {{ id: string, name: string, initials: string, subtitle: string, mode: string, email: string | null, isTestUser: boolean, webauthnUserId: string | null } | null} user
- */
-function formatUser(user) {
-    if (!user) {
-        return null;
-    }
-    return {
-        id: user.id,
-        name: user.name,
-        initials: user.initials,
-        subtitle: user.subtitle,
-        mode: user.mode,
-        email: user.email,
-        isTestUser: user.isTestUser,
-        webauthnUserId: user.webauthnUserId,
-    };
 }
 
 // Default export for production (uses production DB from context)

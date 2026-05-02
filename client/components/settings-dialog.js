@@ -1,3 +1,4 @@
+import { startRegistration } from "@simplewebauthn/browser";
 import { LitElement, css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
@@ -13,6 +14,8 @@ import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/input/inp
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/button/button.js?deps=lit@3.3.2";
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/tag/tag.js?deps=lit@3.3.2";
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/divider/divider.js?deps=lit@3.3.2";
+import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/radio-group/radio-group.js?deps=lit@3.3.2";
+import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/radio-button/radio-button.js?deps=lit@3.3.2";
 
 class SettingsDialog extends LitElement {
     static styles = [
@@ -21,6 +24,7 @@ class SettingsDialog extends LitElement {
         css`
             :host {
                 display: block;
+                color: var(--foreground);
             }
             sl-dialog::part(panel) {
                 background: var(--secondary);
@@ -114,7 +118,7 @@ class SettingsDialog extends LitElement {
         this.open = false;
         /** @type {AuthUser | null} */
         this.user = null;
-        /** @type {Array<{id: string, deviceType: string, createdAt: string}>} */
+        /** @type {import("zod").z.infer<typeof import("../../server/db/queries.js").DeviceListSchema>} */
         this.devices = [];
         /** @type {string} */
         this.nameInput = "";
@@ -138,19 +142,19 @@ class SettingsDialog extends LitElement {
 
         // Sync dialog open state
         if (changedProperties.has("open")) {
-            const dialog = this.shadowRoot.querySelector("sl-dialog");
+            const dialog = /** @type {ShadowRoot} */ (this.shadowRoot).querySelector("sl-dialog");
             if (dialog) {
                 if (this.open) {
-                    dialog.show();
+                    void dialog.show();
                 } else {
-                    dialog.hide();
+                    void dialog.hide();
                 }
             }
         }
 
         // Fetch devices when dialog opens
         if (changedProperties.has("open") && this.open && !this.devices.length) {
-            this.fetchDevices();
+            void this.fetchDevices();
         }
     }
 
@@ -187,14 +191,15 @@ class SettingsDialog extends LitElement {
                         <label>Default Mode</label>
                         <div class="mode-toggle">
                             <sl-radio-group
+                                size="small"
                                 .value=${this.modeInput}
                                 @sl-change=${this.handleModeChange}
                             >
-                                <sl-radio-button value="gm" class="mode-option">
-                                    GM Mode
-                                </sl-radio-button>
-                                <sl-radio-button value="player" class="mode-option">
+                                <sl-radio-button value="player" class="mode-option player">
                                     Player Mode
+                                </sl-radio-button>
+                                <sl-radio-button value="gm" class="mode-option gm">
+                                    GM Mode
                                 </sl-radio-button>
                             </sl-radio-group>
                         </div>
@@ -274,12 +279,18 @@ class SettingsDialog extends LitElement {
         `;
     }
 
+    /**
+     * @param {import("@shoelace-style/shoelace").SlInputEvent} e
+     */
     handleNameInput(e) {
-        this.nameInput = e.target.value;
+        this.nameInput = /** @type {HTMLInputElement} */ (e.target).value;
     }
 
+    /**
+     * @param {import("@shoelace-style/shoelace").SlChangeEvent} e
+     */
     handleModeChange(e) {
-        this.modeInput = /** @type {Mode} */ (e.target.value);
+        this.modeInput = /** @type {Mode} */ (/** @type {HTMLInputElement} */ (e.target).value);
     }
 
     async handleSave() {
@@ -287,7 +298,7 @@ class SettingsDialog extends LitElement {
         this.error = "";
 
         try {
-            const res = await client.api.users["me"].$put({
+            const res = await client.api.users.me.$put({
                 json: {
                     name: this.nameInput,
                     mode: this.modeInput,
@@ -304,7 +315,7 @@ class SettingsDialog extends LitElement {
             );
             this.open = false;
         } catch (err) {
-            this.error = err.message || "Failed to save settings";
+            this.error = Error.isError(err) ? err.message : "Failed to save settings";
         } finally {
             this.loading = false;
         }
@@ -320,12 +331,16 @@ class SettingsDialog extends LitElement {
             const data = await res.json();
             this.devices = data.data;
         } catch {
-            // Failed to fetch devices
+            console.warn("Failed to fetch devices");
         } finally {
             this.loading = false;
         }
     }
 
+    /**
+     *
+     * @param {import("zod").z.infer<typeof import("../../server/db/queries.js").DeviceSchema>} device
+     */
     getDeviceName(device) {
         if (device.deviceType === "singleDevice") {
             return "Passkey (Single Device)";
@@ -336,6 +351,10 @@ class SettingsDialog extends LitElement {
         return "Passkey";
     }
 
+    /**
+     * @param {string} dateString
+     * @returns {string}
+     */
     formatDate(dateString) {
         const date = new Date(dateString);
         return date.toLocaleDateString("en-US", {
@@ -351,40 +370,45 @@ class SettingsDialog extends LitElement {
 
         try {
             // Start device registration
-            const startRes = await client.api.auth["device/start"].$post();
+            const startRes = await client.api.auth.device.start.$post({ json: {} });
+            if (!startRes.ok) {
+                const startData = await startRes.json();
+                throw new Error(startData.message || "Failed to start device registration");
+            }
             const startData = await startRes.json();
             const { options, challengeId } = startData.data;
-
-            // Import browser API dynamically to avoid loading errors
-            const { startRegistration } =
-                await import("https://esm.sh/@simplewebauthn/browser@10.0.0");
 
             // Prompt for passkey
             const credential = await startRegistration({ optionsJSON: options });
 
             // Finish registration
-            await client.api.auth["device/finish"].$post({
-                json: { credential: credential.toJSON(), challengeId },
+            await client.api.auth.device.finish.$post({
+                json: { credential, challengeId },
             });
 
             // Refresh devices list
             await this.fetchDevices();
         } catch (err) {
-            this.error = err.message || "Failed to add device";
+            this.error = Error.isError(err) ? err.message : "Failed to add device";
         } finally {
             this.loading = false;
         }
     }
 
+    /**
+     * @param {string} deviceId
+     */
     async handleRemoveDevice(deviceId) {
         this.loading = true;
         this.error = "";
 
         try {
-            await client.api.auth.device[deviceId].$delete();
+            await client.api.auth.device[":credentialId"].$delete({
+                param: { credentialId: deviceId },
+            });
             await this.fetchDevices();
         } catch (err) {
-            this.error = err.message || "Failed to remove device";
+            this.error = Error.isError(err) ? err.message : "Failed to remove device";
         } finally {
             this.loading = false;
         }
@@ -410,7 +434,7 @@ class SettingsDialog extends LitElement {
             );
             this.open = false;
         } catch (err) {
-            this.error = err.message || "Failed to delete account";
+            this.error = Error.isError(err) ? err.message : "Failed to delete account";
         } finally {
             this.loading = false;
         }

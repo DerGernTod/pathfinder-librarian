@@ -12,9 +12,9 @@ import {
     startRegistrationSchema,
     finishRegistrationSchema,
     startAuthenticationSchema,
-    finishAuthenticationSchema,
     quickLoginSchema,
     addDeviceStartSchema,
+    finishAuthenticationSchema,
 } from "../../shared/auth-schemas.js";
 import { db } from "../db/database.js";
 import * as queries from "../db/queries.js";
@@ -32,26 +32,6 @@ const rpName = "Pathfinder Librarian";
 const origin = process.env.WEBAUTHN_ORIGIN || "http://localhost:3000";
 
 /**
- * Formats a user row for API responses.
- * @param {{ id: string, name: string, initials: string, subtitle: string, mode: string, email: string | null, isTestUser: boolean, webauthnUserId: string | null } | null} user
- */
-function formatUser(user) {
-    if (!user) {
-        return null;
-    }
-    return {
-        id: user.id,
-        name: user.name,
-        initials: user.initials,
-        subtitle: user.subtitle,
-        mode: user.mode,
-        email: user.email,
-        isTestUser: user.isTestUser,
-        webauthnUserId: user.webauthnUserId,
-    };
-}
-
-/**
  * Creates an auth sub-router.
  */
 export function createAuthRouter() {
@@ -65,7 +45,6 @@ export function createAuthRouter() {
                 .slice(0, 2)
                 .join("");
 
-            /** @type {{ id: string, name: string, initials: string, subtitle: string, mode: string, email: string | null, isTestUser: boolean, webauthnUserId: string | null } | undefined} */
             let user = queries
                 .getUsers(db)
                 .find((u) => u.name.toLowerCase() === name.toLowerCase());
@@ -129,16 +108,24 @@ export function createAuthRouter() {
                 type: "registration",
             });
 
-            return c.json({
-                result: "success",
-                data: {
-                    options,
-                    challengeId: challenge.id,
+            return c.json(
+                {
+                    result: "success",
+                    data: {
+                        options,
+                        challengeId: challenge.id,
+                        webauthnUserId: user.webauthnUserId,
+                    },
                 },
-            });
+                200,
+            );
         })
-        .post("/register/finish", zValidator("json", finishRegistrationSchema), async (c) => {
-            const { credential, challengeId } = c.req.valid("json");
+        .post("/register/verify", zValidator("json", finishRegistrationSchema), async (c) => {
+            const { credential, challengeId, webauthnUserId } = c.req.valid("json");
+
+            if (!webauthnUserId) {
+                return c.json({ result: "error", message: "webauthnUserId is required" }, 400);
+            }
 
             const challenge = queries.getChallengeById(db, challengeId);
             if (!challenge) {
@@ -161,31 +148,28 @@ export function createAuthRouter() {
 
             const { registrationInfo } = verification;
             const {
-                credentialID,
-                credentialPublicKey,
-                counter,
+                credential: regCredential,
                 credentialDeviceType,
                 credentialBackedUp,
+                aaguid,
             } = registrationInfo;
 
-            // Find user by matching webauthnUserId from credential
-            const allUsers = queries.getUsers(db);
-            const user = allUsers.find((u) => u.webauthnUserId);
+            const user = queries.getUserByWebauthnUserId(db, webauthnUserId);
             if (!user) {
                 return c.json({ result: "error", message: "User not found" }, 404);
             }
 
-            const credentialIdBase64 = Buffer.from(credentialID).toString("base64");
-            const publicKeyBase64 = Buffer.from(credentialPublicKey).toString("base64");
+            const credentialId = regCredential.id;
+            const publicKeyBase64 = Buffer.from(regCredential.publicKey).toString("base64");
             queries.createCredential(db, {
-                id: credentialIdBase64,
+                id: credentialId,
                 userId: user.id,
                 publicKey: publicKeyBase64,
-                counter,
+                counter: regCredential.counter,
                 deviceType: credentialDeviceType,
                 backedUp: credentialBackedUp,
-                transports: [],
-                aaguid: registrationInfo.aaguid || "",
+                transports: regCredential.transports || [],
+                aaguid: aaguid || "",
             });
 
             queries.deleteChallenge(db, challengeId);
@@ -197,13 +181,19 @@ export function createAuthRouter() {
             setSessionCookie(c, token);
 
             const updatedUser = queries.getUserById(db, user.id);
+            if (!updatedUser) {
+                return c.json({ result: "error", message: "User not found" }, 404);
+            }
 
-            return c.json({
-                result: "success",
-                data: {
-                    user: formatUser(updatedUser),
+            return c.json(
+                {
+                    result: "success",
+                    data: {
+                        user: updatedUser,
+                    },
                 },
-            });
+                200,
+            );
         })
         .post("/login/start", zValidator("json", startAuthenticationSchema), async (c) => {
             const allCredentials = queries
@@ -214,7 +204,7 @@ export function createAuthRouter() {
                 rpID,
                 userVerification: "preferred",
                 allowCredentials: allCredentials.map((cred) => ({
-                    id: Buffer.from(cred.id, "base64").toString("base64"),
+                    id: cred.id,
                     transports:
                         /** @type {import("@simplewebauthn/types").AuthenticatorTransport[]} */ (
                             cred.transports || []
@@ -227,13 +217,16 @@ export function createAuthRouter() {
                 type: "authentication",
             });
 
-            return c.json({
-                result: "success",
-                data: {
-                    options,
-                    challengeId: challenge.id,
+            return c.json(
+                {
+                    result: "success",
+                    data: {
+                        options,
+                        challengeId: challenge.id,
+                    },
                 },
-            });
+                200,
+            );
         })
         .post("/login/finish", zValidator("json", finishAuthenticationSchema), async (c) => {
             const { credential, challengeId } = c.req.valid("json");
@@ -243,10 +236,7 @@ export function createAuthRouter() {
                 return c.json({ result: "error", message: "Invalid challenge" }, 400);
             }
 
-            const credentialIdBase64 = Buffer.from(
-                /** @type {string} */ (/** @type {unknown} */ (credential.id)),
-            ).toString("base64");
-            const storedCredential = queries.getCredentialById(db, credentialIdBase64);
+            const storedCredential = queries.getCredentialById(db, credential.id);
             if (!storedCredential) {
                 return c.json({ result: "error", message: "Credential not found" }, 404);
             }
@@ -259,9 +249,9 @@ export function createAuthRouter() {
                 expectedChallenge: challenge.challenge,
                 expectedOrigin: origin,
                 expectedRPID: rpID,
-                authenticator: {
-                    credentialID: storedCredential.id,
-                    credentialPublicKey: Buffer.from(storedCredential.publicKey, "base64"),
+                credential: {
+                    id: storedCredential.id,
+                    publicKey: Buffer.from(storedCredential.publicKey, "base64"),
                     counter: storedCredential.counter,
                     transports:
                         /** @type {import("@simplewebauthn/types").AuthenticatorTransport[]} */ (
@@ -276,7 +266,7 @@ export function createAuthRouter() {
 
             queries.updateCredentialCounter(
                 db,
-                credentialIdBase64,
+                credential.id,
                 verification.authenticationInfo.newCounter,
             );
 
@@ -293,12 +283,15 @@ export function createAuthRouter() {
 
             setSessionCookie(c, token);
 
-            return c.json({
-                result: "success",
-                data: {
-                    user: formatUser(user),
+            return c.json(
+                {
+                    result: "success",
+                    data: {
+                        user,
+                    },
                 },
-            });
+                200,
+            );
         })
         .post("/quick-login", zValidator("json", quickLoginSchema), async (c) => {
             if (process.env.NODE_ENV === "production") {
@@ -322,12 +315,15 @@ export function createAuthRouter() {
 
             setSessionCookie(c, token);
 
-            return c.json({
-                result: "success",
-                data: {
-                    user: formatUser(user),
+            return c.json(
+                {
+                    result: "success",
+                    data: {
+                        user,
+                    },
                 },
-            });
+                200,
+            );
         })
         .get("/test-users", async (c) => {
             if (process.env.NODE_ENV === "production") {
@@ -339,28 +335,37 @@ export function createAuthRouter() {
                 .map((id) => queries.getUserById(db, id))
                 .filter((u) => u !== null);
 
-            return c.json({
-                result: "success",
-                data: users.map((u) => ({
-                    id: u.id,
-                    name: u.name,
-                    mode: u.mode,
-                })),
-            });
+            return c.json(
+                {
+                    result: "success",
+                    data: users.map((u) => ({
+                        id: u.id,
+                        name: u.name,
+                        mode: u.mode,
+                    })),
+                },
+                200,
+            );
         })
         .get("/me", sessionMiddleware(), async (c) => {
             const userId = getUserId(c);
             const user = queries.getUserById(db, userId);
-            return c.json({
-                result: "success",
-                data: formatUser(user),
-            });
+            if (!user) {
+                return c.json({ result: "error", message: "User not found" }, 404);
+            }
+            return c.json(
+                {
+                    result: "success",
+                    data: user,
+                },
+                200,
+            );
         })
         .post("/logout", sessionMiddleware(), async (c) => {
             const sessionId = getSessionId(c);
             queries.deleteSession(db, sessionId);
             clearSessionCookie(c);
-            return c.json({ result: "success" });
+            return c.json({ result: "success" }, 200);
         })
         .post(
             "/device/start",
@@ -401,14 +406,17 @@ export function createAuthRouter() {
                     challenge: options.challenge,
                     type: "device-registration",
                 });
-
-                return c.json({
-                    result: "success",
-                    data: {
-                        options,
-                        challengeId: challenge.id,
+                return c.json(
+                    {
+                        result: "success",
+                        data: {
+                            options,
+                            challengeId: challenge.id,
+                            webauthnUserId: user.webauthnUserId,
+                        },
                     },
-                });
+                    200,
+                );
             },
         )
         .post(
@@ -416,10 +424,7 @@ export function createAuthRouter() {
             sessionMiddleware(),
             zValidator("json", finishRegistrationSchema),
             async (c) => {
-                const { credential, challengeId } =
-                    /** @type {{ credential: Record<string, unknown>, challengeId: string }} */ (
-                        c.req.valid("json")
-                    );
+                const { credential, challengeId } = c.req.valid("json");
                 const userId = getUserId(c);
 
                 const challenge = queries.getChallengeById(db, challengeId);
@@ -443,29 +448,28 @@ export function createAuthRouter() {
 
                 const { registrationInfo } = verification;
                 const {
-                    credentialID,
-                    credentialPublicKey,
-                    counter,
+                    credential: regCredential,
                     credentialDeviceType,
                     credentialBackedUp,
+                    aaguid,
                 } = registrationInfo;
 
-                const credentialIdBase64 = Buffer.from(credentialID).toString("base64");
-                const publicKeyBase64 = Buffer.from(credentialPublicKey).toString("base64");
+                const credentialId = regCredential.id;
+                const publicKeyBase64 = Buffer.from(regCredential.publicKey).toString("base64");
                 queries.createCredential(db, {
-                    id: credentialIdBase64,
+                    id: credentialId,
                     userId,
                     publicKey: publicKeyBase64,
-                    counter,
+                    counter: regCredential.counter,
                     deviceType: credentialDeviceType,
                     backedUp: credentialBackedUp,
-                    transports: [],
-                    aaguid: registrationInfo.aaguid || "",
+                    transports: regCredential.transports || [],
+                    aaguid: aaguid || "",
                 });
 
                 queries.deleteChallenge(db, challengeId);
 
-                return c.json({ result: "success" });
+                return c.json({ result: "success" }, 200);
             },
         )
         .delete(
@@ -473,8 +477,7 @@ export function createAuthRouter() {
             sessionMiddleware(),
             zValidator("param", z.object({ credentialId: z.string() })),
             async (c) => {
-                const { credentialId } =
-                    /** @type {{ credentialId: string }} */ (c.req.valid("param"));
+                const { credentialId } = c.req.valid("param");
                 const userId = getUserId(c);
 
                 const credential = queries.getCredentialById(db, credentialId);
@@ -489,29 +492,35 @@ export function createAuthRouter() {
                 const userCredentials = queries.getCredentialsByUser(db, userId);
                 if (userCredentials.length <= 1) {
                     return c.json(
-                        { result: "error", message: "Cannot remove last credential" },
+                        {
+                            result: /** @type {"error"} */ "error",
+                            message: "Cannot remove last credential",
+                        },
                         400,
                     );
                 }
 
                 queries.deleteCredential(db, credentialId);
 
-                return c.json({ result: "success" });
+                return c.json({ result: "success" }, 200);
             },
         )
         .get("/devices", sessionMiddleware(), async (c) => {
             const userId = getUserId(c);
             const credentials = queries.getCredentialsByUser(db, userId);
 
-            return c.json({
-                result: "success",
-                data: credentials.map((cred) => ({
-                    id: cred.id,
-                    deviceType: cred.deviceType,
-                    backedUp: cred.backedUp,
-                    createdAt: cred.createdAt,
-                })),
-            });
+            return c.json(
+                {
+                    result: "success",
+                    data: credentials.map((cred) => ({
+                        id: cred.id,
+                        deviceType: cred.deviceType,
+                        backedUp: cred.backedUp,
+                        createdAt: cred.createdAt,
+                    })),
+                },
+                200,
+            );
         });
 }
 

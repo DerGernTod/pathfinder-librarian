@@ -42,8 +42,10 @@ class ProfileMenu extends LitElement {
             .avatar:hover {
                 box-shadow: 0 0 0 3px hsla(262, 83%, 58%, 0.3);
             }
-            sl-dropdown::part(base) {
-                display: block;
+            sl-dropdown::part(panel) {
+                    min-height: 2rem;
+                    max-height: none;
+                    overflow: visible;
             }
             sl-menu-item {
                 display: flex;
@@ -65,7 +67,7 @@ class ProfileMenu extends LitElement {
 
     render() {
         return html`
-            <sl-dropdown placement="bottom-end" distance="4">
+            <sl-dropdown placement="top-start" distance="4" hoist>
                 <button class="avatar" slot="trigger" aria-label="User menu">
                     ${this.initials}
                 </button>

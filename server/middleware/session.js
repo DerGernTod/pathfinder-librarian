@@ -1,4 +1,5 @@
 import { getCookie, setCookie } from "hono/cookie";
+import { createMiddleware } from "hono/factory";
 
 import { db as defaultDb } from "../db/database.js";
 import {
@@ -15,71 +16,85 @@ const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
  * On success, sets c.set("userId", userId) and c.set("sessionId", sessionId).
  * On failure, returns 401.
  * @param {{ optional?: boolean, database?: import("bun:sqlite").Database }} options - If optional, does not 401 on missing session. If database is provided, uses that instead of default db.
+ * @returns {import("hono").MiddlewareHandler<{ Variables: { userId: string, sessionId: string }}>}
  */
 export function sessionMiddleware(options = {}) {
     const database = options.database || defaultDb;
 
-    return async (
-        /** @type {import("hono").Context} */ c,
-        /** @type {import("hono").Next} */ next,
-    ) => {
-        // Try to get cookie using getCookie, or fall back to manual parsing
-        let token = getCookie(c, SESSION_COOKIE_NAME);
+    return createMiddleware(
+        /**
+         *
+         * @param {import("hono").Context<{ Variables: { userId: string, sessionId: string }}, any, {}>} c
+         * @param {import("hono").Next} next
+         */
+        async (c, next) => {
+            // Try to get cookie using getCookie, or fall back to manual parsing
+            let token = getCookie(c, SESSION_COOKIE_NAME);
 
-        // Manual cookie parsing for test environment
-        if (!token) {
-            const cookieHeader = c.req.header("cookie");
-            if (cookieHeader) {
-                const match = cookieHeader.match(
-                    new RegExp(`(^|;\\s*)${SESSION_COOKIE_NAME}=([^;]*)`),
+            // Manual cookie parsing for test environment
+            if (!token) {
+                const cookieHeader = c.req.header("cookie");
+                if (cookieHeader) {
+                    const match = cookieHeader.match(
+                        new RegExp(`(^|;\\s*)${SESSION_COOKIE_NAME}=([^;]*)`),
+                    );
+                    token = match ? match[2] : undefined;
+                }
+            }
+
+            // For testing, also check for custom header
+            if (!token) {
+                token = c.req.header("x-session-token");
+            }
+
+            if (!token) {
+                if (options.optional) {
+                    return next();
+                }
+                return c.json(
+                    { result: /** @type {"error"} */ "error", message: "Unauthorized" },
+                    401,
                 );
-                token = match ? match[2] : undefined;
             }
-        }
 
-        // For testing, also check for custom header
-        if (!token) {
-            token = c.req.header("x-session-token");
-        }
+            const session = getSessionByToken(database, token);
 
-        if (!token) {
-            if (options.optional) {
-                return next();
+            if (!session) {
+                if (options.optional) {
+                    return next();
+                }
+                return c.json(
+                    { result: /** @type {"error"} */ "error", message: "Invalid session" },
+                    401,
+                );
             }
-            return c.json({ result: "error", message: "Unauthorized" }, 401);
-        }
 
-        const session = getSessionByToken(database, token);
-
-        if (!session) {
-            if (options.optional) {
-                return next();
+            // Check expiration
+            if (new Date(session.expiresAt) < new Date()) {
+                deleteSessionQuery(database, session.id);
+                if (options.optional) {
+                    return next();
+                }
+                return c.json(
+                    { result: /** @type {"error"} */ "error", message: "Session expired" },
+                    401,
+                );
             }
-            return c.json({ result: "error", message: "Invalid session" }, 401);
-        }
 
-        // Check expiration
-        if (new Date(session.expiresAt) < new Date()) {
-            deleteSessionQuery(database, session.id);
-            if (options.optional) {
-                return next();
-            }
-            return c.json({ result: "error", message: "Session expired" }, 401);
-        }
+            // Refresh session on activity
+            const newExpiresAt = new Date(Date.now() + SESSION_DURATION_MS).toISOString();
+            refreshSession(database, session.id, { newExpiresAt });
 
-        // Refresh session on activity
-        const newExpiresAt = new Date(Date.now() + SESSION_DURATION_MS).toISOString();
-        refreshSession(database, session.id, { newExpiresAt });
-
-        c.set("userId", session.userId);
-        c.set("sessionId", session.id);
-        return next();
-    };
+            c.set("userId", session.userId);
+            c.set("sessionId", session.id);
+            return next();
+        },
+    );
 }
 
 /**
  * Sets the session cookie.
- * @param {import("hono").Context} c - Hono context
+ * @param {import("hono").Context} c
  * @param {string} token - Session token
  */
 export function setSessionCookie(c, token) {
@@ -91,7 +106,7 @@ export function setSessionCookie(c, token) {
 
 /**
  * Clears the session cookie.
- * @param {import("hono").Context} c - Hono context
+ * @param {import("hono").Context<{ Variables: { userId: string, sessionId: string }}, any, {}>} c
  */
 export function clearSessionCookie(c) {
     setCookie(c, SESSION_COOKIE_NAME, "", {

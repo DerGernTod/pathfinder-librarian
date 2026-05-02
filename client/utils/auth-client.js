@@ -1,7 +1,4 @@
-import {
-    startRegistration,
-    startAuthentication,
-} from "https://esm.sh/@simplewebauthn/browser@10.0.0";
+import { startRegistration, startAuthentication } from "@simplewebauthn/browser";
 
 import { client } from "./rpc-client.js";
 
@@ -12,18 +9,26 @@ import { client } from "./rpc-client.js";
  */
 export async function registerWithPasskey(name) {
     // 1. Get registration options from server
-    const startRes = await client.api.auth["register/start"].$post({ json: { name } });
+    const startRes = await client.api.auth.register.start.$post({ json: { name } });
+    if (!startRes.ok) {
+        const errorData = await startRes.json();
+        throw new Error(errorData.message || "Registration failed");
+    }
     const startData = await startRes.json();
-    const { options, challengeId } = startData.data;
+    const { options, challengeId, webauthnUserId } = startData.data;
 
     // 2. Prompt browser for passkey
-    const credential = await startRegistration({ optionsJSON: options });
+    const authenticatorAnswer = await startRegistration({ optionsJSON: options });
 
-    // 3. Send credential to server
-    const finishRes = await client.api.auth["register/finish"].$post({
-        json: { credential: credential.toJSON(), challengeId },
+    // 3. Send credential and challenge/user identifiers to server
+    const verificationResponse = await client.api.auth.register.verify.$post({
+        json: { credential: authenticatorAnswer, challengeId, webauthnUserId },
     });
-    const finishData = await finishRes.json();
+    if (!verificationResponse.ok) {
+        const errorData = await verificationResponse.json();
+        throw new Error(errorData.message || "Registration failed");
+    }
+    const finishData = await verificationResponse.json();
     return finishData.data;
 }
 
@@ -33,7 +38,7 @@ export async function registerWithPasskey(name) {
  */
 export async function loginWithPasskey() {
     // 1. Get auth options from server
-    const startRes = await client.api.auth["login/start"].$post();
+    const startRes = await client.api.auth.login.start.$post({ json: {} });
     const startData = await startRes.json();
     const { options, challengeId } = startData.data;
 
@@ -41,9 +46,13 @@ export async function loginWithPasskey() {
     const credential = await startAuthentication({ optionsJSON: options });
 
     // 3. Send assertion to server
-    const finishRes = await client.api.auth["login/finish"].$post({
-        json: { credential: credential.toJSON(), challengeId },
+    const finishRes = await client.api.auth.login.finish.$post({
+        json: { credential, challengeId },
     });
+    if (!finishRes.ok) {
+        const errorData = await finishRes.json();
+        throw new Error(errorData.message || "Authentication failed");
+    }
     const finishData = await finishRes.json();
     return finishData.data;
 }
@@ -55,18 +64,22 @@ export async function loginWithPasskey() {
  */
 export async function quickLogin(userId) {
     const res = await client.api.auth["quick-login"].$post({ json: { userId } });
+    if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Quick login failed");
+    }
     const data = await res.json();
     return data.data;
 }
 
 /**
  * Checks current session.
- * @returns {Promise<{ user: import("../../shared/types.js").AuthUser } | null>}
+ * @returns {Promise<import("../../shared/types.js").AuthUser | null>}
  */
 export async function getCurrentUser() {
     const res = await client.api.auth.me.$get();
-    if (res.status === 401) {
-        return null;
+    if (!res.ok) {
+        return null; // Not logged in or session expired
     }
     const data = await res.json();
     return data.data;

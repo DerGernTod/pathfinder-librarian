@@ -11,7 +11,7 @@ const testDb = createDb(":memory:");
 resetAndReseedDb(testDb);
 
 // Mock database BEFORE importing router
-mock.module("../db/database.js", () => ({
+await mock.module("../db/database.js", () => ({
     db: testDb,
 }));
 
@@ -46,6 +46,10 @@ describe("auth routes", () => {
             expect(json.data.challengeId).toMatch(
                 /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
             );
+            expect(json.data.webauthnUserId).toBeDefined();
+            expect(json.data.webauthnUserId).toMatch(
+                /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+            );
         });
 
         test("rejects empty name", async () => {
@@ -57,16 +61,16 @@ describe("auth routes", () => {
 
             expect(res.status).toBe(400);
         });
-    });
 
-    test("rejects empty name", async () => {
-        const res = await authRouter.request("/auth/register/start", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: "" }),
+        test("rejects invalid credential structure", async () => {
+            const res = await authRouter.request("/auth/register/verify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: "test" }),
+            });
+
+            expect(res.status).toBe(400);
         });
-
-        expect(res.status).toBe(400);
     });
 });
 
