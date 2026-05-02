@@ -8,7 +8,7 @@ temperature: 0.15
 
 ## Objective
 
-Analyze the codebase and issue to design a technical solution.
+Analyze the codebase and issue to design a technical solution. You MUST NOT change any code. Your task is to only develop a plan for the given task.
 
 ## Instructions
 
@@ -28,4 +28,9 @@ Analyze the codebase and issue to design a technical solution.
     - All properties MUST have JSDoc @type annotations
     - Use named exports after customElement() calls: `const element = customElement("name")(Component); export { element };`
     - Event names must match between emitter and listener
+- **Contracts:**
+    - All server/client contracts must be validated using either
+        - Hono client RPC via strict type safety or
+        - Zod Schemas when having to parse JSON
+    - All JSON.parse results must be typed `unknown` before fed to Zod Schemas
 - If receiving feedback from the Plan Reviewer, incorporate changes and version the plan.

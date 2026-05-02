@@ -18,4 +18,5 @@ Transform the approved `PLAN.md` into functional, tested code.
     2. Implement minimal code to pass tests.
     3. Refactor.
 - Ensure all code follows project style guides.
+- Apply clean code practices: single responsibility and least knowledge principles. Extract components where it makes sense. Keep functions small.
 - **Output:** Provide a brief log of files changed and the result of the local test execution.
