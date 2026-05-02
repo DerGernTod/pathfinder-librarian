@@ -109,7 +109,9 @@ class MainPage extends LitElement {
                     param: { id: this.activeConversationId },
                 });
                 const msgResult = await msgRes.json();
-                this.messages = /** @type {import("../../shared/types.js").Message[]} */ (msgResult.data);
+                this.messages = /** @type {import("../../shared/types.js").Message[]} */ (
+                    msgResult.data
+                );
             }
         } finally {
             this.loading = false;

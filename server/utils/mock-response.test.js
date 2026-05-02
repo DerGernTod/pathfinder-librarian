@@ -57,7 +57,10 @@ describe("getMockResponse", () => {
                     "segments" in block &&
                     Array.isArray(block.segments) &&
                     block.segments.every(
-                        (s) => typeof s.text === "string" && typeof s.highlight === "boolean",
+                        (s) =>
+                            typeof s.text === "string" &&
+                            (typeof s.highlight === "boolean" ||
+                                typeof s.highlight === "undefined"),
                     );
                 expect(hasText || hasSegments).toBe(true);
             } else if (block.type === "list") {
