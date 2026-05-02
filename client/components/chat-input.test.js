@@ -84,6 +84,36 @@ describe("chat-input", () => {
         expect(dispatched).toBe(false);
     });
 
+    it("does not dispatch send-message when disabled", async () => {
+        const el = createInput();
+        el.responding = true;
+        await el.updateComplete;
+
+        el.value = "Hello";
+        el.requestUpdate();
+        await el.updateComplete;
+
+        let dispatched = false;
+        el.addEventListener("send-message", () => {
+            dispatched = true;
+        });
+
+        const button = /** @type {HTMLElement} */ (el.shadowRoot.querySelector("button"));
+        fireEvent.click(button);
+        expect(dispatched).toBe(false);
+    });
+
+    it("renders stop button when responding", async () => {
+        const el = createInput();
+        el.responding = true;
+        await el.updateComplete;
+
+        const stop = Array.from(el.shadowRoot.querySelectorAll("button")).find((b) =>
+            /Stop/.test(b.textContent || ""),
+        );
+        expect(stop).toBeTruthy();
+    });
+
     it("renders disclaimer text", async () => {
         const el = createInput();
         await el.updateComplete;

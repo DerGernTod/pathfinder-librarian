@@ -21,8 +21,8 @@ class AppShell extends LitElement {
     ];
 
     static properties = {
-        /** @type {AuthUser | null} */ user: { type: Object },
-        /** @type {boolean} */ loading: { type: Boolean },
+        user: { type: Object },
+        loading: { type: Boolean },
     };
 
     constructor() {

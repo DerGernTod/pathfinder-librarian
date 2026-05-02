@@ -76,6 +76,10 @@ class ChatInput extends LitElement {
             .send-btn:hover {
                 opacity: 0.9;
             }
+            .send-btn:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
             .send-icon {
                 width: 1rem;
                 height: 1rem;
@@ -94,6 +98,9 @@ class ChatInput extends LitElement {
     static properties = {
         value: { type: String },
         mode: { type: String },
+        // Whether the assistant is currently responding. When true the
+        // submit button becomes a Stop button and will dispatch `stop-message`.
+        responding: { type: Boolean, reflect: true },
     };
 
     constructor() {
@@ -101,6 +108,8 @@ class ChatInput extends LitElement {
         this.value = "";
         /** @type {Mode} */
         this.mode = "gm";
+        /** @type {boolean} */
+        this.responding = false;
         document.addEventListener("select-conversation", () => {
             const textarea = /** @type {HTMLTextAreaElement | null} */ (
                 this.shadowRoot?.querySelector("sl-textarea")
@@ -123,21 +132,27 @@ class ChatInput extends LitElement {
                         class="textarea-flex"
                         autofocus
                     ></sl-textarea>
-                    <button @click=${this.handleSubmit} class="send-btn">
-                        <svg
-                            class="send-icon"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M5 12h14M12 5l7 7-7 7"
-                            />
-                        </svg>
-                    </button>
+                    ${this.responding
+                        ? html`
+                              <button @click=${this.handleStop} class="send-btn stop">Stop</button>
+                          `
+                        : html`
+                              <button @click=${this.handleSubmit} class="send-btn">
+                                  <svg
+                                      class="send-icon"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                  >
+                                      <path
+                                          stroke-linecap="round"
+                                          stroke-linejoin="round"
+                                          stroke-width="2"
+                                          d="M5 12h14M12 5l7 7-7 7"
+                                      />
+                                  </svg>
+                              </button>
+                          `}
                 </div>
                 <p class="disclaimer">
                     Pathfinder Librarian can make mistakes. Verify critical mechanics with the PRD.
@@ -164,6 +179,9 @@ class ChatInput extends LitElement {
     }
 
     handleSubmit() {
+        if (this.responding) {
+            return;
+        }
         const text = this.value.trim();
         if (!text) {
             return;
@@ -172,6 +190,10 @@ class ChatInput extends LitElement {
             new CustomEvent("send-message", { detail: { text }, bubbles: true, composed: true }),
         );
         this.value = "";
+    }
+
+    handleStop() {
+        this.dispatchEvent(new CustomEvent("stop-message", { bubbles: true, composed: true }));
     }
 }
 

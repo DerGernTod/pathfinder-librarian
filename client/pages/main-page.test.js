@@ -52,6 +52,7 @@ describe("main-page", () => {
                 content: "Test 1",
                 role: "user",
                 mode: "player",
+                blocks: null,
                 createdAt: new Date().toISOString(),
             },
             {
@@ -60,6 +61,7 @@ describe("main-page", () => {
                 content: "Test 2",
                 role: "user",
                 mode: "player",
+                blocks: null,
                 createdAt: new Date().toISOString(),
             },
             {
@@ -68,6 +70,7 @@ describe("main-page", () => {
                 content: "Test 3",
                 role: "user",
                 mode: "player",
+                blocks: null,
                 createdAt: new Date().toISOString(),
             },
         ];
@@ -87,6 +90,7 @@ describe("main-page", () => {
                 content: "Test",
                 role: "user",
                 mode: "player",
+                blocks: null,
                 createdAt: new Date().toISOString(),
             },
         ];
@@ -103,6 +107,7 @@ describe("main-page", () => {
             detail: { mode: /** @type {import("../../shared/types.js").Mode} */ ("gm") },
         });
         element.handleModeChange(event);
+        // @ts-expect-error - mode is typed as "player" here, but we want to test with mode
         expect(element.mode).toBe("gm");
     });
 
@@ -129,7 +134,7 @@ describe("main-page", () => {
         expect(fetchMessagesMock.mock.calls[0][0]).toBe("conv2");
     });
 
-    it("should add message when sending", async () => {
+    it("should add user and assistant messages when sending", async () => {
         element.activeConversationId = "conv1";
         element.messages = [
             {
@@ -138,23 +143,39 @@ describe("main-page", () => {
                 content: "Old",
                 role: "user",
                 mode: "player",
+                blocks: null,
                 createdAt: new Date().toISOString(),
             },
         ];
 
-        const mockMessage = {
+        const mockUserMessage = {
             id: "2",
             conversationId: "conv1",
             content: "Test message",
             role: "user",
             mode: "player",
             createdAt: new Date().toISOString(),
+            blocks: null,
+        };
+
+        const mockAssistantMessage = {
+            id: "3",
+            conversationId: "conv1",
+            content: null,
+            role: "assistant",
+            mode: "player",
+            createdAt: new Date().toISOString(),
+            blocks: [{ type: "paragraph", text: "Mock response" }],
         };
 
         // Mock the RPC client
         const mockResponse = {
             ok: true,
-            json: () => Promise.resolve({ result: "success", data: mockMessage }),
+            json: () =>
+                Promise.resolve({
+                    result: "success",
+                    data: { userMessage: mockUserMessage, assistantMessage: mockAssistantMessage },
+                }),
         };
         // @ts-expect-error - override global fetch with our mock
         globalThis.fetch = mock(() => Promise.resolve(mockResponse));
@@ -162,8 +183,58 @@ describe("main-page", () => {
         const event = new CustomEvent("send-message", { detail: { text: "Test message" } });
         await element.handleSendMessage(event);
 
-        expect(element.messages.length).toBe(2);
+        expect(element.messages.length).toBe(3);
         expect(element.messages[1].content).toBe("Test message");
+        expect(element.messages[1].role).toBe("user");
+        expect(element.messages[2].role).toBe("assistant");
+        expect(element.messages[2].blocks).toEqual([{ type: "paragraph", text: "Mock response" }]);
+    });
+
+    it("should set responding to true during send and false after", async () => {
+        element.activeConversationId = "conv1";
+        element.messages = [];
+
+        const mockUserMessage = {
+            id: "2",
+            conversationId: "conv1",
+            content: "Test",
+            role: "user",
+            mode: "player",
+            createdAt: new Date().toISOString(),
+            blocks: null,
+        };
+
+        const mockAssistantMessage = {
+            id: "3",
+            conversationId: "conv1",
+            content: null,
+            role: "assistant",
+            mode: "player",
+            createdAt: new Date().toISOString(),
+            blocks: [{ type: "paragraph", text: "Response" }],
+        };
+
+        const mockResponse = {
+            ok: true,
+            json: () =>
+                Promise.resolve({
+                    result: "success",
+                    data: { userMessage: mockUserMessage, assistantMessage: mockAssistantMessage },
+                }),
+        };
+        // @ts-expect-error - override global fetch with our mock
+        globalThis.fetch = mock(() => Promise.resolve(mockResponse));
+
+        const event = new CustomEvent("send-message", { detail: { text: "Test" } });
+        const promise = element.handleSendMessage(event);
+
+        // Check responding is true during the call
+        expect(element.responding).toBe(true);
+
+        await promise;
+
+        // Check responding is false after the call
+        expect(element.responding).toBe(false);
     });
 
     it("should create new conversation", async () => {

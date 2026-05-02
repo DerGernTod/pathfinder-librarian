@@ -5,7 +5,15 @@ import { getByText } from "@testing-library/dom";
 import "./settings-dialog.js";
 
 describe("settings-dialog", () => {
+    /** @type {HTMLDivElement} */
     let container;
+
+    function createDialog() {
+        /** @type {any} */
+        const el = document.createElement("settings-dialog");
+        el.open = true;
+        return el;
+    }
 
     beforeEach(() => {
         container = document.createElement("div");
@@ -23,8 +31,7 @@ describe("settings-dialog", () => {
             webauthnUserId: "webauthn-id",
         };
 
-        const el = document.createElement("settings-dialog");
-        el.open = true;
+        const el = createDialog();
         el.user = mockUser;
         container.appendChild(el);
         await el.updateComplete;
@@ -44,9 +51,8 @@ describe("settings-dialog", () => {
             webauthnUserId: "webauthn-id",
         };
 
-        const el = document.createElement("settings-dialog");
+        const el = createDialog();
         container.appendChild(el);
-        el.open = true;
         await el.updateComplete;
         el.user = mockUser;
         await el.updateComplete;
@@ -69,8 +75,7 @@ describe("settings-dialog", () => {
             webauthnUserId: "webauthn-id",
         };
 
-        const el = document.createElement("settings-dialog");
-        el.open = true;
+        const el = createDialog();
         el.user = mockUser;
         el.addEventListener("settings-closed", () => {
             dispatchedEvent = true;
@@ -95,8 +100,7 @@ describe("settings-dialog", () => {
             webauthnUserId: "webauthn-id",
         };
 
-        const el = document.createElement("settings-dialog");
-        el.open = true;
+        const el = createDialog();
         el.user = mockUser;
         el.devices = [
             { id: "device-1", deviceType: "singleDevice", createdAt: "2025-01-01T00:00:00Z" },
@@ -119,8 +123,7 @@ describe("settings-dialog", () => {
             webauthnUserId: "webauthn-id",
         };
 
-        const el = document.createElement("settings-dialog");
-        el.open = true;
+        const el = createDialog();
         el.user = mockUser;
         container.appendChild(el);
         await el.updateComplete;

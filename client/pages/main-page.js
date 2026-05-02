@@ -59,9 +59,10 @@ class MainPage extends LitElement {
         messages: { type: Array },
         mode: { type: String },
         loading: { type: Boolean },
+        responding: { type: Boolean },
         sidebarExpanded: { type: Boolean },
-        /** @type {AuthUser} */ user: { type: Object },
-        /** @type {boolean} */ settingsOpen: { type: Boolean },
+        user: { type: Object },
+        settingsOpen: { type: Boolean },
     };
 
     constructor() {
@@ -70,12 +71,16 @@ class MainPage extends LitElement {
         this.conversations = [];
         /** @type {string} */
         this.activeConversationId = "";
-        /** @type {Message[]} */
+        /** @type {import("zod").z.infer<typeof import("../../server/db/queries.js").MessageItemListSchema>} */
         this.messages = [];
         /** @type {Mode} */
         this.mode = "player";
         /** @type {boolean} */
         this.loading = true;
+        /** @type {boolean} */
+        this.responding = false;
+        /** @type {AbortController | null} */
+        this._currentAssistantController = null;
         this.sidebarExpanded = true;
         /** @type {AuthUser | null} */
         this.user = null;
@@ -135,11 +140,13 @@ class MainPage extends LitElement {
                     ></chat-header>
                     <message-list
                         .messages=${this.filteredMessages}
-                        .loading=${this.loading}
+                        .loading=${this.loading || this.responding}
                     ></message-list>
                     <chat-input
                         .mode=${this.mode}
+                        .responding=${this.responding}
                         @send-message=${this.handleSendMessage}
+                        @stop-message=${this.handleStopMessage}
                     ></chat-input>
                 </main>
             </div>
@@ -201,12 +208,36 @@ class MainPage extends LitElement {
      * @param {CustomEvent<{ text: string }>} e
      */
     async handleSendMessage(e) {
-        const res = await client.api.conversations[":id"].messages.$post({
-            param: { id: this.activeConversationId },
-            json: { content: e.detail.text, mode: this.mode },
-        });
-        const newMsg = await res.json();
-        this.messages = [...this.messages, newMsg.data];
+        this.responding = true;
+        const controller = new AbortController();
+        this._currentAssistantController = controller;
+
+        try {
+            const res = await client.api.conversations[":id"].messages.$post(
+                {
+                    param: { id: this.activeConversationId },
+                    json: { content: e.detail.text, mode: this.mode },
+                },
+                {
+                    init: { signal: controller.signal },
+                },
+            );
+
+            const result = await res.json();
+            const { userMessage, assistantMessage } = result.data;
+            this.messages = [...this.messages, userMessage, assistantMessage];
+        } catch (err) {
+            if (Error.isError(err) && err.name !== "AbortError") {
+                console.error("Error sending message:", err);
+            }
+        } finally {
+            this.responding = false;
+            this._currentAssistantController = null;
+        }
+    }
+
+    handleStopMessage() {
+        this._currentAssistantController?.abort();
     }
 
     get filteredMessages() {
