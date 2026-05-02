@@ -1,7 +1,6 @@
 ---
 description: Verify the implementation through automated checks and logic review.
 mode: subagent
-model: zai-coding-plan/glm-4.7
 temperature: 0.2
 ---
 
