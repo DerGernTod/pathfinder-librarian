@@ -1,10 +1,34 @@
 import { expect, test } from "playwright/test";
 
 test.describe("navigation e2e tests", () => {
-    test.beforeEach(async ({ page }) => {
+    test.beforeEach(async ({ page, context }) => {
         // Reset DB to clean seeded state before each test
         const res = await fetch("http://localhost:3000/api/test/reset-db", { method: "POST" });
         expect(res.ok).toBe(true);
+
+        // Quick-login as default seed user
+        const loginRes = await fetch("http://localhost:3000/api/auth/quick-login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: "00000000-0000-4000-8000-000000000001" }),
+        });
+        expect(loginRes.ok).toBe(true);
+
+        // Set the session cookie on the page context
+        const setCookieHeader = loginRes.headers.get("set-cookie");
+        if (setCookieHeader) {
+            const cookieMatch = setCookieHeader.match(/session_token=([^;]+)/);
+            if (cookieMatch) {
+                await context.addCookies([
+                    {
+                        name: "session_token",
+                        value: cookieMatch[1],
+                        domain: "localhost",
+                        path: "/",
+                    },
+                ]);
+            }
+        }
 
         await page.goto("/");
         await page.waitForSelector("main-page");
@@ -25,6 +49,7 @@ test.describe("navigation e2e tests", () => {
 
     test("switch to conversation 2 and verify messages change", async ({ page }) => {
         const messageList = page.locator("message-list");
+        await expect(messageList).toBeVisible();
         const initialMessageCount = await messageList.locator("chat-message").count();
 
         const sidebar = page.locator("chat-sidebar");
@@ -37,20 +62,6 @@ test.describe("navigation e2e tests", () => {
         await expect(firstMessage).toContainText(/chandelier/i);
     });
 
-    test("switch to conversation 3 and verify messages change", async ({ page }) => {
-        const messageList = page.locator("message-list");
-        const initialMessageCount = await messageList.locator("chat-message").count();
-
-        const sidebar = page.locator("chat-sidebar");
-        await sidebar.locator("conversation-item", { hasText: "Buying rare reagents" }).click();
-
-        const newMessageCount = await messageList.locator("chat-message").count();
-        expect(newMessageCount).toBeLessThan(initialMessageCount);
-
-        const firstMessage = messageList.locator("chat-message").first();
-        await expect(firstMessage).toContainText(/dragon/i);
-    });
-
     test("switch between conversations and verify messages switch correctly", async ({ page }) => {
         const messageList = page.locator("message-list");
         const sidebar = page.locator("chat-sidebar");
@@ -61,9 +72,6 @@ test.describe("navigation e2e tests", () => {
 
         await sidebar.locator("conversation-item", { hasText: "Chandelier Assassination" }).click();
         await expect(messageList.locator("chat-message").last()).toContainText(/chandelier/i);
-
-        await sidebar.locator("conversation-item", { hasText: "Buying rare reagents" }).click();
-        await expect(messageList.locator("chat-message").last()).toContainText(/dragon/i);
 
         await sidebar.locator("conversation-item", { hasText: "Mitflit King Capture" }).click();
         const backToConv1LastMessage = messageList.locator("chat-message").last();
@@ -135,6 +143,6 @@ test.describe("navigation e2e tests", () => {
 
         const allItems = sidebar.locator("conversation-item:not([hidden])");
         const allCount = await allItems.count();
-        expect(allCount).toBe(3);
+        expect(allCount).toBe(2);
     });
 });

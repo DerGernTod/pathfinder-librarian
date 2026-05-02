@@ -1,12 +1,24 @@
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: CI
 
+permissions:
+    checks: write
+
 on:
     pull_request:
     # workflow_dispatch allows CI to be triggered manually or from other
     # workflows (e.g. update-snapshots.yml dispatches CI after pushing
     # snapshot commits so PR required checks are reported for the new HEAD).
     workflow_dispatch:
+        inputs:
+            update_snapshots:
+                description: "Update Playwright snapshots?"
+                type: boolean
+                default: false
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+    cancel-in-progress: true
 
 jobs:
     lint:
@@ -43,7 +55,22 @@ jobs:
                   path: ~/.bun/install/cache
                   key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
             - run: bun install --frozen-lockfile
-            - run: bun run test
+            - name: Run Bun tests
+              run: bun run test --reporter=junit --reporter-outfile=test-report.xml
+            - name: Upload Bun Test Report
+              if: always() # Ensure report is uploaded even if tests fail
+              uses: actions/upload-artifact@v4
+              with:
+                  name: bun-test-report
+                  path: test-report.xml
+                  retention-days: 7
+            - name: Test Report
+              uses: dorny/test-reporter@v1
+              if: always()
+              with:
+                  name: Bun Unit Tests
+                  path: test-report.xml
+                  reporter: java-junit # Bun's junit output matches this format
 
     e2e:
         runs-on: ubuntu-latest
@@ -64,6 +91,13 @@ jobs:
             - run: bun install --frozen-lockfile
             - name: Run Playwright tests
               run: bun run e2e
+            - name: Upload Playwright Report
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: playwright-report
+                  path: playwright-report/
+                  retention-days: 7
 
     check:
         runs-on: ubuntu-latest

@@ -2,9 +2,15 @@
 
 /** @typedef {{ id: string, title: string, userId?: string, createdAt?: string }} Conversation */
 
+/** @typedef {{ id: string, name: string, initials: string, subtitle: string, mode: Mode, email: string | null, isTestUser?: boolean, webauthnUserId?: string }} AuthUser */
+
 /** @typedef {{ id: string, name: string, initials: string, subtitle: string, mode: Mode }} User */
 
 /** @typedef {{ id: string, type: "monster" | "spell" | "ability", name: string, data: any, createdAt: string }} RuleItem */
+
+/** @typedef {{ id: string, userId: string, token: string, createdAt: string, expiresAt: string }} Session */
+
+/** @typedef {{ id: string, userId: string, publicKey: string, counter: number, deviceType: string, backedUp: boolean, transports: string[] | null, aaguid: string, createdAt: string }} Credential */
 
 /** @typedef {{ text: string, highlight?: boolean }} Segment */
 

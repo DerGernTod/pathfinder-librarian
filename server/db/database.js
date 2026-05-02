@@ -3,11 +3,11 @@ import { mkdirSync } from "fs";
 
 const CREATE_TABLES_SQL = `
 CREATE TABLE IF NOT EXISTS users (
-    id         TEXT PRIMARY KEY,
-    name       TEXT NOT NULL,
-    initials   TEXT NOT NULL,
-    subtitle   TEXT NOT NULL,
-    mode       TEXT NOT NULL DEFAULT 'gm' CHECK(mode IN ('gm', 'player'))
+    id              TEXT PRIMARY KEY,
+    name            TEXT NOT NULL,
+    initials        TEXT NOT NULL,
+    subtitle        TEXT NOT NULL,
+    mode            TEXT NOT NULL DEFAULT 'gm' CHECK(mode IN ('gm', 'player'))
 );
 
 CREATE TABLE IF NOT EXISTS conversations (
@@ -34,11 +34,42 @@ CREATE TABLE IF NOT EXISTS rule_items (
     data_json  TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS credentials (
+    id                       TEXT PRIMARY KEY,
+    user_id                  TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    public_key               TEXT NOT NULL,
+    counter                  INTEGER NOT NULL DEFAULT 0,
+    device_type              TEXT NOT NULL DEFAULT 'singleDevice',
+    backed_up                INTEGER NOT NULL DEFAULT 0,
+    transports               TEXT,
+    aaguid                   TEXT NOT NULL DEFAULT '',
+    created_at               TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+    id          TEXT PRIMARY KEY,
+    user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token       TEXT NOT NULL UNIQUE,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    expires_at  TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS challenges (
+    id          TEXT PRIMARY KEY,
+    challenge   TEXT NOT NULL,
+    type        TEXT NOT NULL CHECK(type IN ('registration', 'authentication', 'device-registration')),
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
 `;
 
 const CREATE_INDEXES_SQL = `
 CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_rule_items_type       ON rule_items(type, name);
+CREATE INDEX IF NOT EXISTS idx_sessions_token       ON sessions(token);
+CREATE INDEX IF NOT EXISTS idx_sessions_user        ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_credentials_user     ON credentials(user_id);
+CREATE INDEX IF NOT EXISTS idx_challenges_created   ON challenges(created_at);
 `;
 
 /**
@@ -56,6 +87,9 @@ export function createDb(dbPath) {
     db.exec("PRAGMA foreign_keys = ON");
     db.exec(CREATE_TABLES_SQL);
     db.exec(CREATE_INDEXES_SQL);
+    // Run migrations to add new columns and clean up expired challenges
+    const { migrateDb } = require("./migrate.js");
+    migrateDb(db);
     return db;
 }
 

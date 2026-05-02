@@ -5,6 +5,9 @@
         "node": true,
         "browser": true
     },
+    "options": {
+        "typeAware": true
+    },
     "ignorePatterns": ["node_modules/**", "dist/**", "build/**", "coverage/**"],
     "plugins": ["typescript", "import"],
     "rules": {
@@ -13,14 +16,32 @@
         "no-empty": "error",
         "no-console": "warn",
         "no-default-export": "error",
+        "typescript/no-unsafe-call": "error",
+        "typescript/no-unsafe-member-access": "error",
+        "typescript/no-unsafe-argument": "error",
+        "typescript/no-unsafe-assignment": "error",
         "eqeqeq": "error",
         "curly": "error",
         "sort-imports": "off",
+        "@typescript-eslint/unbound-method": "off",
         "@typescript-eslint/no-explicit-any": [
             "error",
             {
                 "fixToUnknown": true
             }
         ]
-    }
+    },
+    "overrides": [
+        {
+            "files": ["**/*.spec.js", "**/*.test.js", "**/*.spec.ts", "**/*.test.ts"],
+            "rules": {
+                "typescript/no-unsafe-member-access": "off",
+                "typescript/no-unsafe-call": "off",
+                "typescript/no-unsafe-argument": "off",
+                "typescript/no-unsafe-assignment": "off",
+                "no-console": "off",
+                "@typescript-eslint/no-explicit-any": "off"
+            }
+        }
+    ]
 }

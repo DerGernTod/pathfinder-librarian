@@ -35,6 +35,16 @@ describe("chat-sidebar", () => {
 
     it("renders sidebar-profile component", async () => {
         const el = createSidebar();
+        el.user = {
+            id: "test-id",
+            name: "Game Master 01",
+            initials: "GM",
+            subtitle: "PF2e Remaster Rules",
+            mode: "gm",
+            email: null,
+            isTestUser: false,
+            webauthnUserId: null,
+        };
         await el.updateComplete;
         const profile = el.shadowRoot.querySelector("sidebar-profile");
         expect(profile).toBeTruthy();

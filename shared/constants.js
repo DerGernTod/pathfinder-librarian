@@ -1,7 +1,14 @@
-import { SEED_IDS } from "../server/db/seed.js";
-
 /**
- * Default user ID for creating conversations.
- * This is the only seed ID the client needs to reference directly.
+ * Constants shared between server and client.
  */
-export const DEFAULT_USER_ID = SEED_IDS.USER_DEFAULT;
+
+/** Deterministic UUIDs for seed data — stable across restarts, usable in tests */
+export const SEED_IDS = {
+    USER_DEFAULT: "00000000-0000-4000-8000-000000000001",
+    USER_TEST_PLAYER: "00000000-0000-4000-8000-000000000002",
+    CONV_MITFLIT: "00000000-0000-4000-8000-000000000010",
+    CONV_CHANDELIER: "00000000-0000-4000-8000-000000000011",
+    CONV_REAGENTS: "00000000-0000-4000-8000-000000000012",
+    RULE_MITFLIT_KING: "00000000-0000-4000-8000-000000000020",
+    RULE_SAMPLE_SPELL: "00000000-0000-4000-8000-000000000021",
+};

@@ -1,1 +1,1 @@
-import "./pages/main-page.js";
+import "./pages/app-shell.js";

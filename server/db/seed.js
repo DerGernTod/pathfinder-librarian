@@ -1,14 +1,7 @@
-import { db } from "./database.js";
+import { SEED_IDS } from "../../shared/constants.js";
+export { SEED_IDS };
 
-/** Deterministic UUIDs for seed data — stable across restarts, usable in tests */
-export const SEED_IDS = {
-    USER_DEFAULT: "00000000-0000-4000-8000-000000000001",
-    CONV_MITFLIT: "00000000-0000-4000-8000-000000000010",
-    CONV_CHANDELIER: "00000000-0000-4000-8000-000000000011",
-    CONV_REAGENTS: "00000000-0000-4000-8000-000000000012",
-    RULE_MITFLIT_KING: "00000000-0000-4000-8000-000000000020",
-    RULE_SAMPLE_SPELL: "00000000-0000-4000-8000-000000000021",
-};
+import { db } from "./database.js";
 
 /**
  * Seeds the database with initial data if conversations table is empty.
@@ -20,14 +13,34 @@ export function seedIfNeeded(database) {
         return;
     }
 
-    // Seed user
-    database.run("INSERT INTO users (id, name, initials, subtitle, mode) VALUES (?, ?, ?, ?, ?)", [
-        SEED_IDS.USER_DEFAULT,
-        "Pathfinder GM",
-        "PG",
-        "Game Master",
-        "gm",
-    ]);
+    // Seed users
+    database.run(
+        "INSERT INTO users (id, name, initials, subtitle, mode, email, is_test_user, webauthn_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        [
+            SEED_IDS.USER_DEFAULT,
+            "Pathfinder GM",
+            "PG",
+            "Game Master",
+            "gm",
+            "gm@test.local",
+            1,
+            "webauthn-gm-default-user-id",
+        ],
+    );
+
+    database.run(
+        "INSERT INTO users (id, name, initials, subtitle, mode, email, is_test_user, webauthn_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        [
+            SEED_IDS.USER_TEST_PLAYER,
+            "Valeros",
+            "VA",
+            "Player",
+            "player",
+            "valeros@test.local",
+            1,
+            crypto.randomUUID(),
+        ],
+    );
 
     // Seed conversations
     database.run("INSERT INTO conversations (id, title, user_id, created_at) VALUES (?, ?, ?, ?)", [
@@ -45,7 +58,7 @@ export function seedIfNeeded(database) {
     database.run("INSERT INTO conversations (id, title, user_id, created_at) VALUES (?, ?, ?, ?)", [
         SEED_IDS.CONV_REAGENTS,
         "Buying rare reagents",
-        SEED_IDS.USER_DEFAULT,
+        SEED_IDS.USER_TEST_PLAYER,
         "2025-01-01T10:00:00Z",
     ]);
 
@@ -526,6 +539,9 @@ export function resetAndReseedDb(database) {
     database.run("DELETE FROM messages");
     database.run("DELETE FROM conversations");
     database.run("DELETE FROM rule_items");
+    database.run("DELETE FROM challenges");
+    database.run("DELETE FROM sessions");
+    database.run("DELETE FROM credentials");
     database.run("DELETE FROM users");
     seedIfNeeded(database);
 }

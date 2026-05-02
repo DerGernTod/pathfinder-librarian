@@ -17,7 +17,10 @@ describe("main-page", () => {
     let element;
 
     beforeEach(() => {
-        document.body.innerHTML = "";
+        // Clean up any existing elements
+        while (document.body.firstChild) {
+            document.body.removeChild(document.body.firstChild);
+        }
         // @ts-expect-error - override global fetch with our mock
         globalThis.fetch = mock((url) => {
             if (url in baseClientMock) {
@@ -92,6 +95,8 @@ describe("main-page", () => {
     });
 
     it("should switch mode correctly", () => {
+        // Ensure initial state
+        element.mode = "player";
         expect(element.mode).toBe("player");
 
         const event = new CustomEvent("mode-change", {
