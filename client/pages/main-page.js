@@ -59,11 +59,10 @@ class MainPage extends LitElement {
         messages: { type: Array },
         mode: { type: String },
         loading: { type: Boolean },
-        /** @type {boolean} Whether the assistant is currently generating a response */
         responding: { type: Boolean },
         sidebarExpanded: { type: Boolean },
-        /** @type {AuthUser} */ user: { type: Object },
-        /** @type {boolean} */ settingsOpen: { type: Boolean },
+        user: { type: Object },
+        settingsOpen: { type: Boolean },
     };
 
     constructor() {
@@ -72,7 +71,7 @@ class MainPage extends LitElement {
         this.conversations = [];
         /** @type {string} */
         this.activeConversationId = "";
-        /** @type {Message[]} */
+        /** @type {import("zod").z.infer<typeof import("../../server/db/queries.js").MessageItemListSchema>} */
         this.messages = [];
         /** @type {Mode} */
         this.mode = "player";
@@ -80,6 +79,8 @@ class MainPage extends LitElement {
         this.loading = true;
         /** @type {boolean} */
         this.responding = false;
+        /** @type {AbortController | null} */
+        this._currentAssistantController = null;
         this.sidebarExpanded = true;
         /** @type {AuthUser | null} */
         this.user = null;
@@ -143,8 +144,9 @@ class MainPage extends LitElement {
                     ></message-list>
                     <chat-input
                         .mode=${this.mode}
-                        .disabled=${this.responding}
+                        .responding=${this.responding}
                         @send-message=${this.handleSendMessage}
+                        @stop-message=${this.handleStopMessage}
                     ></chat-input>
                 </main>
             </div>
@@ -207,18 +209,35 @@ class MainPage extends LitElement {
      */
     async handleSendMessage(e) {
         this.responding = true;
+        const controller = new AbortController();
+        this._currentAssistantController = controller;
 
         try {
-            const res = await client.api.conversations[":id"].messages.$post({
-                param: { id: this.activeConversationId },
-                json: { content: e.detail.text, mode: this.mode },
-            });
+            const res = await client.api.conversations[":id"].messages.$post(
+                {
+                    param: { id: this.activeConversationId },
+                    json: { content: e.detail.text, mode: this.mode },
+                },
+                {
+                    init: { signal: controller.signal },
+                },
+            );
+
             const result = await res.json();
             const { userMessage, assistantMessage } = result.data;
             this.messages = [...this.messages, userMessage, assistantMessage];
+        } catch (err) {
+            if (Error.isError(err) && err.name !== "AbortError") {
+                console.error("Error sending message:", err);
+            }
         } finally {
             this.responding = false;
+            this._currentAssistantController = null;
         }
+    }
+
+    handleStopMessage() {
+        this._currentAssistantController?.abort();
     }
 
     get filteredMessages() {

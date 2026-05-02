@@ -5,7 +5,15 @@ import { getByText } from "@testing-library/dom";
 import "./profile-menu.js";
 
 describe("profile-menu", () => {
+    /** @type {HTMLDivElement} */
     let container;
+
+    function createMenu() {
+        /** @type {any} */
+        const el = document.createElement("profile-menu");
+        el.mode = "gm";
+        return el;
+    }
 
     beforeEach(() => {
         container = document.createElement("div");
@@ -13,8 +21,7 @@ describe("profile-menu", () => {
     });
 
     test("renders avatar initials", async () => {
-        const el = document.createElement("profile-menu");
-        el.mode = "gm";
+        const el = createMenu();
         container.appendChild(el);
         await el.updateComplete;
 
@@ -23,8 +30,7 @@ describe("profile-menu", () => {
     });
 
     test("has dropdown trigger", async () => {
-        const el = document.createElement("profile-menu");
-        el.mode = "gm";
+        const el = createMenu();
         container.appendChild(el);
         await el.updateComplete;
 
@@ -34,8 +40,7 @@ describe("profile-menu", () => {
 
     test("dispatches logout on logout click", async () => {
         let dispatchedEvent = false;
-        const el = document.createElement("profile-menu");
-        el.mode = "gm";
+        const el = createMenu();
         el.addEventListener("logout", () => {
             dispatchedEvent = true;
         });
@@ -50,8 +55,7 @@ describe("profile-menu", () => {
 
     test("dispatches open-settings on settings click", async () => {
         let dispatchedEvent = false;
-        const el = document.createElement("profile-menu");
-        el.mode = "gm";
+        const el = createMenu();
         el.addEventListener("open-settings", () => {
             dispatchedEvent = true;
         });

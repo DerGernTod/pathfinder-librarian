@@ -18,7 +18,7 @@ const ConversationSchema = z
 
 const ConversationListSchema = z.array(ConversationSchema);
 
-const MessageSchema = z
+export const MessageSchema = z
     .object({
         id: z.string(),
         conversation_id: z.string(),
@@ -38,7 +38,7 @@ const MessageSchema = z
         createdAt: row.created_at,
     }));
 
-const MessageItemListSchema = z.array(MessageSchema);
+export const MessageItemListSchema = z.array(MessageSchema);
 
 const RuleItemSchema = z
     .object({
@@ -207,7 +207,7 @@ export function getMessagesByConversationId(database, conversationId) {
  * Creates a new message (user or assistant).
  * @param {import("bun:sqlite").Database} database - The database instance
  * @param {{ conversationId: string, role: "user" | "assistant", mode: "player" | "gm", content: string | null, blocksJson: string | null }} data - The message data
- * @returns {{ id: string, conversationId: string, role: string, mode: string, content: string | null, blocks: import("../../shared/types.js").MessageBlock[] | null }}
+ * @returns {{ id: string, createdAt: string, conversationId: string, role: "user" | "assistant", mode: "player" | "gm", content: string | null, blocks: import("../../shared/types.js").MessageBlock[] | null }}
  */
 export function createMessage(database, { conversationId, role, mode, content, blocksJson }) {
     const id = crypto.randomUUID();
@@ -225,6 +225,7 @@ export function createMessage(database, { conversationId, role, mode, content, b
         blocks: blocksJson
             ? /** @type {import("../../shared/types.js").MessageBlock[]} */ (JSON.parse(blocksJson))
             : null,
+        createdAt: now,
     };
 }
 

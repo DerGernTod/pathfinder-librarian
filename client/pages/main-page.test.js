@@ -52,6 +52,7 @@ describe("main-page", () => {
                 content: "Test 1",
                 role: "user",
                 mode: "player",
+                blocks: null,
                 createdAt: new Date().toISOString(),
             },
             {
@@ -60,6 +61,7 @@ describe("main-page", () => {
                 content: "Test 2",
                 role: "user",
                 mode: "player",
+                blocks: null,
                 createdAt: new Date().toISOString(),
             },
             {
@@ -68,6 +70,7 @@ describe("main-page", () => {
                 content: "Test 3",
                 role: "user",
                 mode: "player",
+                blocks: null,
                 createdAt: new Date().toISOString(),
             },
         ];
@@ -87,6 +90,7 @@ describe("main-page", () => {
                 content: "Test",
                 role: "user",
                 mode: "player",
+                blocks: null,
                 createdAt: new Date().toISOString(),
             },
         ];
@@ -103,6 +107,7 @@ describe("main-page", () => {
             detail: { mode: /** @type {import("../../shared/types.js").Mode} */ ("gm") },
         });
         element.handleModeChange(event);
+        // @ts-expect-error - mode is typed as "player" here, but we want to test with mode
         expect(element.mode).toBe("gm");
     });
 
@@ -138,6 +143,7 @@ describe("main-page", () => {
                 content: "Old",
                 role: "user",
                 mode: "player",
+                blocks: null,
                 createdAt: new Date().toISOString(),
             },
         ];

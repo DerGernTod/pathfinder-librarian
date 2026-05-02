@@ -3,7 +3,14 @@ import { describe, test, expect, beforeEach } from "bun:test";
 import "./login-page.js";
 
 describe("login-page", () => {
+    /** @type {HTMLDivElement} */
     let container;
+
+    function createLoginPage() {
+        /** @type {any} */
+        const el = document.createElement("login-page");
+        return el;
+    }
 
     beforeEach(() => {
         container = document.createElement("div");
@@ -11,7 +18,7 @@ describe("login-page", () => {
     });
 
     test("renders name input and buttons", async () => {
-        const el = document.createElement("login-page");
+        const el = createLoginPage();
         container.appendChild(el);
         await el.updateComplete;
 
@@ -24,7 +31,7 @@ describe("login-page", () => {
     });
 
     test("shows error message when set", async () => {
-        const el = document.createElement("login-page");
+        const el = createLoginPage();
         el.error = "Test error message";
         container.appendChild(el);
         await el.updateComplete;
@@ -35,9 +42,11 @@ describe("login-page", () => {
     });
 
     test("dispatches login-success on successful quick login", async () => {
+        /** @type {any} */
         let dispatchedEvent = null;
-        const el = document.createElement("login-page");
-        el.addEventListener("login-success", (e) => {
+        const el = createLoginPage();
+        el.testUsers = [{ id: "test-id", name: "Test User", initials: "TU", mode: "gm" }];
+        el.addEventListener("login-success", (/** @type {CustomEvent<{ user: any }>} */ e) => {
             dispatchedEvent = e.detail;
         });
         container.appendChild(el);
@@ -47,34 +56,29 @@ describe("login-page", () => {
         const quickLoginButton = Array.from(el.shadowRoot.querySelectorAll("sl-button")).find(
             (btn) => btn.textContent.includes("Quick Login"),
         );
-        if (!quickLoginButton) {
-            // Skip this test if quick login button is not available (not in dev mode)
-            return;
-        }
 
         // Mock quickLogin to return a user
         const mockUser = { id: "test-id", name: "Test User", initials: "TU", mode: "gm" };
-        globalThis.fetch = () =>
-            Promise.resolve({
-                ok: true,
-                json: () => Promise.resolve({ result: "success", data: { user: mockUser } }),
-            });
+
+        globalThis.fetch = /** @type {any} */ (
+            () =>
+                Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ result: "success", data: { user: mockUser } }),
+                })
+        );
 
         quickLoginButton.click();
 
         // Wait for event to be dispatched
-        await new Promise((resolve) => setTimeout(resolve, 100));
-
-        if (!dispatchedEvent) {
-            return;
-        }
+        await new Promise((r) => setTimeout(r, 0));
 
         expect(dispatchedEvent).toBeTruthy();
-        expect(dispatchedEvent.user).toEqual(mockUser);
+        expect(dispatchedEvent?.user).toEqual(mockUser);
     });
 
     test("hides test users section when no test users available", async () => {
-        const el = document.createElement("login-page");
+        const el = createLoginPage();
         container.appendChild(el);
         await el.updateComplete;
         await el.updateComplete;

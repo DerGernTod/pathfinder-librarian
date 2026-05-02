@@ -26,6 +26,16 @@ test.describe("mock LLM response visual regression", () => {
                     },
                 ]);
             }
+
+            // Intercept conversation message POSTs to simulate network latency so
+            // the UI enters the responding state reliably for visual tests.
+            await page.route("**/api/conversations/*/messages", async (route) => {
+                if (route.request().method() === "POST") {
+                    // artificial delay
+                    await new Promise((r) => setTimeout(r, 800));
+                }
+                await route.continue();
+            });
         }
 
         await page.goto("/");
@@ -70,7 +80,9 @@ test.describe("mock LLM response visual regression", () => {
         await expect(page.locator("sl-spinner")).toBeVisible();
 
         const chatInput = page.locator("chat-input");
-        await expect(chatInput).toHaveAttribute("disabled", "true");
+        // The submit button should become a Stop button while responding
+        const stopBtn = page.locator("chat-input button", { hasText: "Stop" });
+        await expect(stopBtn).toBeVisible();
         await expect(chatInput).toHaveScreenshot("chat-input-disabled.png");
     });
 
@@ -84,7 +96,9 @@ test.describe("mock LLM response visual regression", () => {
         await page.waitForTimeout(500);
 
         const chatInput = page.locator("chat-input");
-        await expect(chatInput).toHaveAttribute("disabled", "false");
+        // After response completes the Stop button should be gone
+        const stopBtn = page.locator("chat-input button", { hasText: "Stop" });
+        await expect(stopBtn).toHaveCount(0);
         await expect(chatInput).toHaveScreenshot("chat-input-enabled.png");
     });
 });

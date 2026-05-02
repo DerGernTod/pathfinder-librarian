@@ -8,5 +8,5 @@
         "strict": true,
         "types": ["bun"]
     },
-    "exclude": ["node_modules", "client"]
+    "exclude": ["node_modules"]
 }
