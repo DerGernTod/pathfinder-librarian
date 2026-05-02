@@ -395,7 +395,6 @@ describe("main-page", () => {
             await element.updateComplete;
 
             const submitSpy = mock(() => Promise.resolve());
-            // @ts-expect-error - override _handleLandingSubmit with spy
             element._handleLandingSubmit = submitSpy;
 
             const input = element.shadowRoot?.querySelector('[data-test="landing-input"]');
