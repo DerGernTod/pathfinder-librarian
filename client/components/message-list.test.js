@@ -21,8 +21,22 @@ describe("message-list", () => {
 
     it("renders chat-message elements for each message", async () => {
         const el = createList([
-            { id: "1", role: "user", content: "First", mode: "player" },
-            { id: "2", role: "user", content: "Second", mode: "player" },
+            {
+                id: "1",
+                role: "user",
+                content: "First",
+                mode: "player",
+                conversationId: "conv1",
+                createdAt: "2026-05-02T12:00:00Z",
+            },
+            {
+                id: "2",
+                role: "user",
+                content: "Second",
+                mode: "player",
+                conversationId: "conv1",
+                createdAt: "2026-05-02T12:01:00Z",
+            },
         ]);
         await el.updateComplete;
         const msgs = el.shadowRoot.querySelectorAll("chat-message");

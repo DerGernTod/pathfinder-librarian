@@ -71,7 +71,7 @@ class MainPage extends LitElement {
         this.conversations = [];
         /** @type {string} */
         this.activeConversationId = "";
-        /** @type {import("zod").z.infer<typeof import("../../server/db/queries.js").MessageItemListSchema>} */
+        /** @type {import("../../shared/types.js").Message[]} */
         this.messages = [];
         /** @type {Mode} */
         this.mode = "player";
@@ -109,7 +109,9 @@ class MainPage extends LitElement {
                     param: { id: this.activeConversationId },
                 });
                 const msgResult = await msgRes.json();
-                this.messages = msgResult.data;
+                this.messages = /** @type {import("../../shared/types.js").Message[]} */ (
+                    msgResult.data
+                );
             }
         } finally {
             this.loading = false;
@@ -176,7 +178,7 @@ class MainPage extends LitElement {
             param: { id: convId },
         });
         const result = await res.json();
-        this.messages = result.data;
+        this.messages = /** @type {import("../../shared/types.js").Message[]} */ (result.data);
     }
 
     async handleNewChat() {
@@ -223,12 +225,90 @@ class MainPage extends LitElement {
                 },
             );
 
-            const result = await res.json();
-            const { userMessage, assistantMessage } = result.data;
-            this.messages = [...this.messages, userMessage, assistantMessage];
+            /** @type {ReadableStream<Uint8Array>} */
+            const body = /** @type {ReadableStream<Uint8Array>} */ (res.body);
+            if (!body) {
+                throw new Error("No response body");
+            }
+            const reader = body.getReader();
+            const decoder = new TextDecoder();
+            /** @type {import("../../shared/types.js").Message | null} */
+            let userMessage = null;
+            /** @type {import("../../shared/types.js").AssistantMessage | null} */
+            let assistantMessage = null;
+            let assistantMessageAdded = false;
+
+            while (true) {
+                const result = await reader.read();
+                if (result.done) {
+                    break;
+                }
+                const value = result.value;
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split("\n").filter(Boolean);
+                for (const line of lines) {
+                    /** @type {unknown} */
+                    const data = JSON.parse(line);
+                    if (
+                        typeof data === "object" &&
+                        data !== null &&
+                        "type" in data &&
+                        typeof data.type === "string" &&
+                        "data" in data
+                    ) {
+                        /** @type {{ type: string, data: unknown }} */
+                        const typedData = /** @type {{ type: string, data: unknown }} */ (data);
+                        if (typedData.type === "userMessage") {
+                            userMessage = /** @type {import("../../shared/types.js").Message} */ (
+                                typedData.data
+                            );
+                            this.messages = [...this.messages, userMessage];
+                        } else if (typedData.type === "assistantChunk") {
+                            if (!assistantMessage) {
+                                assistantMessage = {
+                                    id: "temp-assistant-" + Date.now(),
+                                    role: "assistant",
+                                    blocks: [],
+                                    mode: this.mode,
+                                    conversationId: this.activeConversationId,
+                                    content: null,
+                                    createdAt: new Date().toISOString(),
+                                };
+                            }
+                            assistantMessage = {
+                                ...assistantMessage,
+                                blocks: [
+                                    ...(assistantMessage?.blocks ?? []),
+                                    /** @type {import("../../shared/types.js").MessageBlock} */ (
+                                        typedData.data
+                                    ),
+                                ],
+                            };
+
+                            if (!assistantMessageAdded) {
+                                this.messages = [...this.messages, assistantMessage];
+                                assistantMessageAdded = true;
+                            } else {
+                                this.messages = [...this.messages.slice(0, -1), assistantMessage];
+                            }
+                        } else if (typedData.type === "assistantComplete") {
+                            assistantMessage =
+                                /** @type {import("../../shared/types.js").AssistantMessage} */ (
+                                    typedData.data
+                                );
+                            if (!assistantMessageAdded) {
+                                this.messages = [...this.messages, assistantMessage];
+                                assistantMessageAdded = true;
+                            } else {
+                                this.messages = [...this.messages.slice(0, -1), assistantMessage];
+                            }
+                        }
+                    }
+                }
+            }
         } catch (err) {
             if (Error.isError(err) && err.name !== "AbortError") {
-                console.error("Error sending message:", err);
+                // Ignore error
             }
         } finally {
             this.responding = false;

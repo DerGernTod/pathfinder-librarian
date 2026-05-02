@@ -130,11 +130,11 @@ describe("queries", () => {
             expect(msg.content).toBeNull();
             expect(Array.isArray(msg.blocks)).toBe(true);
             expect(msg.blocks).toHaveLength(2);
-            expect(
-                /** @type {import("../../shared/types.js").AssistantMessage} */ (
-                    /** @type {unknown} */ (msg)
-                ).blocks[0],
-            ).toEqual({ type: "paragraph", text: "Test paragraph" });
+            const assistantMsg = /** @type {import("../../shared/types.js").AssistantMessage} */ (
+                /** @type {unknown} */ (msg)
+            );
+            expect(assistantMsg.blocks).not.toBeNull();
+            expect(assistantMsg.blocks?.[0]).toEqual({ type: "paragraph", text: "Test paragraph" });
         });
 
         it("maintains backward compatibility with createUserMessage alias", () => {

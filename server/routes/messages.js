@@ -4,7 +4,7 @@ import { Hono } from "hono";
 import { createMessageSchema } from "../../shared/schemas.js";
 import * as queries from "../db/queries.js";
 import { getDb } from "../utils/context.js";
-import { getMockResponse } from "../utils/mock-response.js";
+import { streamMockResponse } from "../utils/mock-response.js";
 import { paramSchema } from "./conversations-schema.js";
 
 const validateId = zValidator("param", paramSchema);
@@ -39,25 +39,53 @@ export const messagesRouter = new Hono()
             blocksJson: null,
         });
 
-        // 2. Generate mock assistant response
-        const blocks = getMockResponse();
-        const assistantMsg = queries.createMessage(db, {
-            conversationId: convId,
-            role: "assistant",
-            mode: data.mode,
-            content: null,
-            blocksJson: JSON.stringify(blocks),
-        });
+        // 2. Stream assistant response
+        return new Response(
+            new ReadableStream({
+                async start(controller) {
+                    // Send user message first
+                    controller.enqueue(
+                        JSON.stringify({ type: "userMessage", data: userMsg }) + "\n",
+                    );
 
-        // 3. Simulate thinking delay (500-1500ms)
-        await new Promise((resolve) => setTimeout(resolve, 500 + Math.random() * 1000));
+                    const blocks = [];
+                    try {
+                        for await (const block of streamMockResponse()) {
+                            blocks.push(block);
+                            controller.enqueue(
+                                JSON.stringify({ type: "assistantChunk", data: block }) + "\n",
+                            );
+                            // Add additional delay here
+                            await new Promise((resolve) => setTimeout(resolve, 100));
+                        }
+                    } catch {
+                        // Streaming interrupted
+                    } finally {
+                        // Save assistant message to DB
+                        const assistantMsg = queries.createMessage(db, {
+                            conversationId: convId,
+                            role: "assistant",
+                            mode: data.mode,
+                            content: null,
+                            blocksJson: JSON.stringify(blocks),
+                        });
 
-        // 4. Return both messages
-        return c.json(
+                        try {
+                            controller.enqueue(
+                                JSON.stringify({ type: "assistantComplete", data: assistantMsg }) +
+                                    "\n",
+                            );
+                            controller.close();
+                        } catch {
+                            // Controller might already be closed if the client disconnected
+                        }
+                    }
+                },
+            }),
             {
-                result: /** @type {"success"} */ ("success"),
-                data: { userMessage: userMsg, assistantMessage: assistantMsg },
+                headers: {
+                    "Content-Type": "text/plain",
+                },
             },
-            201,
         );
     });

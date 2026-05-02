@@ -113,13 +113,17 @@ class AssistantMessage extends LitElement {
         if (!this.message) {
             return html``;
         }
+        /** @type {MessageBlock[]} */
+        const blocks =
+            this.message.blocks ??
+            /** @type {MessageBlock[]} */ (JSON.parse(this.message.blocksJson ?? "[]"));
         return html`
             <div class="assistant-message" data-mode=${this.message.mode ?? "gm"}>
                 <div class="assistant-avatar">🤖</div>
                 <div class="assistant-content">
                     <div class="assistant-bubble">
                         <div class="bubble-content">
-                            ${this.message.blocks.map((block) => this.renderBlock(block))}
+                            ${blocks.map((block) => this.renderBlock(block))}
                         </div>
                     </div>
                 </div>

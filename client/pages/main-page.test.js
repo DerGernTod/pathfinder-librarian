@@ -52,7 +52,6 @@ describe("main-page", () => {
                 content: "Test 1",
                 role: "user",
                 mode: "player",
-                blocks: null,
                 createdAt: new Date().toISOString(),
             },
             {
@@ -61,7 +60,6 @@ describe("main-page", () => {
                 content: "Test 2",
                 role: "user",
                 mode: "player",
-                blocks: null,
                 createdAt: new Date().toISOString(),
             },
             {
@@ -70,7 +68,6 @@ describe("main-page", () => {
                 content: "Test 3",
                 role: "user",
                 mode: "player",
-                blocks: null,
                 createdAt: new Date().toISOString(),
             },
         ];
@@ -90,7 +87,6 @@ describe("main-page", () => {
                 content: "Test",
                 role: "user",
                 mode: "player",
-                blocks: null,
                 createdAt: new Date().toISOString(),
             },
         ];
@@ -143,7 +139,6 @@ describe("main-page", () => {
                 content: "Old",
                 role: "user",
                 mode: "player",
-                blocks: null,
                 createdAt: new Date().toISOString(),
             },
         ];
@@ -155,7 +150,6 @@ describe("main-page", () => {
             role: "user",
             mode: "player",
             createdAt: new Date().toISOString(),
-            blocks: null,
         };
 
         const mockAssistantMessage = {
@@ -171,11 +165,32 @@ describe("main-page", () => {
         // Mock the RPC client
         const mockResponse = {
             ok: true,
-            json: () =>
-                Promise.resolve({
-                    result: "success",
-                    data: { userMessage: mockUserMessage, assistantMessage: mockAssistantMessage },
-                }),
+            body: new ReadableStream({
+                start(controller) {
+                    controller.enqueue(
+                        new TextEncoder().encode(
+                            JSON.stringify({ type: "userMessage", data: mockUserMessage }) + "\n",
+                        ),
+                    );
+                    controller.enqueue(
+                        new TextEncoder().encode(
+                            JSON.stringify({
+                                type: "assistantChunk",
+                                data: mockAssistantMessage.blocks[0],
+                            }) + "\n",
+                        ),
+                    );
+                    controller.enqueue(
+                        new TextEncoder().encode(
+                            JSON.stringify({
+                                type: "assistantComplete",
+                                data: mockAssistantMessage,
+                            }) + "\n",
+                        ),
+                    );
+                    controller.close();
+                },
+            }),
         };
         // @ts-expect-error - override global fetch with our mock
         globalThis.fetch = mock(() => Promise.resolve(mockResponse));
@@ -187,6 +202,7 @@ describe("main-page", () => {
         expect(element.messages[1].content).toBe("Test message");
         expect(element.messages[1].role).toBe("user");
         expect(element.messages[2].role).toBe("assistant");
+        // We check the blocks property directly
         expect(element.messages[2].blocks).toEqual([{ type: "paragraph", text: "Mock response" }]);
     });
 
@@ -201,7 +217,6 @@ describe("main-page", () => {
             role: "user",
             mode: "player",
             createdAt: new Date().toISOString(),
-            blocks: null,
         };
 
         const mockAssistantMessage = {
@@ -211,16 +226,29 @@ describe("main-page", () => {
             role: "assistant",
             mode: "player",
             createdAt: new Date().toISOString(),
-            blocks: [{ type: "paragraph", text: "Response" }],
+            blocksJson: JSON.stringify([{ type: "paragraph", text: "Response" }]),
         };
 
         const mockResponse = {
             ok: true,
-            json: () =>
-                Promise.resolve({
-                    result: "success",
-                    data: { userMessage: mockUserMessage, assistantMessage: mockAssistantMessage },
-                }),
+            body: new ReadableStream({
+                start(controller) {
+                    controller.enqueue(
+                        new TextEncoder().encode(
+                            JSON.stringify({ type: "userMessage", data: mockUserMessage }) + "\n",
+                        ),
+                    );
+                    controller.enqueue(
+                        new TextEncoder().encode(
+                            JSON.stringify({
+                                type: "assistantComplete",
+                                data: mockAssistantMessage,
+                            }) + "\n",
+                        ),
+                    );
+                    controller.close();
+                },
+            }),
         };
         // @ts-expect-error - override global fetch with our mock
         globalThis.fetch = mock(() => Promise.resolve(mockResponse));

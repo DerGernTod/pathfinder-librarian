@@ -331,7 +331,7 @@ class SettingsDialog extends LitElement {
             const data = await res.json();
             this.devices = data.data;
         } catch {
-            console.warn("Failed to fetch devices");
+            // Failed to fetch devices
         } finally {
             this.loading = false;
         }
