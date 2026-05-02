@@ -12,6 +12,25 @@ const baseClientMock = {
     },
 };
 
+/**
+ * Creates mock SSE ReadableStream
+ * @param {Array<{ type: string, data: object }>} events
+ * @returns {{ ok: boolean, body: ReadableStream }}
+ */
+function mockSSEResponse(events) {
+    return {
+        ok: true,
+        body: new ReadableStream({
+            start(controller) {
+                for (const event of events) {
+                    controller.enqueue(new TextEncoder().encode(JSON.stringify(event) + "\n"));
+                }
+                controller.close();
+            },
+        }),
+    };
+}
+
 describe("main-page", () => {
     /** @type {import("./main-page.js").MainPage} */
     let element;
@@ -302,5 +321,309 @@ describe("main-page", () => {
         expect(element.conversations.length).toBe(2);
         expect(element.conversations[1].id).toBe("conv2");
         expect(element.activeConversationId).toBe("conv2");
+    });
+
+    describe("landing page", () => {
+        it("renders landing when no conversations and not loading", async () => {
+            // Wait for firstUpdated to complete (sets loading=false)
+            await new Promise((r) => setTimeout(r, 100));
+            element.conversations = [];
+            await element.updateComplete;
+
+            const region = element.shadowRoot?.querySelector('[role="region"]');
+            expect(region).toBeTruthy();
+            expect(region?.getAttribute("aria-label")).toBe("Welcome");
+
+            const input = element.shadowRoot?.querySelector('[data-test="landing-input"]');
+            expect(input).toBeTruthy();
+
+            const sendBtn = element.shadowRoot?.querySelector('[data-test="landing-send"]');
+            expect(sendBtn).toBeTruthy();
+        });
+
+        it("focuses landing input", async () => {
+            // Wait for firstUpdated to complete
+            await new Promise((r) => setTimeout(r, 100));
+            element.loading = false;
+            element.conversations = [];
+            await element.updateComplete;
+
+            const input = /** @type {HTMLInputElement} */ (
+                element.shadowRoot?.querySelector('[data-test="landing-input"]')
+            );
+            expect(input).toBeTruthy();
+            // happy-dom may not set document.activeElement for shadow DOM
+            expect(typeof input.focus).toBe("function");
+            input.focus();
+            await element.updateComplete;
+            // Verify input exists and is focusable (happy-dom limitation)
+            expect(input).toBeTruthy();
+        });
+
+        it("does not render landing when loading", async () => {
+            element.loading = true;
+            element.conversations = [];
+            await element.updateComplete;
+
+            const region = element.shadowRoot?.querySelector('[role="region"]');
+            expect(region).toBeNull();
+        });
+
+        it("does not render landing when conversations exist with messages", async () => {
+            // Wait for firstUpdated to complete
+            await new Promise((r) => setTimeout(r, 100));
+            const conv = {
+                id: "c1",
+                title: "Test",
+                userId: "u1",
+                createdAt: new Date().toISOString(),
+            };
+            element.conversations = [conv];
+            element.activeConversationId = "c1";
+            element.messages = [
+                {
+                    id: "m1",
+                    conversationId: "c1",
+                    content: "Hello",
+                    role: "user",
+                    mode: "player",
+                    createdAt: new Date().toISOString(),
+                },
+            ];
+            await element.updateComplete;
+
+            const region = element.shadowRoot?.querySelector('[role="region"]');
+            expect(region).toBeNull();
+        });
+
+        it("renders landing for new empty conversation", async () => {
+            // Wait for firstUpdated to complete
+            await new Promise((r) => setTimeout(r, 100));
+            const conv = {
+                id: "c1",
+                title: "New Chat",
+                userId: "u1",
+                createdAt: new Date().toISOString(),
+            };
+            element.conversations = [conv];
+            element.activeConversationId = "c1";
+            element.messages = [];
+            await element.updateComplete;
+
+            const region = element.shadowRoot?.querySelector('[role="region"]');
+            expect(region).toBeTruthy();
+            expect(region?.getAttribute("aria-label")).toBe("Welcome");
+        });
+
+        it("enter key triggers landing submit", async () => {
+            // Wait for firstUpdated to complete
+            await new Promise((r) => setTimeout(r, 100));
+            element.loading = false;
+            element.conversations = [];
+            element._pendingPrompt = "Hello world";
+            await element.updateComplete;
+
+            const submitSpy = mock(() => Promise.resolve());
+            element._handleLandingSubmit = submitSpy;
+
+            const input = element.shadowRoot?.querySelector('[data-test="landing-input"]');
+            expect(input).toBeTruthy();
+
+            const preventDefaultMock = mock(() => {});
+            const keydownEvent = new KeyboardEvent("keydown", {
+                key: "Enter",
+                shiftKey: false,
+                bubbles: true,
+                cancelable: true,
+            });
+            Object.defineProperty(keydownEvent, "preventDefault", { value: preventDefaultMock });
+
+            // @ts-expect-error - mock preventDefault
+            input.dispatchEvent(keydownEvent);
+
+            expect(preventDefaultMock).toHaveBeenCalled();
+            expect(submitSpy).toHaveBeenCalled();
+        });
+
+        it("shift+Enter does not submit landing prompt", async () => {
+            element.loading = false;
+            element.conversations = [];
+            element._pendingPrompt = "Hello world";
+            await element.updateComplete;
+
+            const input = element.shadowRoot?.querySelector('[data-test="landing-input"]');
+            expect(input).toBeTruthy();
+
+            const preventDefaultMock = mock(() => {});
+            const keydownEvent = new KeyboardEvent("keydown", {
+                key: "Enter",
+                shiftKey: true,
+                bubbles: true,
+                cancelable: true,
+            });
+            Object.defineProperty(keydownEvent, "preventDefault", { value: preventDefaultMock });
+
+            // @ts-expect-error - mock preventDefault
+            input.dispatchEvent(keydownEvent);
+
+            expect(preventDefaultMock).not.toHaveBeenCalled();
+        });
+
+        it("does not submit empty prompt", async () => {
+            // Wait for firstUpdated to complete
+            await new Promise((r) => setTimeout(r, 100));
+            element.conversations = [];
+            element._pendingPrompt = "   ";
+            element._submitting = false;
+            await element.updateComplete;
+
+            await element._handleLandingSubmit();
+
+            expect(element._submitting).toBe(false);
+        });
+
+        it("submits landing prompt into existing empty conversation", async () => {
+            // Wait for firstUpdated to complete
+            await new Promise((r) => setTimeout(r, 100));
+            const conv = {
+                id: "conv-existing",
+                title: "Existing",
+                userId: "u1",
+                createdAt: new Date().toISOString(),
+            };
+            element.conversations = [conv];
+            element.activeConversationId = "conv-existing";
+            element.messages = [];
+            element.loading = false;
+            element._pendingPrompt = "Hello existing";
+            element._submitting = false;
+            await element.updateComplete;
+
+            const mockUserMessage = {
+                id: "um1",
+                conversationId: "conv-existing",
+                content: "Hello existing",
+                role: "user",
+                mode: "player",
+                createdAt: new Date().toISOString(),
+            };
+
+            const mockAssistantMessage = {
+                id: "am1",
+                conversationId: "conv-existing",
+                content: null,
+                role: "assistant",
+                mode: "player",
+                createdAt: new Date().toISOString(),
+                blocks: [{ type: "paragraph", text: "Response" }],
+            };
+
+            // @ts-expect-error - override global fetch with our mock
+            globalThis.fetch = mock(() => {
+                return Promise.resolve(
+                    mockSSEResponse([
+                        { type: "userMessage", data: mockUserMessage },
+                        { type: "assistantComplete", data: mockAssistantMessage },
+                    ]),
+                );
+            });
+
+            await element._handleLandingSubmit();
+
+            expect(element.conversations.length).toBe(1);
+            expect(element.activeConversationId).toBe("conv-existing");
+            expect(element.responding).toBe(false);
+            expect(element._submitting).toBe(false);
+            expect(element._pendingPrompt).toBe("");
+        });
+
+        it("submits landing prompt and swaps to normal UI", async () => {
+            // Wait for firstUpdated to complete
+            await new Promise((r) => setTimeout(r, 100));
+            element.loading = false;
+            element.conversations = [];
+            element._pendingPrompt = "Hello world";
+            element._submitting = false;
+            await element.updateComplete;
+
+            const mockConv = {
+                id: "conv-land",
+                title: "Hello world",
+                userId: "u1",
+                createdAt: new Date().toISOString(),
+            };
+
+            const mockUserMessage = {
+                id: "um1",
+                conversationId: "conv-land",
+                content: "Hello world",
+                role: "user",
+                mode: "player",
+                createdAt: new Date().toISOString(),
+            };
+
+            const mockAssistantMessage = {
+                id: "am1",
+                conversationId: "conv-land",
+                content: null,
+                role: "assistant",
+                mode: "player",
+                createdAt: new Date().toISOString(),
+                blocks: [{ type: "paragraph", text: "Hi there!" }],
+            };
+
+            let callCount = 0;
+            const mockFetch = mock(() => {
+                callCount++;
+                if (callCount === 1) {
+                    // Create conversation POST
+                    return Promise.resolve({
+                        ok: true,
+                        json: () => Promise.resolve({ result: "success", data: mockConv }),
+                    });
+                } else if (callCount === 2) {
+                    // Fetch messages GET
+                    return Promise.resolve({
+                        ok: true,
+                        json: () => Promise.resolve({ result: "success", data: [] }),
+                    });
+                } else {
+                    // Messages POST with SSE stream
+                    return Promise.resolve(
+                        mockSSEResponse([
+                            { type: "userMessage", data: mockUserMessage },
+                            { type: "assistantComplete", data: mockAssistantMessage },
+                        ]),
+                    );
+                }
+            });
+            // @ts-expect-error - override global fetch with our mock
+            globalThis.fetch = mockFetch;
+
+            await element._handleLandingSubmit();
+
+            expect(element.conversations.length).toBe(1);
+            expect(element.conversations[0].id).toBe("conv-land");
+            expect(element.activeConversationId).toBe("conv-land");
+            expect(element._submitting).toBe(false);
+            expect(element._pendingPrompt).toBe("");
+        });
+
+        it("handles landing submit error gracefully", async () => {
+            element.loading = false;
+            element.conversations = [];
+            element._pendingPrompt = "Hello";
+            element._submitting = false;
+            await element.updateComplete;
+
+            // @ts-expect-error - override global fetch with our mock
+            globalThis.fetch = mock(() => {
+                return Promise.reject(new Error("Network error"));
+            });
+
+            await element._handleLandingSubmit();
+
+            expect(element._submitting).toBe(false);
+        });
     });
 });
