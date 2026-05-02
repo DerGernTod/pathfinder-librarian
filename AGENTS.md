@@ -2,76 +2,47 @@
 
 ## Project overview
 
-No-build ESM web app: Hono server (Bun runtime) serving a Lit-component client. No bundler — the browser resolves imports via `esm.sh` CDN (see `client/index.html` import map).
+No-build ESM web app: Hono server (Bun runtime) serving a Lit-component client. See `docs/architecture.md` for details.
 
 ## Commands
 
-- `bun run start` — dev server with hot reload (`bun run --hot ./server/index.js --development`)
-- `bun run test` — run tests via vitest (single run, not watch)
+- `bun run start` — dev server with hot reload
+- `bun run test` — run unit tests (Bun)
+- `bun run check` — TypeScript typecheck (`tsgo -p jsconfig.json --noEmit`)
 - `bunx oxlint .` — lint
-- `bunx oxfmt . --check` — check formatting; `npx oxfmt .` to write
-- `bunx playwright test` — visual regression tests (Playwright)
+- `bunx oxfmt . --check` — check formatting; `bunx oxfmt .` to write
+- `bunx playwright test` — visual regression tests
 - `bunx playwright test --update-snapshots` — regenerate baselines
-
-No separate typecheck command — `jsconfig.json` enables `checkJs` + `strict` for VS Code / editor inline checking. TypeScript is a devDependency only for the language service, not for compilation.
 
 ## Architecture
 
 ```
-server/index.js   — Hono app, Bun entrypoint, serves static client files
-client/           — Lit web components (no build, loaded directly by browser)
-  index.html      — import map maps lit/hono to esm.sh CDN URLs
-  pages/          — Lit element components (one component per file)
-  utils/          — RPC client and shared utilities
-shared/           — intended for types/schemas shared between server and client
+server/index.js   — Hono app, Bun entrypoint
+client/           — Lit web components (no build)
+  pages/          — page-level components
+  components/     — reusable components
+  utils/          — RPC client, auth, styles
+shared/           — types/schemas shared between server and client
 ```
 
-### Hono RPC type sharing
+Full architecture and patterns in `docs/architecture.md`.
 
-`server/index.js` exports `@typedef {typeof app} App`. The client imports this type in `client/utils/rpc-client.js` via JSDoc to get end-to-end type safety on RPC calls. When adding server routes, the `App` typedef propagates automatically.
+## Lint & formatting rules
 
-### Lit component pattern
-
-Custom elements use named exports with functional decorator style — e.g. `customElement("main-page")(MainPage)` — because `no-default-export` is an error rule in oxlint. Do not use `@customElement` decorator or default exports.
-
-### Shoelace via esm.sh
-
-Shoelace components are imported as side-effect imports from `esm.sh` with `?deps=lit@3.3.2` to ensure a single Lit instance is shared (avoids duplicate Lit registration errors). The dark theme stylesheet is loaded in `index.html`.
-
-**Import pattern** — cherry-pick each component directly in the file that uses it. No import map entries needed:
-
-```js
-import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/input/input.js?deps=lit@3.3.2";
-```
-
-**Component path convention** — `dist/components/<name>/<name>.js` (e.g. `card/card.js`, `details/details.js`, `spinner/spinner.js`).
-
-**Side-effect only** — these imports register the custom element (`<sl-input>`, `<sl-card>`, etc.). Do not destructure or alias them.
-
-**Events** — Shoelace fires custom events prefixed with `sl-` (e.g. `sl-input`, `sl-change`, `sl-focus`). Use `e.target.value` to read the current value.
-
-## Lint & formatting rules (non-obvious)
-
-- **`no-default-export: error`** — always use named exports (server entry has an oxlint-disable comment for Hono's requirement)
-- **`no-explicit-any: error`** with `fixToUnknown: true` — use `unknown` instead of `any`
+- **`no-default-export: error`** — always use named exports
+- **`no-explicit-any: error`** (`fixToUnknown: true`) — use `unknown`
 - **`eqeqeq: error`**, **`curly: error`** — strict equality, always use braces
 - **`no-console: warn`**
-- Format: 4-space indent, double quotes, semicolons, trailing commas, printWidth 100, LF line endings
-
-## Testing
-
-- **Unit tests**: Bun test runner (`bun test`) — prefer over vitest where possible. Lit component tests likely need happy-dom for DOM APIs.
-- **Visual regression tests**: Playwright — config in `playwright.config.js`, tests in `vrtests/`, snapshots in `vrtests/__snapshots__/`. Uses Chromium only. Dev server auto-started.
-- TDD is encouraged — write tests first when adding features. Target high coverage.
-- Use the testing skill for details
-
----
+- Format: 4-space indent, double quotes, semicolons, trailing commas, printWidth 100, LF
 
 ## Conventions
 
-- Clean code: single responsibility, principle of least knowledge, minimal dependencies. Follow Uncle Bob's practices.
-- Idiomatic functional JS — no classes where a function suffices.
-- Types via JSDoc only — no `.ts` files.
-- Server routes use Hono chaining with `zValidator` for request validation.
-- Zod schemas in shared/ for reuse across server and client.
-- Aria labels for describing interaction elements without visual label
+- Types via JSDoc only — no `.ts` files
+- Lit components: `customElement("name")(Class); export { Class };`
+- Server routes: Hono chaining with `zValidator`
+- Zod schemas in `shared/` for reuse
+- Aria labels for elements without visual labels
+
+## Testing
+
+See `docs/testing.md` for unit test patterns, mocking, happy-dom limitations, and SSE event names. Load the `playwright` skill for visual regression test gotchas. Load the `testing` skill for test writing best practices.
