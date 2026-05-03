@@ -32,13 +32,25 @@ test.describe("stat block visual regression", () => {
     test.beforeEach(async ({ page, context }, testInfo) => {
         await setupTestUser(context, testInfo);
 
-        // Mock conversations list to return empty (stat block tests don't need seed data)
+        // Mock conversations list with one conversation so chat-view renders instead of landing-view
         await page.route("**/api/conversations*", async (route) => {
             if (route.request().method() === "GET") {
                 await route.fulfill({
                     status: 200,
                     contentType: "application/json",
-                    body: JSON.stringify({ result: "success", data: [] }),
+                    body: JSON.stringify({
+                        result: "success",
+                        data: [
+                            {
+                                id: "conv-1",
+                                title: "Stat Block Test",
+                                userId: "00000000-0000-4000-8000-000000000001",
+                                createdAt: new Date().toISOString(),
+                                updatedAt: new Date().toISOString(),
+                                messageCount: 0,
+                            },
+                        ],
+                    }),
                 });
             } else {
                 await route.continue();
