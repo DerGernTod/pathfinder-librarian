@@ -58,10 +58,7 @@ class ChatView extends LitElement {
         return html`
             <chat-header .mode=${this.mode}></chat-header>
             <message-list .messages=${this.messages} .loading=${this.loading}></message-list>
-            <chat-input
-                .mode=${this.mode}
-                .responding=${this.responding}
-            ></chat-input>
+            <chat-input .mode=${this.mode} .responding=${this.responding}></chat-input>
         `;
     }
 }

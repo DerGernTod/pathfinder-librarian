@@ -139,7 +139,9 @@ describe("chat-view", () => {
         );
 
         expect(detail).toBeTruthy();
-        expect(/** @type {{ text: string }} */ (/** @type {unknown} */ (detail)).text).toBe("Hello");
+        expect(/** @type {{ text: string }} */ (/** @type {unknown} */ (detail)).text).toBe(
+            "Hello",
+        );
     });
 
     it("bubbles stop-message from chat-input", async () => {

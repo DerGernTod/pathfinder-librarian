@@ -60,9 +60,12 @@ describe("landing-view", () => {
         await element.updateComplete;
 
         const result = /** @type {{ value: string | null }} */ ({ value: null });
-        element.addEventListener("landing-submit", /** @param {any} e */ (e) => {
-            result.value = e.detail.text;
-        });
+        element.addEventListener(
+            "landing-submit",
+            /** @param {any} e */ (e) => {
+                result.value = e.detail.text;
+            },
+        );
 
         const input = /** @type {HTMLInputElement} */ (
             element.shadowRoot?.querySelector('[data-test="landing-input"]')
@@ -81,9 +84,12 @@ describe("landing-view", () => {
         await element.updateComplete;
 
         const result = /** @type {{ value: string | null }} */ ({ value: null });
-        element.addEventListener("landing-submit", /** @param {any} e */ (e) => {
-            result.value = e.detail.text;
-        });
+        element.addEventListener(
+            "landing-submit",
+            /** @param {any} e */ (e) => {
+                result.value = e.detail.text;
+            },
+        );
 
         const input = /** @type {HTMLInputElement} */ (
             element.shadowRoot?.querySelector('[data-test="landing-input"]')
@@ -111,9 +117,12 @@ describe("landing-view", () => {
         await element.updateComplete;
 
         const result = /** @type {{ value: string | null }} */ ({ value: null });
-        element.addEventListener("landing-submit", /** @param {any} e */ (e) => {
-            result.value = e.detail.text;
-        });
+        element.addEventListener(
+            "landing-submit",
+            /** @param {any} e */ (e) => {
+                result.value = e.detail.text;
+            },
+        );
 
         const input = /** @type {HTMLInputElement} */ (
             element.shadowRoot?.querySelector('[data-test="landing-input"]')
@@ -141,9 +150,12 @@ describe("landing-view", () => {
         await element.updateComplete;
 
         const result = /** @type {{ value: string | null }} */ ({ value: null });
-        element.addEventListener("landing-submit", /** @param {any} e */ (e) => {
-            result.value = e.detail.text;
-        });
+        element.addEventListener(
+            "landing-submit",
+            /** @param {any} e */ (e) => {
+                result.value = e.detail.text;
+            },
+        );
 
         const input = /** @type {HTMLInputElement} */ (
             element.shadowRoot?.querySelector('[data-test="landing-input"]')
@@ -183,9 +195,12 @@ describe("landing-view", () => {
         await element.updateComplete;
 
         const result = /** @type {{ value: string | null }} */ ({ value: null });
-        element.addEventListener("landing-submit", /** @param {any} e */ (e) => {
-            result.value = e.detail.text;
-        });
+        element.addEventListener(
+            "landing-submit",
+            /** @param {any} e */ (e) => {
+                result.value = e.detail.text;
+            },
+        );
 
         const input = /** @type {HTMLInputElement} */ (
             element.shadowRoot?.querySelector('[data-test="landing-input"]')
@@ -204,9 +219,12 @@ describe("landing-view", () => {
         await element.updateComplete;
 
         const result = /** @type {{ value: string | null }} */ ({ value: null });
-        element.addEventListener("landing-submit", /** @param {any} e */ (e) => {
-            result.value = e.detail.text;
-        });
+        element.addEventListener(
+            "landing-submit",
+            /** @param {any} e */ (e) => {
+                result.value = e.detail.text;
+            },
+        );
 
         const input = /** @type {HTMLInputElement} */ (
             element.shadowRoot?.querySelector('[data-test="landing-input"]')
