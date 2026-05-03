@@ -18,17 +18,14 @@ async function setupVirtualAuthenticator(page, context) {
 }
 
 test.describe("passkey registration", () => {
-    test("register new user with passkey", async ({ page, context }) => {
-        const res = await fetch("http://localhost:3000/api/test/reset-db", { method: "POST" });
-        expect(res.ok).toBe(true);
-
+    test("register new user with passkey", async ({ page, context }, testInfo) => {
         const { cdp, authenticatorId } = await setupVirtualAuthenticator(page, context);
 
         await page.goto("/");
         await page.waitForSelector("login-page");
 
         const nameInput = page.locator("login-page").locator("sl-input").locator("input");
-        await nameInput.fill("Test New User");
+        await nameInput.fill(`reg-${testInfo.title}`);
 
         const verifyPromise = page.waitForResponse((resp) =>
             resp.url().includes("/api/auth/register/verify"),
@@ -45,24 +42,21 @@ test.describe("passkey registration", () => {
         const body = await verifyResponse.json();
         expect(body.result).toBe("success");
         expect(body.data.user).toBeDefined();
-        expect(body.data.user.name).toBe("Test New User");
+        expect(body.data.user.name).toBe(`reg-${testInfo.title}`);
 
         await cdp.send("WebAuthn.removeVirtualAuthenticator", { authenticatorId });
     });
 });
 
 test.describe("passkey sign-in", () => {
-    test("sign in with registered passkey", async ({ page, context }) => {
-        const res = await fetch("http://localhost:3000/api/test/reset-db", { method: "POST" });
-        expect(res.ok).toBe(true);
-
+    test("sign in with registered passkey", async ({ page, context }, testInfo) => {
         const { cdp, authenticatorId } = await setupVirtualAuthenticator(page, context);
 
         await page.goto("/");
         await page.waitForSelector("login-page");
 
         const nameInput = page.locator("login-page").locator("sl-input").locator("input");
-        await nameInput.fill("Test Signin User");
+        await nameInput.fill(`signin-${testInfo.title}`);
 
         const registerVerifyPromise = page.waitForResponse((resp) =>
             resp.url().includes("/api/auth/register/verify"),
@@ -93,7 +87,7 @@ test.describe("passkey sign-in", () => {
         const loginBody = await loginRes.json();
         expect(loginBody.result).toBe("success");
         expect(loginBody.data.user).toBeDefined();
-        expect(loginBody.data.user.name).toBe("Test Signin User");
+        expect(loginBody.data.user.name).toBe(`signin-${testInfo.title}`);
 
         await cdp.send("WebAuthn.removeVirtualAuthenticator", { authenticatorId });
     });

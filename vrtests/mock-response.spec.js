@@ -1,42 +1,20 @@
 import { expect, test } from "@playwright/test";
 
+import { setupTestUser } from "./helpers/test-user.js";
+
 test.describe("mock LLM response visual regression", () => {
-    test.beforeEach(async ({ page, context }) => {
-        // Reset DB and login
-        const res = await fetch("http://localhost:3000/api/test/reset-db", { method: "POST" });
-        expect(res.ok).toBe(true);
+    test.beforeEach(async ({ page, context }, testInfo) => {
+        await setupTestUser(context, testInfo);
 
-        const loginRes = await fetch("http://localhost:3000/api/auth/quick-login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId: "00000000-0000-4000-8000-000000000001" }),
-        });
-        expect(loginRes.ok).toBe(true);
-
-        const setCookieHeader = loginRes.headers.get("set-cookie");
-        if (setCookieHeader) {
-            const cookieMatch = setCookieHeader.match(/session_token=([^;]+)/);
-            if (cookieMatch) {
-                await context.addCookies([
-                    {
-                        name: "session_token",
-                        value: cookieMatch[1],
-                        domain: "localhost",
-                        path: "/",
-                    },
-                ]);
+        // Intercept conversation message POSTs to simulate network latency so
+        // the UI enters the responding state reliably for visual tests.
+        await page.route("**/api/conversations/*/messages", async (route) => {
+            if (route.request().method() === "POST") {
+                // artificial delay
+                await new Promise((r) => setTimeout(r, 800));
             }
-
-            // Intercept conversation message POSTs to simulate network latency so
-            // the UI enters the responding state reliably for visual tests.
-            await page.route("**/api/conversations/*/messages", async (route) => {
-                if (route.request().method() === "POST") {
-                    // artificial delay
-                    await new Promise((r) => setTimeout(r, 800));
-                }
-                await route.continue();
-            });
-        }
+            await route.continue();
+        });
 
         await page.goto("/");
         await page.waitForSelector("main-page");
