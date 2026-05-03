@@ -123,12 +123,13 @@ await expect(page.locator('[data-test="landing-input"]')).toHaveAttribute(
 
 The app shows `<landing-view>` when `isLanding` (no messages loaded) and `<chat-view>` otherwise. These use **different input elements**:
 
-| State | Input element | Selector |
-|-------|--------------|----------|
-| Landing | `<input class="landing-prompt">` | `[data-test='landing-input']` |
-| Chat | `<textarea>` inside `<chat-input>` | `chat-input textarea` |
+| State   | Input element                      | Selector                      |
+| ------- | ---------------------------------- | ----------------------------- |
+| Landing | `<input class="landing-prompt">`   | `[data-test='landing-input']` |
+| Chat    | `<textarea>` inside `<chat-input>` | `chat-input textarea`         |
 
 **`isLanding` checks `filteredMessages.length === 0`, not conversations.** Returning a conversation in the mock list does NOT switch to chat-view. To stay in chat-view, either:
+
 - Seed messages (return non-empty messages list), or
 - Use the landing input selector and let the submit transition to chat-view
 
@@ -141,7 +142,7 @@ The `setupTestUser` helper derives a UUID v4 from `testInfo.titlePath`. When bui
 ```
 UUID v4 layout (32 hex chars → 36 chars with hyphens):
   xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx
-  
+
 Hex positions consumed:
   0..7   → group 1 (8 chars)
   8..11  → group 2 (4 chars)
@@ -190,15 +191,15 @@ The `update-snapshots.yml` workflow runs `bun run e2e -- --update-snapshots`. If
 
 ## Common failures
 
-| Symptom | Likely cause | Fix |
-| --- | --- | --- |
-| Snapshot mismatch | Animations/transitions running | Add animation-disabling CSS |
-| `page.accessibility.snapshot` undefined | Older Playwright version | Use DOM-based a11y assertions instead |
-| Route not intercepting | Method mismatch (GET vs POST) | Check `route.request().method()` |
-| `body.getReader` crashes | `route.fulfill` creates null body | Ensure `contentType: "text/event-stream"` and string body |
-| Landing page never shows | Seeded user has conversations | Intercept `GET /api/conversations` to return `data: []` |
-| `chat-input textarea` times out | Landing view shown instead of chat-view | Use `[data-test='landing-input']` or seed messages |
-| `ensure-test-user` returns 400 | Invalid UUID format | Verify UUID v4 nibble offsets correct |
-| `sl-details` click fails | Multiple `sl-details` match | Use `.first()` |
-| Real LLM snapshots flaky | LLM response varies per run | Mock SSE endpoint with fixed response |
-| Snapshot update workflow fails | E2e tests broken | Fix tests locally, push, then re-trigger workflow |
+| Symptom                                 | Likely cause                            | Fix                                                       |
+| --------------------------------------- | --------------------------------------- | --------------------------------------------------------- |
+| Snapshot mismatch                       | Animations/transitions running          | Add animation-disabling CSS                               |
+| `page.accessibility.snapshot` undefined | Older Playwright version                | Use DOM-based a11y assertions instead                     |
+| Route not intercepting                  | Method mismatch (GET vs POST)           | Check `route.request().method()`                          |
+| `body.getReader` crashes                | `route.fulfill` creates null body       | Ensure `contentType: "text/event-stream"` and string body |
+| Landing page never shows                | Seeded user has conversations           | Intercept `GET /api/conversations` to return `data: []`   |
+| `chat-input textarea` times out         | Landing view shown instead of chat-view | Use `[data-test='landing-input']` or seed messages        |
+| `ensure-test-user` returns 400          | Invalid UUID format                     | Verify UUID v4 nibble offsets correct                     |
+| `sl-details` click fails                | Multiple `sl-details` match             | Use `.first()`                                            |
+| Real LLM snapshots flaky                | LLM response varies per run             | Mock SSE endpoint with fixed response                     |
+| Snapshot update workflow fails          | E2e tests broken                        | Fix tests locally, push, then re-trigger workflow         |
