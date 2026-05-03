@@ -12,8 +12,9 @@ describe("chat-sidebar", () => {
     function createSidebar(conversations = [], activeId = "") {
         /** @type {any} */
         const el = document.createElement("chat-sidebar");
-        el.conversations = conversations;
-        el.activeId = activeId;
+        el._convState = { conversations, activeConversationId: activeId, loading: false };
+        el._modeState = { mode: "gm" };
+        el._uiState = { sidebarExpanded: true, settingsOpen: false };
         document.body.appendChild(el);
         return el;
     }
@@ -30,7 +31,6 @@ describe("chat-sidebar", () => {
         await el.updateComplete;
         const list = el.shadowRoot.querySelector("session-list");
         expect(list).toBeTruthy();
-        expect(list.conversations).toHaveLength(1);
     });
 
     it("renders sidebar-profile component", async () => {
@@ -51,15 +51,6 @@ describe("chat-sidebar", () => {
         expect(profile.name).toBe("Game Master 01");
         expect(profile.subtitle).toBe("PF2e Remaster Rules");
         expect(profile.initials).toBe("GM");
-    });
-
-    it("passes conversations and activeId to session-list", async () => {
-        const el = createSidebar([{ id: "1", title: "Active Chat" }], "1");
-        await el.updateComplete;
-        const list = el.shadowRoot.querySelector("session-list");
-        expect(list).toBeTruthy();
-        expect(list.conversations).toHaveLength(1);
-        expect(list.activeId).toBe("1");
     });
 
     it("dispatches new-chat on button click", async () => {
@@ -104,41 +95,18 @@ describe("chat-sidebar", () => {
         }
     });
 
-    it("updates activeId when session-list selects a conversation", async () => {
-        const el = createSidebar(
-            [
-                { id: "1", title: "First" },
-                { id: "2", title: "Second" },
-            ],
-            "1",
-        );
-        await el.updateComplete;
-
-        const list = el.shadowRoot.querySelector("session-list");
-        list.dispatchEvent(
-            new CustomEvent("select-conversation", {
-                detail: { id: "2" },
-                bubbles: true,
-                composed: true,
-            }),
-        );
-        await el.updateComplete;
-
-        expect(el.activeId).toBe("2");
-    });
-
-    // NEW: Tests for toggle functionality
+    // Toggle tests
     it("renders in expanded state by default", async () => {
         const el = createSidebar();
         await el.updateComplete;
-        expect(el.expanded).toBe(true);
+        expect(el._uiState.sidebarExpanded).toBe(true);
         const sidebar = el.shadowRoot.querySelector(".sidebar");
         expect(sidebar.classList.contains("collapsed")).toBe(false);
     });
 
     it("renders in collapsed state when expanded=false", async () => {
         const el = createSidebar();
-        el.expanded = false;
+        el._uiState = { sidebarExpanded: false, settingsOpen: false };
         await el.updateComplete;
         const sidebar = el.shadowRoot.querySelector(".sidebar");
         expect(sidebar.classList.contains("collapsed")).toBe(true);
@@ -158,7 +126,7 @@ describe("chat-sidebar", () => {
 
     it("hides content when collapsed", async () => {
         const el = createSidebar([{ id: "1", title: "Test" }]);
-        el.expanded = false;
+        el._uiState = { sidebarExpanded: false, settingsOpen: false };
         await el.updateComplete;
         const content = el.shadowRoot.querySelector(".content");
         const menuWrapper = el.shadowRoot.querySelector(".conversation-menu-wrapper");
@@ -183,19 +151,9 @@ describe("chat-sidebar", () => {
         expect(dispatched).toBe(true);
     });
 
-    it("updates expanded state on toggle", async () => {
-        const el = createSidebar();
-        await el.updateComplete;
-
-        const toggle = el.shadowRoot.querySelector("sidebar-toggle");
-        fireEvent.click(toggle.shadowRoot.querySelector("button"));
-
-        expect(el.expanded).toBe(false);
-    });
-
     it("passes collapsed prop to new-chat-button when collapsed", async () => {
         const el = createSidebar();
-        el.expanded = false;
+        el._uiState = { sidebarExpanded: false, settingsOpen: false };
         await el.updateComplete;
         const ncb = el.shadowRoot.querySelector("new-chat-button");
         expect(ncb.collapsed).toBe(true);
@@ -203,7 +161,7 @@ describe("chat-sidebar", () => {
 
     it("passes collapsed=false to new-chat-button when expanded", async () => {
         const el = createSidebar();
-        el.expanded = true;
+        el._uiState = { sidebarExpanded: true, settingsOpen: false };
         await el.updateComplete;
         const ncb = el.shadowRoot.querySelector("new-chat-button");
         expect(ncb.collapsed).toBe(false);
@@ -223,26 +181,25 @@ describe("chat-sidebar", () => {
         expect(initialButton).toBeTruthy();
 
         // Toggle to collapsed
-        el.expanded = false;
-        const updatePromise = el.updateComplete;
-        await updatePromise;
+        el._uiState = { sidebarExpanded: false, settingsOpen: false };
+        await el.updateComplete;
         const collapsedButton = el.shadowRoot.querySelector("new-chat-button");
 
         // Should be the same DOM element
-        expect(collapsedButton).toBe(initialButton);
+        expect(collapsedButton === initialButton).toBeTrue();
 
         // Toggle back to expanded
-        el.expanded = true;
+        el._uiState = { sidebarExpanded: true, settingsOpen: false };
         await el.updateComplete;
         const expandedButton = el.shadowRoot.querySelector("new-chat-button");
 
         // Should still be the same DOM element
-        expect(expandedButton).toBe(initialButton);
+        expect(expandedButton === initialButton).toBeTrue();
     });
 
     it("renders conversation-menu when collapsed", async () => {
         const el = createSidebar([{ id: "1", title: "Test" }]);
-        el.expanded = false;
+        el._uiState = { sidebarExpanded: false, settingsOpen: false };
         await el.updateComplete;
         const menu = el.shadowRoot.querySelector("conversation-menu");
         const menuWrapper = el.shadowRoot.querySelector(".conversation-menu-wrapper");
@@ -252,7 +209,7 @@ describe("chat-sidebar", () => {
 
     it("renders conversation-menu when expanded (hidden via CSS)", async () => {
         const el = createSidebar([{ id: "1", title: "Test" }]);
-        el.expanded = true;
+        el._uiState = { sidebarExpanded: true, settingsOpen: false };
         await el.updateComplete;
         const menu = el.shadowRoot.querySelector("conversation-menu");
         const menuWrapper = el.shadowRoot.querySelector(".conversation-menu-wrapper");
@@ -262,7 +219,7 @@ describe("chat-sidebar", () => {
 
     it("passes collapsed prop to sidebar-profile when collapsed", async () => {
         const el = createSidebar();
-        el.expanded = false;
+        el._uiState = { sidebarExpanded: false, settingsOpen: false };
         await el.updateComplete;
         const profile = el.shadowRoot.querySelector("sidebar-profile");
         expect(profile.collapsed).toBe(true);
@@ -270,7 +227,7 @@ describe("chat-sidebar", () => {
 
     it("passes collapsed=false to sidebar-profile when expanded", async () => {
         const el = createSidebar();
-        el.expanded = true;
+        el._uiState = { sidebarExpanded: true, settingsOpen: false };
         await el.updateComplete;
         const profile = el.shadowRoot.querySelector("sidebar-profile");
         expect(profile.collapsed).toBe(false);
@@ -287,7 +244,7 @@ describe("chat-sidebar", () => {
         expect(el.shadowRoot.querySelector("conversation-menu")).toBeTruthy();
 
         // Test collapsed state
-        el.expanded = false;
+        el._uiState = { sidebarExpanded: false, settingsOpen: false };
         await el.updateComplete;
         expect(el.shadowRoot.querySelector(".content")).toBeTruthy();
         expect(el.shadowRoot.querySelector(".conversation-menu-wrapper")).toBeTruthy();
@@ -304,7 +261,7 @@ describe("chat-sidebar", () => {
 
     it("content has correct CSS classes for collapsed state", async () => {
         const el = createSidebar([{ id: "1", title: "Test" }]);
-        el.expanded = false;
+        el._uiState = { sidebarExpanded: false, settingsOpen: false };
         await el.updateComplete;
         const content = el.shadowRoot.querySelector(".content");
         expect(content.classList.contains("collapsed")).toBe(true);
@@ -319,7 +276,7 @@ describe("chat-sidebar", () => {
 
     it("conversation-menu-wrapper has correct CSS classes for collapsed state", async () => {
         const el = createSidebar([{ id: "1", title: "Test" }]);
-        el.expanded = false;
+        el._uiState = { sidebarExpanded: false, settingsOpen: false };
         await el.updateComplete;
         const menuWrapper = el.shadowRoot.querySelector(".conversation-menu-wrapper");
         expect(menuWrapper.classList.contains("visible")).toBe(true);

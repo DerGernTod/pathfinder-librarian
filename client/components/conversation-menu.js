@@ -1,21 +1,17 @@
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/menu/menu.js?deps=lit@3.3.2";
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/menu-item/menu-item.js?deps=lit@3.3.2";
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/dropdown/dropdown.js?deps=lit@3.3.2";
+import { ContextConsumer } from "@lit/context";
 import { LitElement, css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
+import { conversationContext } from "../stores/conversation-store.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
 
-/** @typedef {import("../../shared/types.js").Conversation} Conversation */
-/** @typedef {import("../../shared/types.js").Mode} Mode */
-
 /**
  * @customElement conversation-menu
- * @property {Conversation[]} conversations - The list of conversations to display in the menu.
- * @property {string} activeId - The ID of the currently active conversation.
- * @property {Mode} mode - The current mode of the application (GM or Player).
  * @fires select-conversation - Fired when the user selects a conversation from the menu, with the conversation ID in the event detail.
  */
 class ConversationMenu extends LitElement {
@@ -68,20 +64,24 @@ class ConversationMenu extends LitElement {
         `,
     ];
 
-    static properties = {
-        conversations: { type: Array },
-        activeId: { type: String },
-        mode: { type: String },
-    };
-
     constructor() {
         super();
-        /** @type {import("../../shared/types.js").Conversation[]} */
-        this.conversations = [];
-        /** @type {string} */
-        this.activeId = "";
-        /** @type {import("../../shared/types.js").Mode} */
-        this.mode = "gm";
+        /** @type {import("../stores/conversation-store.js").ConversationState} */
+        this._convState = { conversations: [], activeConversationId: "", loading: true };
+    }
+
+    connectedCallback() {
+        super.connectedCallback();
+        new ContextConsumer(this, {
+            context: conversationContext,
+            callback:
+                /** @param {import("../stores/conversation-store.js").ConversationState} v */ (
+                    v,
+                ) => {
+                    this._convState = v;
+                },
+            subscribe: true,
+        });
     }
 
     render() {
@@ -103,13 +103,15 @@ class ConversationMenu extends LitElement {
                     >
                         Recent
                     </p>
-                    ${this.conversations
+                    ${this._convState.conversations
                         .slice(0, 5)
                         .map(
                             (conv) => html`
                                 <sl-menu-item
                                     value=${conv.id}
-                                    class=${conv.id === this.activeId ? "active" : ""}
+                                    class=${conv.id === this._convState.activeConversationId
+                                        ? "active"
+                                        : ""}
                                     @click=${() => this.handleSelect(conv.id)}
                                 >
                                     ${conv.title}

@@ -1,12 +1,13 @@
+import { ContextConsumer } from "@lit/context";
 import { LitElement, css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
+import { modeContext } from "../stores/mode-store.js";
 import { baseStyles } from "../styles/base-styles.js";
-import { tokens } from "../styles/tokens.js";
 import "./profile-menu.js";
+import { tokens } from "../styles/tokens.js";
 
-/** @typedef {import("../../shared/types.js").Mode} Mode */
 /** @typedef {import("../../shared/types.js").AuthUser} AuthUser */
 
 /**
@@ -14,7 +15,6 @@ import "./profile-menu.js";
  * @property {string} name - The name of the user to display in the profile section.
  * @property {string} subtitle - The subtitle or role of the user.
  * @property {string} initials - The initials of the user to display in the avatar.
- * @property {Mode} mode - The current mode of the application (GM or Player).
  * @property {boolean} collapsed - Whether the sidebar is currently collapsed, which affects the profile's appearance.
  */
 class SidebarProfile extends LitElement {
@@ -89,7 +89,6 @@ class SidebarProfile extends LitElement {
         name: { type: String },
         subtitle: { type: String },
         initials: { type: String },
-        mode: { type: String },
         collapsed: { type: Boolean },
         user: { type: Object },
     };
@@ -102,12 +101,23 @@ class SidebarProfile extends LitElement {
         this.subtitle = "";
         /** @type {string} */
         this.initials = "";
-        /** @type {Mode} */
-        this.mode = "gm";
         /** @type {boolean} */
         this.collapsed = false;
         /** @type {AuthUser | null} */
         this.user = null;
+        /** @type {import("../stores/mode-store.js").ModeState} */
+        this._modeState = { mode: "gm" };
+    }
+
+    connectedCallback() {
+        super.connectedCallback();
+        new ContextConsumer(this, {
+            context: modeContext,
+            callback: /** @param {import("../stores/mode-store.js").ModeState} v */ (v) => {
+                this._modeState = v;
+            },
+            subscribe: true,
+        });
     }
 
     /**
@@ -129,7 +139,6 @@ class SidebarProfile extends LitElement {
                 aria-label=${this.collapsed ? `${this.name} - ${this.subtitle}` : ""}
             >
                 <profile-menu
-                    .mode=${this.mode}
                     @logout=${this.handleLogout}
                     @open-settings=${this.handleOpenSettings}
                 ></profile-menu>

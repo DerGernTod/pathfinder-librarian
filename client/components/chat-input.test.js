@@ -84,9 +84,9 @@ describe("chat-input", () => {
         expect(dispatched).toBe(false);
     });
 
-    it("does not dispatch send-message when disabled", async () => {
+    it("does not dispatch send-message when disabled (responding is true)", async () => {
         const el = createInput();
-        el.responding = true;
+        el._msgState = { messages: [], responding: true };
         await el.updateComplete;
 
         el.value = "Hello";
@@ -105,7 +105,7 @@ describe("chat-input", () => {
 
     it("renders stop button when responding", async () => {
         const el = createInput();
-        el.responding = true;
+        el._msgState = { messages: [], responding: true };
         await el.updateComplete;
 
         const stop = Array.from(el.shadowRoot.querySelectorAll("button")).find((b) =>

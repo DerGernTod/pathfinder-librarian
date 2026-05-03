@@ -1,8 +1,11 @@
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/textarea/textarea.js?deps=lit@3.3.2";
+import { ContextConsumer } from "@lit/context";
 import { LitElement, css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
+import { messagesContext } from "../stores/messages-store.js";
+import { modeContext } from "../stores/mode-store.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
 
@@ -11,12 +14,9 @@ import { tokens } from "../styles/tokens.js";
  * @typedef {InputEvent & { currentTarget: T }} TargetedInputEvent
  */
 
-/** @typedef {import("../../shared/types.js").Mode} Mode */
-
 /**
  * @customElement chat-input
  * @property {string} value - The current value of the chat input.
- * @property {Mode} mode - The current mode of the application (GM or Player).
  * @fires send-message - Fired when the user submits a message, with the message text in the event detail.
  */
 class ChatInput extends LitElement {
@@ -97,19 +97,15 @@ class ChatInput extends LitElement {
 
     static properties = {
         value: { type: String },
-        mode: { type: String },
-        // Whether the assistant is currently responding. When true the
-        // submit button becomes a Stop button and will dispatch `stop-message`.
-        responding: { type: Boolean, reflect: true },
     };
 
     constructor() {
         super();
         this.value = "";
-        /** @type {Mode} */
-        this.mode = "gm";
-        /** @type {boolean} */
-        this.responding = false;
+        /** @type {import("../stores/mode-store.js").ModeState} */
+        this._modeState = { mode: "gm" };
+        /** @type {import("../stores/messages-store.js").MessagesState} */
+        this._msgState = { messages: [], responding: false };
         document.addEventListener("select-conversation", () => {
             const textarea = /** @type {HTMLTextAreaElement | null} */ (
                 this.shadowRoot?.querySelector("sl-textarea")
@@ -118,10 +114,28 @@ class ChatInput extends LitElement {
         });
     }
 
+    connectedCallback() {
+        super.connectedCallback();
+        new ContextConsumer(this, {
+            context: modeContext,
+            callback: /** @param {import("../stores/mode-store.js").ModeState} v */ (v) => {
+                this._modeState = v;
+            },
+            subscribe: true,
+        });
+        new ContextConsumer(this, {
+            context: messagesContext,
+            callback: /** @param {import("../stores/messages-store.js").MessagesState} v */ (v) => {
+                this._msgState = v;
+            },
+            subscribe: true,
+        });
+    }
+
     render() {
         return html`
             <div class="wrapper">
-                <div class="input-row" data-mode=${this.mode}>
+                <div class="input-row" data-mode=${this._modeState.mode}>
                     <sl-textarea
                         .value=${this.value}
                         @sl-input=${this.handleInput}
@@ -133,7 +147,7 @@ class ChatInput extends LitElement {
                         autofocus
                         data-test="composer-input"
                     ></sl-textarea>
-                    ${this.responding
+                    ${this._msgState.responding
                         ? html`
                               <button @click=${this.handleStop} class="send-btn stop">Stop</button>
                           `
@@ -180,7 +194,7 @@ class ChatInput extends LitElement {
     }
 
     handleSubmit() {
-        if (this.responding) {
+        if (this._msgState.responding) {
             return;
         }
         const text = this.value.trim();

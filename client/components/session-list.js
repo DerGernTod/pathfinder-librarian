@@ -1,9 +1,11 @@
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/input/input.js?deps=lit@3.3.2";
 import "./conversation-item.js";
+import { ContextConsumer } from "@lit/context";
 import { LitElement, css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
+import { conversationContext } from "../stores/conversation-store.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
 
@@ -16,8 +18,6 @@ import { tokens } from "../styles/tokens.js";
 
 /**
  * @customElement session-list
- * @property {Conversation[]} conversations - The list of conversations to display in the list.
- * @property {string} activeId - The ID of the currently active conversation.
  * @property {string} query - The current search query for filtering conversations.
  * @fires select-conversation - Fired when the user selects a conversation from the list, with the conversation ID in the event detail.
  */
@@ -56,27 +56,37 @@ class SessionList extends LitElement {
     ];
 
     static properties = {
-        conversations: { type: Array },
-        activeId: { type: String },
         query: { type: String },
     };
 
     constructor() {
         super();
-        /** @type {Conversation[]} */
-        this.conversations = [];
-        /** @type {string} */
-        this.activeId = "";
         /** @type {string} */
         this.query = "";
+        /** @type {import("../stores/conversation-store.js").ConversationState} */
+        this._convState = { conversations: [], activeConversationId: "", loading: true };
+    }
+
+    connectedCallback() {
+        super.connectedCallback();
+        new ContextConsumer(this, {
+            context: conversationContext,
+            callback:
+                /** @param {import("../stores/conversation-store.js").ConversationState} v */ (
+                    v,
+                ) => {
+                    this._convState = v;
+                },
+            subscribe: true,
+        });
     }
 
     render() {
         const filtered = this.query
-            ? this.conversations.filter((c) =>
+            ? this._convState.conversations.filter((c) =>
                   c.title.toLowerCase().includes(this.query.toLowerCase()),
               )
-            : this.conversations;
+            : this._convState.conversations;
 
         return html`
             <div class="container">
@@ -93,7 +103,6 @@ class SessionList extends LitElement {
                     (conv) => html`
                         <conversation-item
                             .conversation=${conv}
-                            .active=${conv.id === this.activeId}
                             @select=${this.handleSelect}
                             data-test="session-item"
                         ></conversation-item>
