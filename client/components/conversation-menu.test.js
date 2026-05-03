@@ -15,8 +15,7 @@ describe("conversation-menu", () => {
     function createMenu(conversations = [], activeId = "") {
         /** @type {any} */
         const el = document.createElement("conversation-menu");
-        el.conversations = conversations;
-        el.activeId = activeId;
+        el._convState = { conversations, activeConversationId: activeId, loading: false };
         document.body.appendChild(el);
         return el;
     }

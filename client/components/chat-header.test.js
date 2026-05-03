@@ -8,11 +8,9 @@ describe("chat-header", () => {
         document.body.innerHTML = "";
     });
 
-    /** @param {string} mode */
-    function createHeader(mode = "player") {
+    function createHeader() {
         /** @type {any} */
         const el = document.createElement("chat-header");
-        el.mode = mode;
         document.body.appendChild(el);
         return el;
     }
@@ -36,15 +34,8 @@ describe("chat-header", () => {
         expect(toggle).toBeTruthy();
     });
 
-    it("passes mode to mode-toggle", async () => {
-        const el = createHeader("gm");
-        await el.updateComplete;
-        const toggle = /** @type {any} */ (el.shadowRoot.querySelector("mode-toggle"));
-        expect(toggle.mode).toBe("gm");
-    });
-
     it("dispatches mode-change when mode-toggle fires mode-change", async () => {
-        const el = createHeader("player");
+        const el = createHeader();
         await el.updateComplete;
 
         /** @type {any} */
@@ -70,22 +61,5 @@ describe("chat-header", () => {
         if (detail) {
             expect(detail.mode).toBe("gm");
         }
-    });
-
-    it("updates own mode when mode-toggle fires mode-change", async () => {
-        const el = createHeader("player");
-        await el.updateComplete;
-
-        const toggle = /** @type {any} */ (el.shadowRoot.querySelector("mode-toggle"));
-        toggle.dispatchEvent(
-            new CustomEvent("mode-change", {
-                detail: { mode: "gm" },
-                bubbles: true,
-                composed: true,
-            }),
-        );
-
-        await el.updateComplete;
-        expect(el.mode).toBe("gm");
     });
 });

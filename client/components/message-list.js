@@ -1,18 +1,16 @@
 import "../components/chat-message.js";
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/spinner/spinner.js?deps=lit@3.3.2";
+import { ContextConsumer } from "@lit/context";
 import { LitElement, css } from "lit-element";
 import { html, nothing } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
+import { messagesContext } from "../stores/messages-store.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
 
-/** @typedef {import("../../shared/types.js").Message} Message */
-
 /**
  * @customElement message-list
- * @property {Message[]} messages - The list of messages to display.
- * @property {boolean} loading - Whether the assistant is currently generating a response.
  */
 class MessageList extends LitElement {
     static styles = [
@@ -58,26 +56,30 @@ class MessageList extends LitElement {
         `,
     ];
 
-    static properties = {
-        messages: { type: Array },
-        loading: { type: Boolean },
-    };
-
     constructor() {
         super();
-        /** @type {Message[]} */
-        this.messages = [];
-        /** @type {boolean} */
-        this.loading = false;
+        /** @type {import("../stores/messages-store.js").MessagesState} */
+        this._msgState = { messages: [], responding: false };
+    }
+
+    connectedCallback() {
+        super.connectedCallback();
+        new ContextConsumer(this, {
+            context: messagesContext,
+            callback: /** @param {import("../stores/messages-store.js").MessagesState} v */ (v) => {
+                this._msgState = v;
+            },
+            subscribe: true,
+        });
     }
 
     render() {
         return html`
             <div class="messages">
-                ${this.messages
+                ${this._msgState.messages
                     .toReversed()
                     .map((msg) => html` <chat-message .message=${msg}></chat-message> `)}
-                ${this.loading
+                ${this._msgState.responding
                     ? html`
                           <div class="loading">
                               <sl-spinner style="font-size: 1rem;"></sl-spinner>

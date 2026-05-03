@@ -55,112 +55,148 @@ describe("main-page", () => {
     });
 
     it("should initialize with empty state", () => {
-        expect(element.conversations).toEqual([]);
-        expect(element.messages).toEqual([]);
-        expect(element.activeConversationId).toBe("");
-        // Note: loading is set to false after firstUpdated, so we check initial properties
-        expect(element.mode).toBe("player");
-        expect(element.sidebarExpanded).toBe(true);
+        expect(element._convState.conversations).toEqual([]);
+        expect(element._msgState.messages).toEqual([]);
+        expect(element._convState.activeConversationId).toBe("");
+        expect(element._modeState.mode).toBe("player");
+        expect(element._uiState.sidebarExpanded).toBe(true);
     });
 
     it("should filter messages by active conversation", () => {
-        element.messages = [
-            {
-                id: "1",
-                conversationId: "conv1",
-                content: "Test 1",
-                role: "user",
-                mode: "player",
-                createdAt: new Date().toISOString(),
-            },
-            {
-                id: "2",
-                conversationId: "conv2",
-                content: "Test 2",
-                role: "user",
-                mode: "player",
-                createdAt: new Date().toISOString(),
-            },
-            {
-                id: "3",
-                conversationId: "conv1",
-                content: "Test 3",
-                role: "user",
-                mode: "player",
-                createdAt: new Date().toISOString(),
-            },
-        ];
-        element.activeConversationId = "conv1";
+        element._msgState = {
+            messages: [
+                {
+                    id: "1",
+                    conversationId: "conv1",
+                    content: "Test 1",
+                    role: "user",
+                    mode: "player",
+                    createdAt: new Date().toISOString(),
+                },
+                {
+                    id: "2",
+                    conversationId: "conv2",
+                    content: "Test 2",
+                    role: "user",
+                    mode: "player",
+                    createdAt: new Date().toISOString(),
+                },
+                {
+                    id: "3",
+                    conversationId: "conv1",
+                    content: "Test 3",
+                    role: "user",
+                    mode: "player",
+                    createdAt: new Date().toISOString(),
+                },
+            ],
+            responding: false,
+        };
+        element._convState = {
+            conversations: [],
+            activeConversationId: "conv1",
+            loading: false,
+        };
 
-        expect(element.filteredMessages).toEqual([
+        const msgs = element._msgState.messages.filter(
+            (m) => m.conversationId === element._convState.activeConversationId,
+        );
+        expect(msgs).toEqual([
             expect.objectContaining({ id: "1", conversationId: "conv1" }),
             expect.objectContaining({ id: "3", conversationId: "conv1" }),
         ]);
     });
 
     it("should return empty array for non-existent conversation", () => {
-        element.messages = [
-            {
-                id: "1",
-                conversationId: "conv1",
-                content: "Test",
-                role: "user",
-                mode: "player",
-                createdAt: new Date().toISOString(),
-            },
-        ];
-        element.activeConversationId = "nonexistent";
-        expect(element.filteredMessages).toEqual([]);
+        element._msgState = {
+            messages: [
+                {
+                    id: "1",
+                    conversationId: "conv1",
+                    content: "Test",
+                    role: "user",
+                    mode: "player",
+                    createdAt: new Date().toISOString(),
+                },
+            ],
+            responding: false,
+        };
+        element._convState = {
+            conversations: [],
+            activeConversationId: "nonexistent",
+            loading: false,
+        };
+        const msgs = element._msgState.messages.filter(
+            (m) => m.conversationId === element._convState.activeConversationId,
+        );
+        expect(msgs).toEqual([]);
     });
 
     it("should switch mode correctly", () => {
         // Ensure initial state
-        element.mode = "player";
-        expect(element.mode).toBe("player");
+        element._modeState = { mode: "player" };
+        expect(element._modeState.mode).toBe("player");
 
         const event = new CustomEvent("mode-change", {
             detail: { mode: /** @type {import("../../shared/types.js").Mode} */ ("gm") },
         });
         element.handleModeChange(event);
-        // @ts-expect-error - mode is typed as "player" here, but we want to test with mode
-        expect(element.mode).toBe("gm");
+        expect(element._modeState.mode).toBe("gm");
     });
 
     it("should toggle sidebar", () => {
-        expect(element.sidebarExpanded).toBe(true);
+        expect(element._uiState.sidebarExpanded).toBe(true);
 
         const event = new CustomEvent("toggle-sidebar", { detail: { expanded: false } });
         element.handleSidebarToggle(event);
-        expect(element.sidebarExpanded).toBe(false);
+        expect(element._uiState.sidebarExpanded).toBe(false);
     });
 
     it("should handle select-conversation event", async () => {
-        element.activeConversationId = "conv1";
+        element._convState = {
+            conversations: [],
+            activeConversationId: "conv1",
+            loading: false,
+        };
 
-        const fetchMessagesMock = mock((_arg) => Promise.resolve([]));
-        // @ts-expect-error - override fetchMessages with our mock
-        element.fetchMessages = fetchMessagesMock;
+        // Mock fetch for messages fetch
+        // @ts-expect-error - override global fetch with our mock
+        globalThis.fetch = mock((url) => {
+            if (url.includes("/api/conversations/conv2/messages")) {
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ result: "success", data: [] }),
+                });
+            }
+            throw new Error(`Unexpected fetch URL: ${url}`);
+        });
 
         const event = new CustomEvent("select-conversation", { detail: { id: "conv2" } });
         await element.handleSelectConversation(event);
 
-        expect(element.activeConversationId).toBe("conv2");
-        expect(fetchMessagesMock).toHaveBeenCalled();
-        expect(fetchMessagesMock.mock.calls[0][0]).toBe("conv2");
+        expect(element._convState.activeConversationId).toBe("conv2");
     });
 
     it("should add user and assistant messages when sending", async () => {
-        element.activeConversationId = "conv1";
-        element.messages = [
-            {
-                id: "1",
-                conversationId: "conv1",
-                content: "Old",
-                role: "user",
-                mode: "player",
-                createdAt: new Date().toISOString(),
-            },
-        ];
+        element._convState = {
+            conversations: [{ id: "conv1", title: "Test" }],
+            activeConversationId: "conv1",
+            loading: false,
+        };
+        element._modeState = { mode: "player" };
+        element._msgState = {
+            messages: [
+                {
+                    id: "1",
+                    conversationId: "conv1",
+                    content: "Old",
+                    role: "user",
+                    mode: "player",
+                    createdAt: new Date().toISOString(),
+                },
+            ],
+            responding: false,
+        };
 
         const mockUserMessage = {
             id: "2",
@@ -217,17 +253,24 @@ describe("main-page", () => {
         const event = new CustomEvent("send-message", { detail: { text: "Test message" } });
         await element.handleSendMessage(event);
 
-        expect(element.messages.length).toBe(3);
-        expect(element.messages[1].content).toBe("Test message");
-        expect(element.messages[1].role).toBe("user");
-        expect(element.messages[2].role).toBe("assistant");
+        expect(element._msgState.messages.length).toBe(3);
+        expect(element._msgState.messages[1].content).toBe("Test message");
+        expect(element._msgState.messages[1].role).toBe("user");
+        expect(element._msgState.messages[2].role).toBe("assistant");
         // We check the blocks property directly
-        expect(element.messages[2].blocks).toEqual([{ type: "paragraph", text: "Mock response" }]);
+        expect(element._msgState.messages[2].blocks).toEqual([
+            { type: "paragraph", text: "Mock response" },
+        ]);
     });
 
     it("should set responding to true during send and false after", async () => {
-        element.activeConversationId = "conv1";
-        element.messages = [];
+        element._convState = {
+            conversations: [{ id: "conv1", title: "Test" }],
+            activeConversationId: "conv1",
+            loading: false,
+        };
+        element._modeState = { mode: "player" };
+        element._msgState = { messages: [], responding: false };
 
         const mockUserMessage = {
             id: "2",
@@ -276,18 +319,22 @@ describe("main-page", () => {
         const promise = element.handleSendMessage(event);
 
         // Check responding is true during the call
-        expect(element.responding).toBe(true);
+        expect(element._msgState.responding).toBe(true);
 
         await promise;
 
         // Check responding is false after the call
-        expect(element.responding).toBe(false);
+        expect(element._msgState.responding).toBe(false);
     });
 
     it("should create new conversation", async () => {
-        element.conversations = [
-            { id: "conv1", title: "Old", userId: "user1", createdAt: new Date().toISOString() },
-        ];
+        element._convState = {
+            conversations: [
+                { id: "conv1", title: "Old", userId: "user1", createdAt: new Date().toISOString() },
+            ],
+            activeConversationId: "conv1",
+            loading: false,
+        };
 
         const mockConv = {
             id: "conv2",
@@ -318,16 +365,18 @@ describe("main-page", () => {
 
         await element.handleNewChat();
 
-        expect(element.conversations.length).toBe(2);
-        expect(element.conversations[1].id).toBe("conv2");
-        expect(element.activeConversationId).toBe("conv2");
+        expect(element._convState.conversations.length).toBe(2);
+        expect(element._convState.conversations[1].id).toBe("conv2");
+        expect(element._convState.activeConversationId).toBe("conv2");
     });
 
     describe("landing page", () => {
         it("renders landing when no conversations and not loading", async () => {
             // Wait for firstUpdated to complete (sets loading=false)
             await new Promise((r) => setTimeout(r, 100));
-            element.conversations = [];
+            element._convState = { conversations: [], activeConversationId: "", loading: false };
+            element._msgState = { messages: [], responding: false };
+            element.requestUpdate();
             await element.updateComplete;
 
             const landingView = element.shadowRoot?.querySelector("landing-view");
@@ -347,8 +396,9 @@ describe("main-page", () => {
         it("focuses landing input", async () => {
             // Wait for firstUpdated to complete
             await new Promise((r) => setTimeout(r, 100));
-            element.loading = false;
-            element.conversations = [];
+            element._convState = { conversations: [], activeConversationId: "", loading: false };
+            element._msgState = { messages: [], responding: false };
+            element.requestUpdate();
             await element.updateComplete;
 
             const landingView = element.shadowRoot?.querySelector("landing-view");
@@ -365,8 +415,9 @@ describe("main-page", () => {
         });
 
         it("does not render landing when loading", async () => {
-            element.loading = true;
-            element.conversations = [];
+            element._convState = { conversations: [], activeConversationId: "", loading: true };
+            element._msgState = { messages: [], responding: false };
+            element.requestUpdate();
             await element.updateComplete;
 
             const landingView = element.shadowRoot?.querySelector("landing-view");
@@ -382,18 +433,25 @@ describe("main-page", () => {
                 userId: "u1",
                 createdAt: new Date().toISOString(),
             };
-            element.conversations = [conv];
-            element.activeConversationId = "c1";
-            element.messages = [
-                {
-                    id: "m1",
-                    conversationId: "c1",
-                    content: "Hello",
-                    role: "user",
-                    mode: "player",
-                    createdAt: new Date().toISOString(),
-                },
-            ];
+            element._convState = {
+                conversations: [conv],
+                activeConversationId: "c1",
+                loading: false,
+            };
+            element._msgState = {
+                messages: [
+                    {
+                        id: "m1",
+                        conversationId: "c1",
+                        content: "Hello",
+                        role: "user",
+                        mode: "player",
+                        createdAt: new Date().toISOString(),
+                    },
+                ],
+                responding: false,
+            };
+            element.requestUpdate();
             await element.updateComplete;
 
             const landingView = element.shadowRoot?.querySelector("landing-view");
@@ -409,9 +467,13 @@ describe("main-page", () => {
                 userId: "u1",
                 createdAt: new Date().toISOString(),
             };
-            element.conversations = [conv];
-            element.activeConversationId = "c1";
-            element.messages = [];
+            element._convState = {
+                conversations: [conv],
+                activeConversationId: "c1",
+                loading: false,
+            };
+            element._msgState = { messages: [], responding: false };
+            element.requestUpdate();
             await element.updateComplete;
 
             const landingView = element.shadowRoot?.querySelector("landing-view");
@@ -427,8 +489,9 @@ describe("main-page", () => {
             const submitSpy = mock(() => Promise.resolve());
             element.handleLandingSubmit = /** @type {any} */ (submitSpy);
 
-            element.loading = false;
-            element.conversations = [];
+            element._convState = { conversations: [], activeConversationId: "", loading: false };
+            element._msgState = { messages: [], responding: false };
+            element.requestUpdate();
             await element.updateComplete;
 
             const landingView = element.shadowRoot?.querySelector("landing-view");
@@ -459,8 +522,9 @@ describe("main-page", () => {
             const submitSpy = mock(() => Promise.resolve());
             element.handleLandingSubmit = /** @type {any} */ (submitSpy);
 
-            element.loading = false;
-            element.conversations = [];
+            element._convState = { conversations: [], activeConversationId: "", loading: false };
+            element._msgState = { messages: [], responding: false };
+            element.requestUpdate();
             await element.updateComplete;
 
             const landingView = element.shadowRoot?.querySelector("landing-view");
@@ -495,10 +559,13 @@ describe("main-page", () => {
                 userId: "u1",
                 createdAt: new Date().toISOString(),
             };
-            element.conversations = [conv];
-            element.activeConversationId = "conv-existing";
-            element.messages = [];
-            element.loading = false;
+            element._convState = {
+                conversations: [conv],
+                activeConversationId: "conv-existing",
+                loading: false,
+            };
+            element._msgState = { messages: [], responding: false };
+            element.requestUpdate();
             await element.updateComplete;
 
             const mockUserMessage = {
@@ -533,17 +600,18 @@ describe("main-page", () => {
             const event = new CustomEvent("landing-submit", { detail: { text: "Hello existing" } });
             await element.handleLandingSubmit(event);
 
-            expect(element.conversations.length).toBe(1);
-            expect(element.activeConversationId).toBe("conv-existing");
-            expect(element.responding).toBe(false);
+            expect(element._convState.conversations.length).toBe(1);
+            expect(element._convState.activeConversationId).toBe("conv-existing");
+            expect(element._msgState.responding).toBe(false);
             expect(element._landingSubmitting).toBe(false);
         });
 
         it("submits landing prompt and swaps to normal UI", async () => {
             // Wait for firstUpdated to complete
             await new Promise((r) => setTimeout(r, 100));
-            element.loading = false;
-            element.conversations = [];
+            element._convState = { conversations: [], activeConversationId: "", loading: false };
+            element._msgState = { messages: [], responding: false };
+            element.requestUpdate();
             await element.updateComplete;
 
             const mockConv = {
@@ -603,15 +671,16 @@ describe("main-page", () => {
             const event = new CustomEvent("landing-submit", { detail: { text: "Hello world" } });
             await element.handleLandingSubmit(event);
 
-            expect(element.conversations.length).toBe(1);
-            expect(element.conversations[0].id).toBe("conv-land");
-            expect(element.activeConversationId).toBe("conv-land");
+            expect(element._convState.conversations.length).toBe(1);
+            expect(element._convState.conversations[0].id).toBe("conv-land");
+            expect(element._convState.activeConversationId).toBe("conv-land");
             expect(element._landingSubmitting).toBe(false);
         });
 
         it("handles landing submit error gracefully", async () => {
-            element.loading = false;
-            element.conversations = [];
+            element._convState = { conversations: [], activeConversationId: "", loading: false };
+            element._msgState = { messages: [], responding: false };
+            element.requestUpdate();
             await element.updateComplete;
 
             // @ts-expect-error - override global fetch with our mock

@@ -12,8 +12,9 @@ describe("mode-toggle", () => {
     function createToggle(mode = "player") {
         /** @type {any} */
         const el = document.createElement("mode-toggle");
-        el.mode = mode;
         document.body.appendChild(el);
+        // ContextConsumer may have run with default, set internal state directly
+        el._modeState = { mode };
         return el;
     }
 

@@ -1,15 +1,16 @@
 /** @typedef {import("../../shared/types.js").Mode} Mode */
 
+import { ContextConsumer } from "@lit/context";
 import { LitElement, css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
+import { modeContext } from "../stores/mode-store.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
 
 /**
  * @customElement mode-toggle
- * @property {Mode} mode - The current mode of the application (GM or Player).
  * @fires mode-change - Fired when the user changes the mode using the mode toggle.
  */
 class ModeToggle extends LitElement {
@@ -53,14 +54,21 @@ class ModeToggle extends LitElement {
         `,
     ];
 
-    static properties = {
-        mode: { type: String },
-    };
-
     constructor() {
         super();
-        /** @type {Mode} */
-        this.mode = "player";
+        /** @type {import("../stores/mode-store.js").ModeState} */
+        this._modeState = { mode: "player" };
+    }
+
+    connectedCallback() {
+        super.connectedCallback();
+        new ContextConsumer(this, {
+            context: modeContext,
+            callback: /** @param {import("../stores/mode-store.js").ModeState} v */ (v) => {
+                this._modeState = v;
+            },
+            subscribe: true,
+        });
     }
 
     render() {
@@ -68,13 +76,13 @@ class ModeToggle extends LitElement {
             <div class="mode-toggle">
                 <button
                     @click=${() => this.setMode("player")}
-                    class="mode-btn ${this.mode === "player" ? "active" : "inactive"}"
+                    class="mode-btn ${this._modeState.mode === "player" ? "active" : "inactive"}"
                 >
                     ⚔️ Player Mode
                 </button>
                 <button
                     @click=${() => this.setMode("gm")}
-                    class="mode-btn ${this.mode === "gm" ? "active" : "inactive"}"
+                    class="mode-btn ${this._modeState.mode === "gm" ? "active" : "inactive"}"
                 >
                     📜 GM Mode
                 </button>
@@ -86,7 +94,6 @@ class ModeToggle extends LitElement {
      * @param {Mode} mode
      */
     setMode(mode) {
-        this.mode = mode;
         this.dispatchEvent(
             new CustomEvent("mode-change", { detail: { mode }, bubbles: true, composed: true }),
         );

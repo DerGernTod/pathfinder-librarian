@@ -3,22 +3,20 @@ import "./new-chat-button.js";
 import "./session-list.js";
 import "./sidebar-profile.js";
 import "./conversation-menu.js";
+import { ContextConsumer } from "@lit/context";
 import { LitElement, css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
+import { conversationContext } from "../stores/conversation-store.js";
+import { modeContext } from "../stores/mode-store.js";
+import { uiContext } from "../stores/ui-store.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
 
-/** @typedef {import("../../shared/types.js").Conversation} Conversation */
-/** @typedef {import("../../shared/types.js").Mode} Mode */
-
 /**
  * @customElement chat-sidebar
- * @property {Conversation[]} conversations - The list of conversations to display in the sidebar.
- * @property {string} activeId - The ID of the currently active conversation.
- * @property {Mode} mode - The current mode of the application (GM or Player).
- * @property {boolean} expanded - Whether the sidebar is expanded or collapsed.
+ * @property {import("../../shared/types.js").AuthUser | null} user - The authenticated user object.
  */
 class ChatSidebar extends LitElement {
     static styles = [
@@ -94,24 +92,47 @@ class ChatSidebar extends LitElement {
     ];
 
     static properties = {
-        conversations: { type: Array },
-        activeId: { type: String },
-        mode: { type: String },
-        expanded: { type: Boolean },
         user: { type: Object },
     };
 
     constructor() {
         super();
-        /** @type {Conversation[]} */
-        this.conversations = [];
-        /** @type {string} */
-        this.activeId = "";
-        /** @type {Mode} */
-        this.mode = "gm";
-        this.expanded = true;
         /** @type {import("../../shared/types.js").AuthUser | null} */
         this.user = null;
+        /** @type {import("../stores/conversation-store.js").ConversationState} */
+        this._convState = { conversations: [], activeConversationId: "", loading: true };
+        /** @type {import("../stores/mode-store.js").ModeState} */
+        this._modeState = { mode: "gm" };
+        /** @type {import("../stores/ui-store.js").UIState} */
+        this._uiState = { sidebarExpanded: true, settingsOpen: false };
+    }
+
+    connectedCallback() {
+        super.connectedCallback();
+        new ContextConsumer(this, {
+            context: conversationContext,
+            callback:
+                /** @param {import("../stores/conversation-store.js").ConversationState} v */ (
+                    v,
+                ) => {
+                    this._convState = v;
+                },
+            subscribe: true,
+        });
+        new ContextConsumer(this, {
+            context: modeContext,
+            callback: /** @param {import("../stores/mode-store.js").ModeState} v */ (v) => {
+                this._modeState = v;
+            },
+            subscribe: true,
+        });
+        new ContextConsumer(this, {
+            context: uiContext,
+            callback: /** @param {import("../stores/ui-store.js").UIState} v */ (v) => {
+                this._uiState = v;
+            },
+            subscribe: true,
+        });
     }
 
     /**
@@ -121,54 +142,34 @@ class ChatSidebar extends LitElement {
      * @returns {import("lit-html").TemplateResult}
      */
     render() {
+        const expanded = this._uiState.sidebarExpanded;
         return html`
-            <aside class="sidebar ${!this.expanded ? "collapsed" : ""}">
+            <aside class="sidebar ${!expanded ? "collapsed" : ""}">
                 <div class="toggle-container">
                     <sidebar-toggle
-                        .expanded=${this.expanded}
+                        .expanded=${expanded}
                         @toggle-sidebar=${this.handleToggle}
                     ></sidebar-toggle>
                 </div>
-                <new-chat-button ?collapsed=${!this.expanded}></new-chat-button>
+                <new-chat-button ?collapsed=${!expanded}></new-chat-button>
                 <div class="content-container">
-                    <div class="content ${!this.expanded ? "collapsed" : ""}">
-                        <session-list
-                            .mode=${this.mode}
-                            .conversations=${this.conversations}
-                            .activeId=${this.activeId}
-                            @select-conversation=${this.handleSelectConversation}
-                        ></session-list>
+                    <div class="content ${!expanded ? "collapsed" : ""}">
+                        <session-list></session-list>
                     </div>
-                    <div class="conversation-menu-wrapper ${!this.expanded ? "visible" : ""}">
-                        <conversation-menu
-                            .conversations=${this.conversations}
-                            .activeId=${this.activeId}
-                            .mode=${this.mode}
-                            @select-conversation=${this.handleSelectConversation}
-                        ></conversation-menu>
+                    <div class="conversation-menu-wrapper ${!expanded ? "visible" : ""}">
+                        <conversation-menu></conversation-menu>
                     </div>
                 </div>
-                <sidebar-profile
-                    .mode=${this.mode}
-                    .user=${this.user}
-                    ?collapsed=${!this.expanded}
-                ></sidebar-profile>
+                <sidebar-profile .user=${this.user} ?collapsed=${!expanded}></sidebar-profile>
             </aside>
         `;
     }
 
-    /**
-     * @param {CustomEvent<{ id: string }>} e
-     */
-    handleSelectConversation(e) {
-        this.activeId = e.detail.id;
-    }
-
     handleToggle() {
-        this.expanded = !this.expanded;
+        const newExpanded = !this._uiState.sidebarExpanded;
         this.dispatchEvent(
             new CustomEvent("toggle-sidebar", {
-                detail: { expanded: this.expanded },
+                detail: { expanded: newExpanded },
                 bubbles: true,
                 composed: true,
             }),

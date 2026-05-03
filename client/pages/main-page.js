@@ -2,10 +2,15 @@ import "../components/chat-sidebar.js";
 import "../components/chat-view.js";
 import "../components/landing-view.js";
 import "../components/settings-dialog.js";
+import { ContextProvider } from "@lit/context";
 import { LitElement, css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
+import { conversationContext, createConversationStore } from "../stores/conversation-store.js";
+import { messagesContext, createMessagesStore } from "../stores/messages-store.js";
+import { modeContext, createModeStore } from "../stores/mode-store.js";
+import { uiContext, createUIStore } from "../stores/ui-store.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
 import { logout } from "../utils/auth-client.js";
@@ -53,92 +58,167 @@ class MainPage extends LitElement {
     ];
 
     static properties = {
-        conversations: { type: Array },
-        activeConversationId: { type: String },
-        messages: { type: Array },
-        mode: { type: String },
-        loading: { type: Boolean },
-        responding: { type: Boolean },
-        sidebarExpanded: { type: Boolean },
         user: { type: Object },
-        settingsOpen: { type: Boolean },
         _landingSubmitting: { type: Boolean },
+        _convState: { type: Object },
+        _msgState: { type: Object },
+        _modeState: { type: Object },
+        _uiState: { type: Object },
     };
 
     constructor() {
         super();
-        /** @type {Conversation[]} */
-        this.conversations = [];
-        /** @type {string} */
-        this.activeConversationId = "";
-        /** @type {import("../../shared/types.js").Message[]} */
-        this.messages = [];
-        /** @type {Mode} */
-        this.mode = "player";
-        /** @type {boolean} */
-        this.loading = true;
-        /** @type {boolean} */
-        this.responding = false;
-        /** @type {AbortController | null} */
-        this._currentAssistantController = null;
-        this.sidebarExpanded = true;
         /** @type {AuthUser | null} */
         this.user = null;
         /** @type {boolean} */
-        this.settingsOpen = false;
-        /** @type {boolean} */
         this._landingSubmitting = false;
+
+        // Internal state objects (provided via ContextProvider)
+        /** @type {import("../stores/conversation-store.js").ConversationState} */
+        this._convState = { conversations: [], activeConversationId: "", loading: true };
+
+        /** @type {import("../stores/messages-store.js").MessagesState} */
+        this._msgState = { messages: [], responding: false };
+
+        /** @type {import("../stores/mode-store.js").ModeState} */
+        this._modeState = { mode: "player" };
+
+        /** @type {import("../stores/ui-store.js").UIState} */
+        this._uiState = { sidebarExpanded: true, settingsOpen: false };
+
+        // Store instances
+        this._convStore = createConversationStore();
+        this._msgStore = createMessagesStore();
+        this._modeStore = createModeStore();
+        this._uiStore = createUIStore();
+
+        /** @type {AbortController | null} */
+        this._currentAssistantController = null;
     }
 
     get isLanding() {
-        return !this.loading && this.filteredMessages.length === 0;
+        return !this._convState.loading && this._msgState.messages.length === 0;
+    }
+
+    connectedCallback() {
+        super.connectedCallback();
+
+        // ContextProvider instances with guards against re-creation
+        if (!this._convProvider) {
+            this._convProvider = new ContextProvider(this, {
+                context: conversationContext,
+                initialValue: this._convState,
+            });
+        }
+        if (!this._msgProvider) {
+            this._msgProvider = new ContextProvider(this, {
+                context: messagesContext,
+                initialValue: this._msgState,
+            });
+        }
+        if (!this._modeProvider) {
+            this._modeProvider = new ContextProvider(this, {
+                context: modeContext,
+                initialValue: this._modeState,
+            });
+        }
+        if (!this._uiProvider) {
+            this._uiProvider = new ContextProvider(this, {
+                context: uiContext,
+                initialValue: this._uiState,
+            });
+        }
+    }
+
+    /**
+     * @param {import("../stores/conversation-store.js").ConversationState} state
+     */
+    _updateConvState(state) {
+        this._convState = state;
+        if (this._convProvider) {
+            this._convProvider.setValue(state);
+        }
+    }
+
+    /**
+     * @param {import("../stores/messages-store.js").MessagesState} state
+     */
+    _updateMsgState(state) {
+        this._msgState = state;
+        if (this._msgProvider) {
+            this._msgProvider.setValue(state);
+        }
+    }
+
+    /**
+     * @param {import("../stores/mode-store.js").ModeState} state
+     */
+    _updateModeState(state) {
+        this._modeState = state;
+        if (this._modeProvider) {
+            this._modeProvider.setValue(state);
+        }
+    }
+
+    /**
+     * @param {import("../stores/ui-store.js").UIState} state
+     */
+    _updateUIState(state) {
+        this._uiState = state;
+        if (this._uiProvider) {
+            this._uiProvider.setValue(state);
+        }
     }
 
     async firstUpdated() {
         try {
             // Set mode from user
             if (this.user) {
-                this.mode = this.user.mode;
+                const newMode = this.user.mode;
+                this._updateModeState({ mode: newMode });
             }
 
-            // Step 1: Fetch conversations list
-            const convRes = await client.api.conversations.$get();
-            const convResult = await convRes.json();
-            this.conversations = convResult.data;
+            // Fetch conversations
+            const conversations = await this._convStore.fetchConversations();
+            let activeId = "";
 
-            // Step 2: Set active conversation from result (first conversation)
-            if (this.conversations.length > 0) {
-                this.activeConversationId = this.conversations[0].id;
-
-                // Step 3: Fetch messages for the active conversation
-                const msgRes = await client.api.conversations[":id"].messages.$get({
-                    param: { id: this.activeConversationId },
-                });
-                const msgResult = await msgRes.json();
-                this.messages = /** @type {import("../../shared/types.js").Message[]} */ (
-                    msgResult.data
-                );
+            // Set active conversation from result (first conversation)
+            if (conversations.length > 0) {
+                activeId = conversations[0].id;
             }
-        } finally {
-            this.loading = false;
+
+            this._updateConvState({ conversations, activeConversationId: activeId, loading: true });
+
+            // Fetch messages for the active conversation
+            if (activeId) {
+                const messages = await this._msgStore.fetchMessages(activeId);
+                this._updateMsgState({ messages, responding: false });
+            }
+
+            this._updateConvState({
+                conversations,
+                activeConversationId: activeId,
+                loading: false,
+            });
+        } catch {
+            this._updateConvState({
+                ...this._convState,
+                loading: false,
+            });
         }
     }
 
     render() {
         return html`
-            <div class="app" data-mode=${this.mode}>
+            <div class="app" data-mode=${this._modeState.mode}>
                 <chat-sidebar
-                    .conversations=${this.conversations}
-                    .activeId=${this.activeConversationId}
-                    .mode=${this.mode}
-                    .expanded=${this.sidebarExpanded}
                     .user=${this.user}
                     @new-chat=${this.handleNewChat}
                     @select-conversation=${this.handleSelectConversation}
                     @toggle-sidebar=${this.handleSidebarToggle}
                     @logout=${this.handleLogout}
                     @open-settings=${() => {
-                        this.settingsOpen = true;
+                        this._updateUIState(this._uiStore.openSettings(this._uiState));
                     }}
                 ></chat-sidebar>
                 <main class="main">
@@ -151,10 +231,6 @@ class MainPage extends LitElement {
                           `
                         : html`
                               <chat-view
-                                  .mode=${this.mode}
-                                  .messages=${this.filteredMessages}
-                                  .loading=${this.loading || this.responding}
-                                  .responding=${this.responding}
                                   @mode-change=${this.handleModeChange}
                                   @send-message=${this.handleSendMessage}
                                   @stop-message=${this.handleStopMessage}
@@ -163,10 +239,9 @@ class MainPage extends LitElement {
                 </main>
             </div>
             <settings-dialog
-                .open=${this.settingsOpen}
                 .user=${this.user}
                 @settings-closed=${() => {
-                    this.settingsOpen = false;
+                    this._updateUIState(this._uiStore.closeSettings(this._uiState));
                 }}
                 @settings-updated=${this.handleSettingsUpdated}
                 @account-deleted=${this.handleAccountDeleted}
@@ -174,61 +249,51 @@ class MainPage extends LitElement {
         `;
     }
 
-    async fetchConversations() {
-        const res = await client.api.conversations.$get();
-        const result = await res.json();
-        this.conversations = result.data;
-    }
-
-    /**
-     * @param {string} convId the conversation id
-     */
-    async fetchMessages(convId) {
-        const res = await client.api.conversations[":id"].messages.$get({
-            param: { id: convId },
-        });
-        const result = await res.json();
-        this.messages = /** @type {import("../../shared/types.js").Message[]} */ (result.data);
-    }
-
     async handleNewChat() {
-        const res = await client.api.conversations.$post({
-            json: { title: "New Conversation" },
+        const conv = await this._convStore.createConversation("New Conversation");
+        const newConversations = [...this._convState.conversations, conv];
+        this._updateConvState({
+            conversations: newConversations,
+            activeConversationId: conv.id,
+            loading: false,
         });
-        const conv = await res.json();
-        this.conversations = [...this.conversations, conv.data];
-        this.activeConversationId = conv.data.id;
-        await this.fetchMessages(conv.data.id);
+        await this.handleSelectConversation(
+            new CustomEvent("select-conversation", { detail: { id: conv.id } }),
+        );
     }
 
     /**
      * @param {CustomEvent<{ id: string }>} e
      */
     async handleSelectConversation(e) {
-        this.activeConversationId = e.detail.id;
-        await this.fetchMessages(e.detail.id);
+        const convId = e.detail.id;
+        this._updateConvState({ ...this._convState, activeConversationId: convId });
+        const msgs = await this._msgStore.fetchMessages(convId);
+        this._updateMsgState({ messages: msgs, responding: false });
     }
 
     /**
      * @param {CustomEvent<{ mode: Mode }>} e
      */
     handleModeChange(e) {
-        this.mode = e.detail.mode;
+        const newState = this._modeStore.setMode(e.detail.mode);
+        this._updateModeState(newState);
     }
 
     /**
      * @param {CustomEvent<{ text: string }>} e
      */
     async handleSendMessage(e) {
-        this.responding = true;
+        const newResponding = { messages: this._msgState.messages, responding: true };
+        this._updateMsgState(newResponding);
         const controller = new AbortController();
         this._currentAssistantController = controller;
 
         try {
             const res = await client.api.conversations[":id"].messages.$post(
                 {
-                    param: { id: this.activeConversationId },
-                    json: { content: e.detail.text, mode: this.mode },
+                    param: { id: this._convState.activeConversationId },
+                    json: { content: e.detail.text, mode: this._modeState.mode },
                 },
                 {
                     init: { signal: controller.signal },
@@ -240,80 +305,52 @@ class MainPage extends LitElement {
             if (!body) {
                 throw new Error("No response body");
             }
-            const reader = body.getReader();
-            const decoder = new TextDecoder();
+
             /** @type {import("../../shared/types.js").Message | null} */
             let userMessage = null;
             /** @type {import("../../shared/types.js").AssistantMessage | null} */
             let assistantMessage = null;
             let assistantMessageAdded = false;
+            let messages = this._msgState.messages;
 
-            while (true) {
-                const result = await reader.read();
-                if (result.done) {
-                    break;
-                }
-                const value = result.value;
-                const chunk = decoder.decode(value, { stream: true });
-                const lines = chunk.split("\n").filter(Boolean);
-                for (const line of lines) {
-                    /** @type {unknown} */
-                    const data = JSON.parse(line);
-                    if (
-                        typeof data === "object" &&
-                        data !== null &&
-                        "type" in data &&
-                        typeof data.type === "string" &&
-                        "data" in data
-                    ) {
-                        /** @type {{ type: string, data: unknown }} */
-                        const typedData = /** @type {{ type: string, data: unknown }} */ (data);
-                        if (typedData.type === "userMessage") {
-                            userMessage = /** @type {import("../../shared/types.js").Message} */ (
-                                typedData.data
-                            );
-                            this.messages = [...this.messages, userMessage];
-                        } else if (typedData.type === "assistantChunk") {
-                            if (!assistantMessage) {
-                                assistantMessage = {
-                                    id: "temp-assistant-" + Date.now(),
-                                    role: "assistant",
-                                    blocks: [],
-                                    mode: this.mode,
-                                    conversationId: this.activeConversationId,
-                                    content: null,
-                                    createdAt: new Date().toISOString(),
-                                };
-                            }
-                            assistantMessage = {
-                                ...assistantMessage,
-                                blocks: [
-                                    ...(assistantMessage?.blocks ?? []),
-                                    /** @type {import("../../shared/types.js").MessageBlock} */ (
-                                        typedData.data
-                                    ),
-                                ],
-                            };
-
-                            if (!assistantMessageAdded) {
-                                this.messages = [...this.messages, assistantMessage];
-                                assistantMessageAdded = true;
-                            } else {
-                                this.messages = [...this.messages.slice(0, -1), assistantMessage];
-                            }
-                        } else if (typedData.type === "assistantComplete") {
-                            assistantMessage =
-                                /** @type {import("../../shared/types.js").AssistantMessage} */ (
-                                    typedData.data
-                                );
-                            if (!assistantMessageAdded) {
-                                this.messages = [...this.messages, assistantMessage];
-                                assistantMessageAdded = true;
-                            } else {
-                                this.messages = [...this.messages.slice(0, -1), assistantMessage];
-                            }
-                        }
+            for await (const event of this._msgStore.parseSSEStream(body)) {
+                if (event.type === "userMessage") {
+                    userMessage = event.data;
+                    messages = [...messages, userMessage];
+                    this._updateMsgState({ messages, responding: true });
+                } else if (event.type === "assistantChunk") {
+                    if (!assistantMessage) {
+                        assistantMessage = {
+                            id: "temp-assistant-" + Date.now(),
+                            role: "assistant",
+                            blocks: [],
+                            mode: this._modeState.mode,
+                            conversationId: this._convState.activeConversationId,
+                            content: null,
+                            createdAt: new Date().toISOString(),
+                        };
                     }
+                    assistantMessage = {
+                        ...assistantMessage,
+                        blocks: [...(assistantMessage?.blocks ?? []), event.data],
+                    };
+
+                    if (!assistantMessageAdded) {
+                        messages = [...messages, assistantMessage];
+                        assistantMessageAdded = true;
+                    } else {
+                        messages = [...messages.slice(0, -1), assistantMessage];
+                    }
+                    this._updateMsgState({ messages, responding: true });
+                } else if (event.type === "assistantComplete") {
+                    assistantMessage = event.data;
+                    if (!assistantMessageAdded) {
+                        messages = [...messages, assistantMessage];
+                        assistantMessageAdded = true;
+                    } else {
+                        messages = [...messages.slice(0, -1), assistantMessage];
+                    }
+                    this._updateMsgState({ messages, responding: true });
                 }
             }
         } catch (err) {
@@ -321,7 +358,7 @@ class MainPage extends LitElement {
                 // Ignore error
             }
         } finally {
-            this.responding = false;
+            this._updateMsgState({ messages: this._msgState.messages, responding: false });
             this._currentAssistantController = null;
         }
     }
@@ -330,15 +367,11 @@ class MainPage extends LitElement {
         this._currentAssistantController?.abort();
     }
 
-    get filteredMessages() {
-        return this.messages.filter(
-            (message) => message.conversationId === this.activeConversationId,
-        );
-    }
-
-    /** @param {CustomEvent<{ expanded: boolean }>} e */
+    /**
+     * @param {CustomEvent<{ expanded: boolean }>} e
+     */
     handleSidebarToggle(e) {
-        this.sidebarExpanded = e.detail.expanded;
+        this._updateUIState({ ...this._uiState, sidebarExpanded: e.detail.expanded });
     }
 
     async handleLogout() {
@@ -356,7 +389,7 @@ class MainPage extends LitElement {
      */
     handleSettingsUpdated(e) {
         this.user = e.detail.user;
-        this.mode = this.user.mode;
+        this._updateModeState({ mode: this.user.mode });
     }
 
     async handleAccountDeleted() {
@@ -377,23 +410,24 @@ class MainPage extends LitElement {
         this._landingSubmitting = true;
 
         /** @type {string} */
-        let targetConvId = this.activeConversationId;
+        let targetConvId = this._convState.activeConversationId;
 
         try {
-            if (this.conversations.length === 0) {
-                const res = await client.api.conversations.$post({
-                    json: { title: text.slice(0, 80) },
+            if (this._convState.conversations.length === 0) {
+                const conv = await this._convStore.createConversation(text.slice(0, 80));
+                const newConversations = [conv, ...this._convState.conversations];
+                targetConvId = conv.id;
+                this._updateConvState({
+                    conversations: newConversations,
+                    activeConversationId: conv.id,
+                    loading: false,
                 });
-                const conv = await res.json();
-                const convData = conv.data;
-
-                this.conversations = [convData, ...this.conversations];
-                this.activeConversationId = convData.id;
-                targetConvId = convData.id;
-                await this.fetchMessages(convData.id);
+                const msgs = await this._msgStore.fetchMessages(conv.id);
+                this._updateMsgState({ messages: msgs, responding: false });
             }
 
-            this.responding = true;
+            const newResponding = { messages: this._msgState.messages, responding: true };
+            this._updateMsgState(newResponding);
             const controller = new AbortController();
             this._currentAssistantController = controller;
 
@@ -401,7 +435,7 @@ class MainPage extends LitElement {
                 const msgRes = await client.api.conversations[":id"].messages.$post(
                     {
                         param: { id: targetConvId },
-                        json: { content: text, mode: this.mode },
+                        json: { content: text, mode: this._modeState.mode },
                     },
                     {
                         init: { signal: controller.signal },
@@ -413,87 +447,52 @@ class MainPage extends LitElement {
                 if (!body) {
                     throw new Error("No response body");
                 }
-                const reader = body.getReader();
-                const decoder = new TextDecoder();
+
                 /** @type {import("../../shared/types.js").Message | null} */
                 let userMessage = null;
                 /** @type {import("../../shared/types.js").AssistantMessage | null} */
                 let assistantMessage = null;
                 let assistantMessageAdded = false;
+                let messages = this._msgState.messages;
 
-                while (true) {
-                    const result = await reader.read();
-                    if (result.done) {
-                        break;
-                    }
-                    const value = result.value;
-                    const chunk = decoder.decode(value, { stream: true });
-                    const lines = chunk.split("\n").filter(Boolean);
-                    for (const line of lines) {
-                        /** @type {unknown} */
-                        const data = JSON.parse(line);
-                        if (
-                            typeof data === "object" &&
-                            data !== null &&
-                            "type" in data &&
-                            typeof data.type === "string" &&
-                            "data" in data
-                        ) {
-                            /** @type {{ type: string, data: unknown }} */
-                            const typedData = /** @type {{ type: string, data: unknown }} */ (data);
-                            if (typedData.type === "userMessage") {
-                                userMessage =
-                                    /** @type {import("../../shared/types.js").Message} */ (
-                                        typedData.data
-                                    );
-                                this.messages = [...this.messages, userMessage];
-                            } else if (typedData.type === "assistantChunk") {
-                                if (!assistantMessage) {
-                                    assistantMessage = {
-                                        id: "temp-assistant-" + Date.now(),
-                                        role: "assistant",
-                                        blocks: [],
-                                        mode: this.mode,
-                                        conversationId: this.activeConversationId,
-                                        content: null,
-                                        createdAt: new Date().toISOString(),
-                                    };
-                                }
-                                assistantMessage = {
-                                    ...assistantMessage,
-                                    blocks: [
-                                        ...(assistantMessage?.blocks ?? []),
-                                        /** @type {import("../../shared/types.js").MessageBlock} */ (
-                                            typedData.data
-                                        ),
-                                    ],
-                                };
-
-                                if (!assistantMessageAdded) {
-                                    this.messages = [...this.messages, assistantMessage];
-                                    assistantMessageAdded = true;
-                                } else {
-                                    this.messages = [
-                                        ...this.messages.slice(0, -1),
-                                        assistantMessage,
-                                    ];
-                                }
-                            } else if (typedData.type === "assistantComplete") {
-                                assistantMessage =
-                                    /** @type {import("../../shared/types.js").AssistantMessage} */ (
-                                        typedData.data
-                                    );
-                                if (!assistantMessageAdded) {
-                                    this.messages = [...this.messages, assistantMessage];
-                                    assistantMessageAdded = true;
-                                } else {
-                                    this.messages = [
-                                        ...this.messages.slice(0, -1),
-                                        assistantMessage,
-                                    ];
-                                }
-                            }
+                for await (const event of this._msgStore.parseSSEStream(body)) {
+                    if (event.type === "userMessage") {
+                        userMessage = event.data;
+                        messages = [...messages, userMessage];
+                        this._updateMsgState({ messages, responding: true });
+                    } else if (event.type === "assistantChunk") {
+                        if (!assistantMessage) {
+                            assistantMessage = {
+                                id: "temp-assistant-" + Date.now(),
+                                role: "assistant",
+                                blocks: [],
+                                mode: this._modeState.mode,
+                                conversationId: targetConvId,
+                                content: null,
+                                createdAt: new Date().toISOString(),
+                            };
                         }
+                        assistantMessage = {
+                            ...assistantMessage,
+                            blocks: [...(assistantMessage?.blocks ?? []), event.data],
+                        };
+
+                        if (!assistantMessageAdded) {
+                            messages = [...messages, assistantMessage];
+                            assistantMessageAdded = true;
+                        } else {
+                            messages = [...messages.slice(0, -1), assistantMessage];
+                        }
+                        this._updateMsgState({ messages, responding: true });
+                    } else if (event.type === "assistantComplete") {
+                        assistantMessage = event.data;
+                        if (!assistantMessageAdded) {
+                            messages = [...messages, assistantMessage];
+                            assistantMessageAdded = true;
+                        } else {
+                            messages = [...messages.slice(0, -1), assistantMessage];
+                        }
+                        this._updateMsgState({ messages, responding: true });
                     }
                 }
             } catch (err) {
@@ -501,7 +500,7 @@ class MainPage extends LitElement {
                     // Ignore error
                 }
             } finally {
-                this.responding = false;
+                this._updateMsgState({ messages: this._msgState.messages, responding: false });
                 this._currentAssistantController = null;
             }
         } catch {

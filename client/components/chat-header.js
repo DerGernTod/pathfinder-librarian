@@ -10,7 +10,6 @@ import { tokens } from "../styles/tokens.js";
 
 /**
  * @customElement chat-header
- * @property {Mode} mode - The current mode of the application (GM or Player).
  * @fires mode-change - Fired when the user changes the mode using the mode toggle.
  */
 class ChatHeader extends LitElement {
@@ -47,14 +46,8 @@ class ChatHeader extends LitElement {
         `,
     ];
 
-    static properties = {
-        mode: { type: String },
-    };
-
     constructor() {
         super();
-        /** @type {Mode} */
-        this.mode = "player";
     }
 
     render() {
@@ -64,7 +57,7 @@ class ChatHeader extends LitElement {
                     <span class="title">Pathfinder 2e</span>
                     <span class="subtitle">Rules Assistant</span>
                 </div>
-                <mode-toggle .mode=${this.mode} @mode-change=${this.handleModeChange}></mode-toggle>
+                <mode-toggle @mode-change=${this.handleModeChange}></mode-toggle>
             </header>
         `;
     }
@@ -73,7 +66,6 @@ class ChatHeader extends LitElement {
      * @param {CustomEvent<{ mode: Mode }>} e
      */
     handleModeChange(e) {
-        this.mode = e.detail.mode;
         this.dispatchEvent(
             new CustomEvent("mode-change", {
                 detail: { mode: e.detail.mode },

@@ -12,8 +12,7 @@ describe("session-list", () => {
     function createList(conversations = [], activeId = "") {
         /** @type {any} */
         const el = document.createElement("session-list");
-        el.conversations = conversations;
-        el.activeId = activeId;
+        el._convState = { conversations, activeConversationId: activeId, loading: false };
         document.body.appendChild(el);
         return el;
     }
@@ -47,8 +46,17 @@ describe("session-list", () => {
     it("highlights active conversation", async () => {
         const el = createList([{ id: "1", title: "Active Chat" }], "1");
         await el.updateComplete;
-        const item = el.shadowRoot.querySelector("conversation-item");
-        expect(item?.active).toBe(true);
+        const item = /** @type {any} */ (el.shadowRoot.querySelector("conversation-item"));
+        // conversation-item consumes from context; set its internal state directly
+        if (item) {
+            item._convState = {
+                conversations: [{ id: "1", title: "Active Chat" }],
+                activeConversationId: "1",
+                loading: false,
+            };
+            item.requestUpdate();
+            await item.updateComplete;
+        }
         const itemDiv = item?.shadowRoot?.querySelector(".item");
         expect(itemDiv?.classList.contains("active")).toBe(true);
     });
@@ -63,6 +71,19 @@ describe("session-list", () => {
         );
         await el.updateComplete;
         const items = el.shadowRoot.querySelectorAll("conversation-item");
+        // Set context state on each conversation-item child
+        for (const item of items) {
+            /** @type {any} */ (item)._convState = {
+                conversations: [
+                    { id: "1", title: "Active" },
+                    { id: "2", title: "Inactive" },
+                ],
+                activeConversationId: "1",
+                loading: false,
+            };
+            /** @type {any} */ (item).requestUpdate();
+        }
+        await Promise.all(Array.from(items).map((i) => /** @type {any} */ (i).updateComplete));
         const inactiveItem = Array.from(items).find((item) =>
             item.shadowRoot?.querySelector(".item")?.textContent?.includes("Inactive"),
         );
@@ -136,7 +157,7 @@ describe("session-list", () => {
         );
     });
 
-    it("shows all conversations when query is cleared", async () => {
+    it("shows all conversations when query is cleared (second test)", async () => {
         const el = createList([
             { id: "1", title: "Mitflit King" },
             { id: "2", title: "Chandelier Plot" },

@@ -10,8 +10,6 @@ import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/menu/menu
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/menu-item/menu-item.js?deps=lit@3.3.2";
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/divider/divider.js?deps=lit@3.3.2";
 
-/** @typedef {import("../../shared/types.js").Mode} Mode */
-
 class ProfileMenu extends LitElement {
     static styles = [
         tokens,
@@ -55,14 +53,8 @@ class ProfileMenu extends LitElement {
         `,
     ];
 
-    static properties = {
-        mode: { type: String },
-    };
-
     constructor() {
         super();
-        /** @type {Mode} */
-        this.mode = "gm";
     }
 
     render() {

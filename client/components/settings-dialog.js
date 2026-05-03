@@ -1,8 +1,10 @@
+import { ContextConsumer } from "@lit/context";
 import { startRegistration } from "@simplewebauthn/browser";
 import { LitElement, css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
+import { uiContext } from "../stores/ui-store.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
 import { client } from "../utils/rpc-client.js";
@@ -103,9 +105,9 @@ class SettingsDialog extends LitElement {
     ];
 
     static properties = {
-        open: { type: Boolean },
         user: { type: Object },
         devices: { type: Array },
+        _uiState: { type: Object },
         nameInput: { type: String },
         modeInput: { type: String },
         loading: { type: Boolean },
@@ -114,8 +116,6 @@ class SettingsDialog extends LitElement {
 
     constructor() {
         super();
-        /** @type {boolean} */
-        this.open = false;
         /** @type {AuthUser | null} */
         this.user = null;
         /** @type {import("zod").z.infer<typeof import("../../server/db/queries.js").DeviceListSchema>} */
@@ -128,6 +128,19 @@ class SettingsDialog extends LitElement {
         this.loading = false;
         /** @type {string} */
         this.error = "";
+        /** @type {import("../stores/ui-store.js").UIState} */
+        this._uiState = { sidebarExpanded: true, settingsOpen: false };
+    }
+
+    connectedCallback() {
+        super.connectedCallback();
+        new ContextConsumer(this, {
+            context: uiContext,
+            callback: /** @param {import("../stores/ui-store.js").UIState} v */ (v) => {
+                this._uiState = v;
+            },
+            subscribe: true,
+        });
     }
 
     /** @param {Map<string, unknown>} changedProperties */
@@ -140,11 +153,11 @@ class SettingsDialog extends LitElement {
             this.modeInput = this.user.mode;
         }
 
-        // Sync dialog open state
-        if (changedProperties.has("open")) {
+        // Sync dialog open state from context
+        if (changedProperties.has("_uiState") || this._uiStateChanged(changedProperties)) {
             const dialog = /** @type {ShadowRoot} */ (this.shadowRoot).querySelector("sl-dialog");
             if (dialog) {
-                if (this.open) {
+                if (this._uiState.settingsOpen) {
                     void dialog.show();
                 } else {
                     void dialog.hide();
@@ -153,9 +166,27 @@ class SettingsDialog extends LitElement {
         }
 
         // Fetch devices when dialog opens
-        if (changedProperties.has("open") && this.open && !this.devices.length) {
+        const prevUIState = /** @type {{ settingsOpen: boolean } | undefined} */ (
+            changedProperties.get("_uiState")
+        );
+        const wasOpen = prevUIState?.settingsOpen;
+        if (this._uiState.settingsOpen && !wasOpen && !(this.devices || []).length) {
             void this.fetchDevices();
         }
+    }
+
+    /**
+     * @param {Map<string, unknown>} changedProperties
+     * @returns {boolean}
+     */
+    _uiStateChanged(changedProperties) {
+        if (!changedProperties.has("_uiState")) {
+            return false;
+        }
+        const prev = /** @type {{ settingsOpen: boolean } | undefined} */ (
+            changedProperties.get("_uiState")
+        );
+        return prev ? prev.settingsOpen !== this._uiState.settingsOpen : true;
     }
 
     render() {
@@ -211,7 +242,7 @@ class SettingsDialog extends LitElement {
                 <div class="section">
                     <h3 class="section-title">Passkeys</h3>
                     <div class="devices-list">
-                        ${this.devices.map(
+                        ${(this.devices || []).map(
                             (device) => html`
                                 <div class="device-item">
                                     <div class="device-info">
@@ -222,7 +253,7 @@ class SettingsDialog extends LitElement {
                                             >${this.formatDate(device.createdAt)}</span
                                         >
                                     </div>
-                                    ${this.devices.length > 1
+                                    ${(this.devices || []).length > 1
                                         ? html`
                                               <sl-button
                                                   size="small"
@@ -313,7 +344,7 @@ class SettingsDialog extends LitElement {
                     composed: true,
                 }),
             );
-            this.open = false;
+            this._hideDialog();
         } catch (err) {
             this.error = Error.isError(err) ? err.message : "Failed to save settings";
         } finally {
@@ -322,14 +353,24 @@ class SettingsDialog extends LitElement {
     }
 
     handleClose() {
-        this.open = false;
+        this._hideDialog();
+    }
+
+    /**
+     * Hides the Shoelace dialog element directly.
+     */
+    _hideDialog() {
+        const dialog = /** @type {ShadowRoot} */ (this.shadowRoot)?.querySelector("sl-dialog");
+        if (dialog) {
+            void dialog.hide();
+        }
     }
 
     async fetchDevices() {
         try {
             const res = await client.api.auth.devices.$get();
             const data = await res.json();
-            this.devices = data.data;
+            this.devices = data.data ?? [];
         } catch {
             // Failed to fetch devices
         } finally {
@@ -432,7 +473,7 @@ class SettingsDialog extends LitElement {
                     composed: true,
                 }),
             );
-            this.open = false;
+            this._hideDialog();
         } catch (err) {
             this.error = Error.isError(err) ? err.message : "Failed to delete account";
         } finally {

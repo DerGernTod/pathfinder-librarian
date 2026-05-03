@@ -13,7 +13,7 @@ describe("message-list", () => {
         /** @type {any} */
         const el = document.createElement("message-list");
         if (messages !== undefined) {
-            el.messages = messages;
+            el._msgState = { messages, responding: false };
         }
         document.body.appendChild(el);
         return el;
@@ -43,17 +43,17 @@ describe("message-list", () => {
         expect(msgs.length).toBe(2);
     });
 
-    it("shows loading spinner when loading is true", async () => {
+    it("shows loading spinner when responding is true", async () => {
         const el = createList([]);
-        el.loading = true;
+        el._msgState = { messages: [], responding: true };
         await el.updateComplete;
         expect(el.shadowRoot.querySelector(".loading")).toBeTruthy();
         expect(el.shadowRoot.querySelector("sl-spinner")).toBeTruthy();
     });
 
-    it("hides loading spinner when loading is false", async () => {
+    it("hides loading spinner when responding is false", async () => {
         const el = createList([]);
-        el.loading = false;
+        el._msgState = { messages: [], responding: false };
         await el.updateComplete;
         expect(el.shadowRoot.querySelector(".loading")).toBeNull();
     });

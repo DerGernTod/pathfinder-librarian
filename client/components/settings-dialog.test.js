@@ -11,7 +11,7 @@ describe("settings-dialog", () => {
     function createDialog() {
         /** @type {any} */
         const el = document.createElement("settings-dialog");
-        el.open = true;
+        el._uiState = { sidebarExpanded: true, settingsOpen: true };
         return el;
     }
 
@@ -20,7 +20,7 @@ describe("settings-dialog", () => {
         document.body.appendChild(container);
     });
 
-    test("renders when open is true", async () => {
+    test("renders when settingsOpen is true", async () => {
         const mockUser = {
             id: "test-id",
             name: "Test User",

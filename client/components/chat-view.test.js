@@ -34,64 +34,6 @@ describe("chat-view", () => {
         expect(input).toBeTruthy();
     });
 
-    it("passes mode to chat-header", async () => {
-        element.mode = "gm";
-        await element.updateComplete;
-
-        const header = /** @type {HTMLElement & { mode: string }} */ (
-            element.shadowRoot?.querySelector("chat-header")
-        );
-        expect(header.mode).toBe("gm");
-    });
-
-    it("passes mode to chat-input", async () => {
-        element.mode = "gm";
-        await element.updateComplete;
-
-        const input = /** @type {HTMLElement & { mode: string }} */ (
-            element.shadowRoot?.querySelector("chat-input")
-        );
-        expect(input.mode).toBe("gm");
-    });
-
-    it("passes messages to message-list", async () => {
-        const msg = /** @type {import("../../shared/types.js").Message} */ ({
-            id: "m1",
-            conversationId: "c1",
-            content: "Hello",
-            role: "user",
-            mode: "player",
-            createdAt: new Date().toISOString(),
-        });
-        element.messages = [msg];
-        await element.updateComplete;
-
-        const list = /** @type {HTMLElement & { messages: unknown[] }} */ (
-            element.shadowRoot?.querySelector("message-list")
-        );
-        expect(list.messages).toEqual([msg]);
-    });
-
-    it("passes loading to message-list", async () => {
-        element.loading = true;
-        await element.updateComplete;
-
-        const list = /** @type {HTMLElement & { loading: boolean }} */ (
-            element.shadowRoot?.querySelector("message-list")
-        );
-        expect(list.loading).toBe(true);
-    });
-
-    it("passes responding to chat-input", async () => {
-        element.responding = true;
-        await element.updateComplete;
-
-        const input = /** @type {HTMLElement & { responding: boolean }} */ (
-            element.shadowRoot?.querySelector("chat-input")
-        );
-        expect(input.responding).toBe(true);
-    });
-
     it("bubbles mode-change from chat-header", async () => {
         await element.updateComplete;
 
