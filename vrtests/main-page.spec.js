@@ -29,8 +29,130 @@ test.describe("main page visual regression", () => {
 });
 
 test.describe("stat block visual regression", () => {
-    test.beforeEach(async ({ page: _page, context }, testInfo) => {
+    test.beforeEach(async ({ page, context }, testInfo) => {
         await setupTestUser(context, testInfo);
+
+        // Mock conversations list to return empty (stat block tests don't need seed data)
+        await page.route("**/api/conversations*", async (route) => {
+            if (route.request().method() === "GET") {
+                await route.fulfill({
+                    status: 200,
+                    contentType: "application/json",
+                    body: JSON.stringify({ result: "success", data: [] }),
+                });
+            } else {
+                await route.continue();
+            }
+        });
+
+        // Mock LLM response with deterministic stat block data to avoid flaky dimensions
+        const mockOrcStatBlock = {
+            type: "stat-block",
+            title: "Orc Warrior",
+            data: {
+                name: "Orc Warrior",
+                type: "Humanoid",
+                level: 1,
+                traits: ["Orc", "Humanoid"],
+                perception: "+7",
+                languages: "Common, Orcish",
+                attributes: { ac: 15, hp: 23, fortitude: "+9", reflex: "+8", will: "+6" },
+                skills: { Athletics: "+12", Intimidation: "+8" },
+                str: 18,
+                dex: 14,
+                con: 14,
+                int: 8,
+                wis: 8,
+                cha: 10,
+                actions: [
+                    { name: "Greataxe Strike", actionType: "single", description: "+9, 1d12+4 slashing" },
+                    { name: "Ferocity", actionType: "reaction", description: "When reduced to 0 HP, make a Strike before going unconscious." },
+                ],
+                spells: [
+                    { name: "Darkness", tradition: "divine", rank: 2, dc: 14, description: "20-ft burst of magical darkness." },
+                ],
+                abilities: [
+                    { name: "Pack Hunter", description: "Deals extra 1d4 damage to flanked creatures." },
+                ],
+            },
+        };
+
+        const mockGoblinStatBlock = {
+            type: "stat-block",
+            title: "Goblin Scout",
+            data: {
+                name: "Goblin Scout",
+                type: "Humanoid",
+                level: 0,
+                traits: ["Goblin"],
+                perception: "+4",
+                languages: "Common, Goblin",
+                attributes: { ac: 12, hp: 6, fortitude: "+3", reflex: "+5", will: "+2" },
+                skills: { Stealth: "+5", Acrobatics: "+5" },
+                str: 10,
+                dex: 14,
+                con: 10,
+                int: 8,
+                wis: 8,
+                cha: 10,
+                actions: [
+                    { name: "Shortsword", actionType: "single", description: "+5, 1d6 piercing" },
+                    { name: "Shortbow", actionType: "single", description: "+5, 1d6 piercing, range 60 ft." },
+                ],
+                abilities: [
+                    { name: "Sneak", description: "Deals extra 1d6 damage to flat-footed targets." },
+                ],
+            },
+        };
+
+        await page.route("**/api/conversations/*/messages*", async (route) => {
+            if (route.request().method() === "POST") {
+                const body = route.request().postDataJSON();
+                const content = body.content || "";
+                const now = new Date().toISOString();
+
+                // Choose stat block based on prompt text
+                const block = content.toLowerCase().includes("goblin") ? mockGoblinStatBlock : mockOrcStatBlock;
+
+                const userMessage = {
+                    type: "userMessage",
+                    data: {
+                        id: "um-1",
+                        conversationId: "conv-1",
+                        role: "user",
+                        content,
+                        mode: body.mode || "gm",
+                        createdAt: now,
+                    },
+                };
+                const assistantComplete = {
+                    type: "assistantComplete",
+                    data: {
+                        id: "am-1",
+                        conversationId: "conv-1",
+                        role: "assistant",
+                        content: null,
+                        mode: body.mode || "gm",
+                        createdAt: now,
+                        blocks: [block],
+                    },
+                };
+
+                await route.fulfill({
+                    status: 200,
+                    contentType: "text/event-stream",
+                    body: JSON.stringify(userMessage) + "\n" + JSON.stringify(assistantComplete) + "\n",
+                });
+            } else if (route.request().method() === "GET") {
+                await route.fulfill({
+                    status: 200,
+                    contentType: "application/json",
+                    body: JSON.stringify({ result: "success", data: [] }),
+                });
+            } else {
+                await route.continue();
+            }
+        });
     });
 
     test("full stat block with all features", async ({ page }) => {
@@ -39,9 +161,9 @@ test.describe("stat block visual regression", () => {
         await page.waitForTimeout(1000);
 
         const input = page.locator("chat-input textarea");
-        await input.fill("Show me a Mitflit King stat block");
+        await input.fill("Show me a stat block");
         await page.keyboard.press("Enter");
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(500);
 
         const statBlock = page.locator("stat-block").first();
         await expect(statBlock).toBeVisible();
@@ -63,7 +185,7 @@ test.describe("stat block visual regression", () => {
         const input = page.locator("chat-input textarea");
         await input.fill("Show me a simple goblin stat block");
         await page.keyboard.press("Enter");
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(500);
 
         const statBlock = page.locator("stat-block").first();
         await expect(statBlock).toBeVisible();
@@ -83,9 +205,9 @@ test.describe("stat block visual regression", () => {
         await page.waitForTimeout(1000);
 
         const input = page.locator("chat-input textarea");
-        await input.fill("Show me a Mitflit King stat block");
+        await input.fill("Show me a stat block");
         await page.keyboard.press("Enter");
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(500);
 
         const statBlock = page.locator("stat-block").first();
         await expect(statBlock).toBeVisible();
