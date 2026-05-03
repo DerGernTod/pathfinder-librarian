@@ -5,4 +5,4 @@ temp
 .vibeflow
 PLAN.md
 test-results
-data/*.sqlite
+data/*.sqlite*

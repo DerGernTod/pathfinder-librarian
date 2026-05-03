@@ -203,17 +203,16 @@ test.describe("stat block visual regression", () => {
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
 
-        const input = page.locator("chat-input textarea");
+        const input = page.locator("[data-test='landing-input']");
         await input.fill("Show me a stat block");
-        await page.keyboard.press("Enter");
+        await input.press("Enter");
+        await page.waitForSelector("stat-block", { timeout: 5000 });
         await page.waitForTimeout(500);
 
         const statBlock = page.locator("stat-block").first();
-        await expect(statBlock).toBeVisible();
-
         const details = statBlock.locator("sl-details");
-        await details.click();
-        await expect(details).toHaveAttribute("open", "");
+        await details.first().click();
+        await expect(details.first()).toHaveAttribute("open", "");
 
         await expect(statBlock).toHaveScreenshot("stat-block-full.png", {
             maxDiffPixelRatio: 0.05,
@@ -225,17 +224,16 @@ test.describe("stat block visual regression", () => {
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
 
-        const input = page.locator("chat-input textarea");
+        const input = page.locator("[data-test='landing-input']");
         await input.fill("Show me a simple goblin stat block");
-        await page.keyboard.press("Enter");
+        await input.press("Enter");
+        await page.waitForSelector("stat-block", { timeout: 5000 });
         await page.waitForTimeout(500);
 
         const statBlock = page.locator("stat-block").first();
-        await expect(statBlock).toBeVisible();
-
         const details = statBlock.locator("sl-details");
-        await details.click();
-        await expect(details).toHaveAttribute("open", "");
+        await details.first().click();
+        await expect(details.first()).toHaveAttribute("open", "");
 
         await expect(statBlock).toHaveScreenshot("stat-block-minimal.png", {
             maxDiffPixelRatio: 0.05,
@@ -247,17 +245,16 @@ test.describe("stat block visual regression", () => {
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
 
-        const input = page.locator("chat-input textarea");
+        const input = page.locator("[data-test='landing-input']");
         await input.fill("Show me a stat block");
-        await page.keyboard.press("Enter");
+        await input.press("Enter");
+        await page.waitForSelector("stat-block", { timeout: 5000 });
         await page.waitForTimeout(500);
 
         const statBlock = page.locator("stat-block").first();
-        await expect(statBlock).toBeVisible();
-
         const details = statBlock.locator("sl-details");
-        await details.click();
-        await expect(details).toHaveAttribute("open", "");
+        await details.first().click();
+        await expect(details.first()).toHaveAttribute("open", "");
 
         await page.setViewportSize({ width: 375, height: 812 });
         await page.waitForTimeout(300);
