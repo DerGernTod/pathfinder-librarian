@@ -45,6 +45,8 @@ jobs:
                   docker --context remote run -d \
                     --name project-pathfinderlibrarian \
                     --network opencode-server_backend \
+                    -e WEBAUTHN_ORIGIN="https://pathfinderlibrarian.projects.raudner.dev" \
+                    -e WEBAUTHN_RP_ID="pathfinderlibrarian.projects.raudner.dev" \
                     --restart unless-stopped \
                     -v pathfinder_db:/app/data \
                     ghcr.io/${{ env.REPO_LOWER }}:latest
