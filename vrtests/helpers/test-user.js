@@ -43,9 +43,9 @@ function deterministicUUID(testInfo) {
         "-4" +
         hex.slice(13, 16) +
         "-8" +
-        hex.slice(16, 19) +
+        hex.slice(17, 20) +
         "-" +
-        hex.slice(19, 32)
+        hex.slice(20, 32)
     );
 }
 
