@@ -46,3 +46,14 @@ Full architecture and patterns in `docs/architecture.md`.
 ## Testing
 
 See `docs/testing.md` for unit test patterns, mocking, happy-dom limitations, and SSE event names. Load the `playwright` skill for visual regression test gotchas. Load the `testing` skill for test writing best practices.
+
+### Per-test user isolation (Playwright)
+
+Each Playwright test gets its own user via `setupTestUser(context, testInfo)` from `vrtests/helpers/test-user.js`. The helper:
+1. Generates deterministic UUID v4 from `testInfo.titlePath` (djb2-style multi-accumulator hash)
+2. Calls `POST /api/test/ensure-test-user` (idempotent) — creates user + seeds conversations
+3. Calls `POST /api/auth/quick-login` and sets session cookie
+
+`global-setup.js` resets the DB once before all workers via `POST /api/test/reset-db`. Individual tests must NOT call `reset-db`.
+
+DB seed functions: `clearAllTables(db)`, `seedRuleItems(db)`, `seedForUser(db, userId, mode)` — all idempotent.
