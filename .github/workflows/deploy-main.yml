@@ -34,10 +34,17 @@ jobs:
             - name: Deploy to Server
               run: |
                   docker context create remote --docker "host=ssh://${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}"
+
+                  # Pull the latest image onto the remote host
+                  docker --context remote pull ghcr.io/${{ env.REPO_LOWER }}:latest
+
+                  # Stop and remove the existing container if it exists
+                  docker --context remote rm -f project-pathfinderlibrarian || true
+
+                  # Run the new container
                   docker --context remote run -d \
                     --name project-pathfinderlibrarian \
                     --network opencode-server_backend \
                     --restart unless-stopped \
                     -v pathfinder_db:/app/data \
-                    ghcr.io/${{ env.REPO_LOWER }}:latest || \
-                  docker --context remote start project-pathfinderlibrarian
+                    ghcr.io/${{ env.REPO_LOWER }}:latest
