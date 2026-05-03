@@ -330,14 +330,17 @@ describe("main-page", () => {
             element.conversations = [];
             await element.updateComplete;
 
-            const region = element.shadowRoot?.querySelector('[role="region"]');
+            const landingView = element.shadowRoot?.querySelector("landing-view");
+            expect(landingView).toBeTruthy();
+
+            const region = landingView?.shadowRoot?.querySelector('[role="region"]');
             expect(region).toBeTruthy();
             expect(region?.getAttribute("aria-label")).toBe("Welcome");
 
-            const input = element.shadowRoot?.querySelector('[data-test="landing-input"]');
+            const input = landingView?.shadowRoot?.querySelector('[data-test="landing-input"]');
             expect(input).toBeTruthy();
 
-            const sendBtn = element.shadowRoot?.querySelector('[data-test="landing-send"]');
+            const sendBtn = landingView?.shadowRoot?.querySelector('[data-test="landing-send"]');
             expect(sendBtn).toBeTruthy();
         });
 
@@ -348,8 +351,9 @@ describe("main-page", () => {
             element.conversations = [];
             await element.updateComplete;
 
+            const landingView = element.shadowRoot?.querySelector("landing-view");
             const input = /** @type {HTMLInputElement} */ (
-                element.shadowRoot?.querySelector('[data-test="landing-input"]')
+                landingView?.shadowRoot?.querySelector('[data-test="landing-input"]')
             );
             expect(input).toBeTruthy();
             // happy-dom may not set document.activeElement for shadow DOM
@@ -365,8 +369,8 @@ describe("main-page", () => {
             element.conversations = [];
             await element.updateComplete;
 
-            const region = element.shadowRoot?.querySelector('[role="region"]');
-            expect(region).toBeNull();
+            const landingView = element.shadowRoot?.querySelector("landing-view");
+            expect(landingView).toBeNull();
         });
 
         it("does not render landing when conversations exist with messages", async () => {
@@ -392,8 +396,8 @@ describe("main-page", () => {
             ];
             await element.updateComplete;
 
-            const region = element.shadowRoot?.querySelector('[role="region"]');
-            expect(region).toBeNull();
+            const landingView = element.shadowRoot?.querySelector("landing-view");
+            expect(landingView).toBeNull();
         });
 
         it("renders landing for new empty conversation", async () => {
@@ -410,24 +414,30 @@ describe("main-page", () => {
             element.messages = [];
             await element.updateComplete;
 
-            const region = element.shadowRoot?.querySelector('[role="region"]');
-            expect(region).toBeTruthy();
+            const landingView = element.shadowRoot?.querySelector("landing-view");
+            expect(landingView).toBeTruthy();
+
+            const region = landingView?.shadowRoot?.querySelector('[role="region"]');
             expect(region?.getAttribute("aria-label")).toBe("Welcome");
         });
 
         it("enter key triggers landing submit", async () => {
             // Wait for firstUpdated to complete
             await new Promise((r) => setTimeout(r, 100));
+            const submitSpy = mock(() => Promise.resolve());
+            element.handleLandingSubmit = /** @type {any} */ (submitSpy);
+
             element.loading = false;
             element.conversations = [];
-            element._pendingPrompt = "Hello world";
             await element.updateComplete;
 
-            const submitSpy = mock(() => Promise.resolve());
-            element._handleLandingSubmit = submitSpy;
-
-            const input = element.shadowRoot?.querySelector('[data-test="landing-input"]');
+            const landingView = element.shadowRoot?.querySelector("landing-view");
+            const input = /** @type {HTMLInputElement} */ (
+                landingView?.shadowRoot?.querySelector('[data-test="landing-input"]')
+            );
             expect(input).toBeTruthy();
+            input.value = "Hello world";
+            input.dispatchEvent(new Event("input", { bubbles: true }));
 
             const preventDefaultMock = mock(() => {});
             const keydownEvent = new KeyboardEvent("keydown", {
@@ -438,21 +448,28 @@ describe("main-page", () => {
             });
             Object.defineProperty(keydownEvent, "preventDefault", { value: preventDefaultMock });
 
-            // @ts-expect-error - mock preventDefault
             input.dispatchEvent(keydownEvent);
 
             expect(preventDefaultMock).toHaveBeenCalled();
             expect(submitSpy).toHaveBeenCalled();
+            expect(/** @type {any} */ (submitSpy).mock.calls[0][0].detail.text).toBe("Hello world");
         });
 
         it("shift+Enter does not submit landing prompt", async () => {
+            const submitSpy = mock(() => Promise.resolve());
+            element.handleLandingSubmit = /** @type {any} */ (submitSpy);
+
             element.loading = false;
             element.conversations = [];
-            element._pendingPrompt = "Hello world";
             await element.updateComplete;
 
-            const input = element.shadowRoot?.querySelector('[data-test="landing-input"]');
+            const landingView = element.shadowRoot?.querySelector("landing-view");
+            const input = /** @type {HTMLInputElement} */ (
+                landingView?.shadowRoot?.querySelector('[data-test="landing-input"]')
+            );
             expect(input).toBeTruthy();
+            input.value = "Hello world";
+            input.dispatchEvent(new Event("input", { bubbles: true }));
 
             const preventDefaultMock = mock(() => {});
             const keydownEvent = new KeyboardEvent("keydown", {
@@ -463,23 +480,10 @@ describe("main-page", () => {
             });
             Object.defineProperty(keydownEvent, "preventDefault", { value: preventDefaultMock });
 
-            // @ts-expect-error - mock preventDefault
             input.dispatchEvent(keydownEvent);
 
             expect(preventDefaultMock).not.toHaveBeenCalled();
-        });
-
-        it("does not submit empty prompt", async () => {
-            // Wait for firstUpdated to complete
-            await new Promise((r) => setTimeout(r, 100));
-            element.conversations = [];
-            element._pendingPrompt = "   ";
-            element._submitting = false;
-            await element.updateComplete;
-
-            await element._handleLandingSubmit();
-
-            expect(element._submitting).toBe(false);
+            expect(submitSpy).not.toHaveBeenCalled();
         });
 
         it("submits landing prompt into existing empty conversation", async () => {
@@ -495,8 +499,6 @@ describe("main-page", () => {
             element.activeConversationId = "conv-existing";
             element.messages = [];
             element.loading = false;
-            element._pendingPrompt = "Hello existing";
-            element._submitting = false;
             await element.updateComplete;
 
             const mockUserMessage = {
@@ -528,13 +530,13 @@ describe("main-page", () => {
                 );
             });
 
-            await element._handleLandingSubmit();
+            const event = new CustomEvent("landing-submit", { detail: { text: "Hello existing" } });
+            await element.handleLandingSubmit(event);
 
             expect(element.conversations.length).toBe(1);
             expect(element.activeConversationId).toBe("conv-existing");
             expect(element.responding).toBe(false);
-            expect(element._submitting).toBe(false);
-            expect(element._pendingPrompt).toBe("");
+            expect(element._landingSubmitting).toBe(false);
         });
 
         it("submits landing prompt and swaps to normal UI", async () => {
@@ -542,8 +544,6 @@ describe("main-page", () => {
             await new Promise((r) => setTimeout(r, 100));
             element.loading = false;
             element.conversations = [];
-            element._pendingPrompt = "Hello world";
-            element._submitting = false;
             await element.updateComplete;
 
             const mockConv = {
@@ -600,20 +600,18 @@ describe("main-page", () => {
             // @ts-expect-error - override global fetch with our mock
             globalThis.fetch = mockFetch;
 
-            await element._handleLandingSubmit();
+            const event = new CustomEvent("landing-submit", { detail: { text: "Hello world" } });
+            await element.handleLandingSubmit(event);
 
             expect(element.conversations.length).toBe(1);
             expect(element.conversations[0].id).toBe("conv-land");
             expect(element.activeConversationId).toBe("conv-land");
-            expect(element._submitting).toBe(false);
-            expect(element._pendingPrompt).toBe("");
+            expect(element._landingSubmitting).toBe(false);
         });
 
         it("handles landing submit error gracefully", async () => {
             element.loading = false;
             element.conversations = [];
-            element._pendingPrompt = "Hello";
-            element._submitting = false;
             await element.updateComplete;
 
             // @ts-expect-error - override global fetch with our mock
@@ -621,9 +619,10 @@ describe("main-page", () => {
                 return Promise.reject(new Error("Network error"));
             });
 
-            await element._handleLandingSubmit();
+            const event = new CustomEvent("landing-submit", { detail: { text: "Hello" } });
+            await element.handleLandingSubmit(event);
 
-            expect(element._submitting).toBe(false);
+            expect(element._landingSubmitting).toBe(false);
         });
     });
 });

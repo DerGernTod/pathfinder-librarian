@@ -1,7 +1,6 @@
-import "../components/chat-header.js";
-import "../components/chat-input.js";
 import "../components/chat-sidebar.js";
-import "../components/message-list.js";
+import "../components/chat-view.js";
+import "../components/landing-view.js";
 import "../components/settings-dialog.js";
 import { LitElement, css } from "lit-element";
 import { html } from "lit-html";
@@ -50,79 +49,6 @@ class MainPage extends LitElement {
                 display: flex;
                 flex-direction: column;
             }
-            .landing-welcome {
-                flex: 1;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                padding: 2rem;
-                max-width: 40rem;
-                margin: 0 auto;
-                width: 100%;
-            }
-            .landing-welcome h1 {
-                font-size: 1.875rem;
-                font-weight: 700;
-                margin-bottom: 0.5rem;
-            }
-            .landing-welcome p {
-                color: var(--muted-foreground);
-                font-size: 1rem;
-                margin-bottom: 2rem;
-            }
-            .landing-input-row {
-                display: flex;
-                align-items: center;
-                gap: 0.5rem;
-                width: 100%;
-                max-width: 36rem;
-                background: var(--secondary);
-                border-radius: 0.75rem;
-                border: 1px solid var(--border);
-                padding: 0.75rem 1rem;
-            }
-            .landing-input-row:focus-within {
-                outline: none;
-                box-shadow: 0 0 0 1px var(--accent);
-            }
-            .landing-prompt {
-                flex: 1;
-                background: transparent;
-                border: none;
-                outline: none;
-                font-size: 1.125rem;
-                line-height: 1.5rem;
-                color: var(--foreground);
-            }
-            .landing-prompt::placeholder {
-                color: var(--muted-foreground);
-            }
-            .landing-send-btn {
-                color: white;
-                border-radius: 0.5rem;
-                padding: 0.5rem 1rem;
-                border: none;
-                cursor: pointer;
-                background: var(--accent);
-                font-size: 0.875rem;
-            }
-            .landing-send-btn:hover {
-                opacity: 0.9;
-            }
-            .landing-send-btn:disabled {
-                opacity: 0.5;
-                cursor: not-allowed;
-            }
-            .landing-hint {
-                font-size: 0.75rem;
-                color: var(--muted-foreground);
-                margin-top: 0.75rem;
-            }
-            :focus-visible {
-                outline: 2px solid var(--accent);
-                outline-offset: 2px;
-            }
         `,
     ];
 
@@ -136,8 +62,7 @@ class MainPage extends LitElement {
         sidebarExpanded: { type: Boolean },
         user: { type: Object },
         settingsOpen: { type: Boolean },
-        _pendingPrompt: { type: String },
-        _submitting: { type: Boolean },
+        _landingSubmitting: { type: Boolean },
     };
 
     constructor() {
@@ -161,10 +86,8 @@ class MainPage extends LitElement {
         this.user = null;
         /** @type {boolean} */
         this.settingsOpen = false;
-        /** @type {string} */
-        this._pendingPrompt = "";
         /** @type {boolean} */
-        this._submitting = false;
+        this._landingSubmitting = false;
     }
 
     get isLanding() {
@@ -221,46 +144,21 @@ class MainPage extends LitElement {
                 <main class="main">
                     ${this.isLanding
                         ? html`
-                              <section role="region" aria-label="Welcome" class="landing-welcome">
-                                  <h1>Pathfinder Librarian</h1>
-                                  <p>Ask about rules, lore, or mechanics...</p>
-                                  <div class="landing-input-row">
-                                      <input
-                                          aria-label="Type your first prompt"
-                                          data-test="landing-input"
-                                          class="landing-prompt"
-                                          .value=${this._pendingPrompt}
-                                          @input=${this._handleLandingInput}
-                                          @keydown=${this._handleLandingKeydown}
-                                          placeholder="e.g. How does flanking work?"
-                                      />
-                                      <button
-                                          aria-label="Send prompt"
-                                          class="landing-send-btn"
-                                          data-test="landing-send"
-                                          @click=${this._handleLandingSubmit}
-                                      >
-                                          Send
-                                      </button>
-                                  </div>
-                                  <p class="landing-hint">Press Enter to send</p>
-                              </section>
+                              <landing-view
+                                  .submitting=${this._landingSubmitting}
+                                  @landing-submit=${this.handleLandingSubmit}
+                              ></landing-view>
                           `
                         : html`
-                              <chat-header
+                              <chat-view
                                   .mode=${this.mode}
-                                  @mode-change=${this.handleModeChange}
-                              ></chat-header>
-                              <message-list
                                   .messages=${this.filteredMessages}
                                   .loading=${this.loading || this.responding}
-                              ></message-list>
-                              <chat-input
-                                  .mode=${this.mode}
                                   .responding=${this.responding}
+                                  @mode-change=${this.handleModeChange}
                                   @send-message=${this.handleSendMessage}
                                   @stop-message=${this.handleStopMessage}
-                              ></chat-input>
+                              ></chat-view>
                           `}
                 </main>
             </div>
@@ -472,31 +370,11 @@ class MainPage extends LitElement {
     }
 
     /**
-     * @param {InputEvent & { currentTarget: HTMLInputElement }} e
+     * @param {CustomEvent<{ text: string }>} e
      */
-    _handleLandingInput(e) {
-        this._pendingPrompt = e.currentTarget.value;
-    }
-
-    /**
-     * @param {KeyboardEvent} e
-     */
-    _handleLandingKeydown(e) {
-        if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            void this._handleLandingSubmit();
-        }
-    }
-
-    async _handleLandingSubmit() {
-        if (this._submitting) {
-            return;
-        }
-        const text = this._pendingPrompt.trim();
-        if (!text) {
-            return;
-        }
-        this._submitting = true;
+    async handleLandingSubmit(e) {
+        const text = e.detail.text;
+        this._landingSubmitting = true;
 
         /** @type {string} */
         let targetConvId = this.activeConversationId;
@@ -627,23 +505,9 @@ class MainPage extends LitElement {
                 this._currentAssistantController = null;
             }
         } catch {
-            // Error creating conversation or posting message — _submitting reset in finally
+            // Error creating conversation or posting message — _landingSubmitting reset in finally
         } finally {
-            this._submitting = false;
-            this._pendingPrompt = "";
-        }
-
-        await this.updateComplete;
-        await new Promise((r) => requestAnimationFrame(r));
-        const chatInput = this.shadowRoot?.querySelector("chat-input");
-        if (chatInput && "updateComplete" in chatInput) {
-            await /** @type {import("lit-element").LitElement} */ (chatInput).updateComplete;
-        }
-        const inner =
-            chatInput?.shadowRoot?.querySelector("sl-textarea") ??
-            chatInput?.shadowRoot?.querySelector("textarea");
-        if (inner && "focus" in inner) {
-            /** @type {HTMLElement} */ (inner).focus();
+            this._landingSubmitting = false;
         }
     }
 }
