@@ -65,14 +65,32 @@ test.describe("stat block visual regression", () => {
                 wis: 8,
                 cha: 10,
                 actions: [
-                    { name: "Greataxe Strike", actionType: "single", description: "+9, 1d12+4 slashing" },
-                    { name: "Ferocity", actionType: "reaction", description: "When reduced to 0 HP, make a Strike before going unconscious." },
+                    {
+                        name: "Greataxe Strike",
+                        actionType: "single",
+                        description: "+9, 1d12+4 slashing",
+                    },
+                    {
+                        name: "Ferocity",
+                        actionType: "reaction",
+                        description:
+                            "When reduced to 0 HP, make a Strike before going unconscious.",
+                    },
                 ],
                 spells: [
-                    { name: "Darkness", tradition: "divine", rank: 2, dc: 14, description: "20-ft burst of magical darkness." },
+                    {
+                        name: "Darkness",
+                        tradition: "divine",
+                        rank: 2,
+                        dc: 14,
+                        description: "20-ft burst of magical darkness.",
+                    },
                 ],
                 abilities: [
-                    { name: "Pack Hunter", description: "Deals extra 1d4 damage to flanked creatures." },
+                    {
+                        name: "Pack Hunter",
+                        description: "Deals extra 1d4 damage to flanked creatures.",
+                    },
                 ],
             },
         };
@@ -97,10 +115,17 @@ test.describe("stat block visual regression", () => {
                 cha: 10,
                 actions: [
                     { name: "Shortsword", actionType: "single", description: "+5, 1d6 piercing" },
-                    { name: "Shortbow", actionType: "single", description: "+5, 1d6 piercing, range 60 ft." },
+                    {
+                        name: "Shortbow",
+                        actionType: "single",
+                        description: "+5, 1d6 piercing, range 60 ft.",
+                    },
                 ],
                 abilities: [
-                    { name: "Sneak", description: "Deals extra 1d6 damage to flat-footed targets." },
+                    {
+                        name: "Sneak",
+                        description: "Deals extra 1d6 damage to flat-footed targets.",
+                    },
                 ],
             },
         };
@@ -112,7 +137,9 @@ test.describe("stat block visual regression", () => {
                 const now = new Date().toISOString();
 
                 // Choose stat block based on prompt text
-                const block = content.toLowerCase().includes("goblin") ? mockGoblinStatBlock : mockOrcStatBlock;
+                const block = content.toLowerCase().includes("goblin")
+                    ? mockGoblinStatBlock
+                    : mockOrcStatBlock;
 
                 const userMessage = {
                     type: "userMessage",
@@ -141,7 +168,11 @@ test.describe("stat block visual regression", () => {
                 await route.fulfill({
                     status: 200,
                     contentType: "text/event-stream",
-                    body: JSON.stringify(userMessage) + "\n" + JSON.stringify(assistantComplete) + "\n",
+                    body:
+                        JSON.stringify(userMessage) +
+                        "\n" +
+                        JSON.stringify(assistantComplete) +
+                        "\n",
                 });
             } else if (route.request().method() === "GET") {
                 await route.fulfill({
