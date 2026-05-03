@@ -107,6 +107,7 @@ class SettingsDialog extends LitElement {
     static properties = {
         user: { type: Object },
         devices: { type: Array },
+        _uiState: { type: Object },
         nameInput: { type: String },
         modeInput: { type: String },
         loading: { type: Boolean },
@@ -169,7 +170,7 @@ class SettingsDialog extends LitElement {
             changedProperties.get("_uiState")
         );
         const wasOpen = prevUIState?.settingsOpen;
-        if (this._uiState.settingsOpen && !wasOpen && !this.devices.length) {
+        if (this._uiState.settingsOpen && !wasOpen && !(this.devices || []).length) {
             void this.fetchDevices();
         }
     }
@@ -241,7 +242,7 @@ class SettingsDialog extends LitElement {
                 <div class="section">
                     <h3 class="section-title">Passkeys</h3>
                     <div class="devices-list">
-                        ${this.devices.map(
+                        ${(this.devices || []).map(
                             (device) => html`
                                 <div class="device-item">
                                     <div class="device-info">
@@ -252,7 +253,7 @@ class SettingsDialog extends LitElement {
                                             >${this.formatDate(device.createdAt)}</span
                                         >
                                     </div>
-                                    ${this.devices.length > 1
+                                    ${(this.devices || []).length > 1
                                         ? html`
                                               <sl-button
                                                   size="small"
@@ -369,7 +370,7 @@ class SettingsDialog extends LitElement {
         try {
             const res = await client.api.auth.devices.$get();
             const data = await res.json();
-            this.devices = data.data;
+            this.devices = data.data ?? [];
         } catch {
             // Failed to fetch devices
         } finally {
