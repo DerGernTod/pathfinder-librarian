@@ -85,6 +85,7 @@ export function createDb(dbPath) {
     }
     const db = new Database(dbPath);
     db.exec("PRAGMA foreign_keys = ON");
+    db.exec("PRAGMA journal_mode=WAL");
     db.exec(CREATE_TABLES_SQL);
     db.exec(CREATE_INDEXES_SQL);
     // Run migrations to add new columns and clean up expired challenges

@@ -35,6 +35,12 @@ const updateUserSchema = z.object({
     subtitle: z.string().max(200).optional(),
 });
 
+const ensureTestUserSchema = z.object({
+    userId: z.string().uuid(),
+    name: z.string().min(1).max(100),
+    mode: z.enum(["gm", "player"]),
+});
+
 export {
     uuidSchema,
     conversationIdSchema,
@@ -44,4 +50,5 @@ export {
     createConversationSchema,
     createMessageSchema,
     updateUserSchema,
+    ensureTestUserSchema,
 };

@@ -1,9 +1,11 @@
 import { describe, test, expect, beforeAll, mock } from "bun:test";
 
+import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 
+import { ensureTestUserSchema } from "../../shared/schemas.js";
 import { createDb } from "../db/database.js";
-import { resetAndReseedDb } from "../db/seed.js";
+import { resetAndReseedDb, seedForUser } from "../db/seed.js";
 import { SEED_IDS } from "../db/seed.js";
 
 // Create in-memory DB for testing
@@ -166,5 +168,175 @@ describe("POST /auth/logout", () => {
         });
 
         expect(meRes.status).toBe(401);
+    });
+});
+
+describe("POST /api/test/ensure-test-user", () => {
+    // Import db AFTER mock is active to get the test DB
+    const { db: ensureDb } = require("../db/database.js");
+    const queries = require("../db/queries.js");
+
+    // Build a minimal app with just this endpoint
+    const testApp = new Hono().post(
+        "/api/test/ensure-test-user",
+        zValidator("json", ensureTestUserSchema),
+        async (c) => {
+            const { userId, name, mode } = c.req.valid("json");
+
+            const existing = queries.getUserById(ensureDb, userId);
+            if (existing) {
+                return c.json({ result: "success", data: existing }, 200);
+            }
+
+            const words = name.trim().split(/\s+/);
+            let initials;
+            if (words.length === 1) {
+                initials = words[0].substring(0, 2).toUpperCase();
+            } else {
+                initials = (words[0][0] + words[words.length - 1][0]).toUpperCase();
+            }
+
+            const hex8 = userId.replace(/-/g, "").substring(0, 8);
+            const email = `test-${hex8}@local.test`;
+            const subtitle = mode === "gm" ? "Game Master" : "Player";
+
+            ensureDb.run(
+                "INSERT INTO users (id, name, initials, subtitle, mode, email, is_test_user, webauthn_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                [userId, name, initials, subtitle, mode, email, 1, userId],
+            );
+
+            seedForUser(ensureDb, userId, mode);
+
+            const user = queries.getUserById(ensureDb, userId);
+            if (!user) {
+                return c.json({ result: "error", message: "Failed to create user" }, 500);
+            }
+
+            return c.json({ result: "success", data: user }, 200);
+        },
+    );
+
+    test("creates a test user with correct data", async () => {
+        const res = await testApp.request("/api/test/ensure-test-user", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                userId: "11111111-1111-4111-8111-111111111111",
+                name: "Pathfinder GM",
+                mode: "gm",
+            }),
+        });
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.result).toBe("success");
+        expect(json.data.name).toBe("Pathfinder GM");
+        expect(json.data.initials).toBe("PG");
+        expect(json.data.subtitle).toBe("Game Master");
+        expect(json.data.mode).toBe("gm");
+        expect(json.data.email).toBe("test-11111111@local.test");
+        expect(json.data.isTestUser).toBe(true);
+    });
+
+    test("is idempotent — returns same user on second call", async () => {
+        const userId = "22222222-2222-4222-8222-222222222222";
+        const res1 = await testApp.request("/api/test/ensure-test-user", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId, name: "Test User", mode: "gm" }),
+        });
+        expect(res1.status).toBe(200);
+
+        const res2 = await testApp.request("/api/test/ensure-test-user", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId, name: "Different Name", mode: "player" }),
+        });
+        expect(res2.status).toBe(200);
+        const json2 = await res2.json();
+        // Should return existing user, not create with different name
+        expect(json2.data.name).toBe("Test User");
+    });
+
+    test("sets subtitle to 'Player' for player mode", async () => {
+        const res = await testApp.request("/api/test/ensure-test-user", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                userId: "33333333-3333-4333-8333-333333333333",
+                name: "Valeros",
+                mode: "player",
+            }),
+        });
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.data.subtitle).toBe("Player");
+        expect(json.data.mode).toBe("player");
+    });
+
+    test("derives initials correctly for single-word name", async () => {
+        const res = await testApp.request("/api/test/ensure-test-user", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                userId: "44444444-4444-4444-8444-444444444444",
+                name: "Valeros",
+                mode: "player",
+            }),
+        });
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.data.initials).toBe("VA");
+    });
+
+    test("creates seeded conversations for the user", async () => {
+        const userId = "55555555-5555-4555-8555-555555555555";
+        const res = await testApp.request("/api/test/ensure-test-user", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId, name: "Conv Test", mode: "gm" }),
+        });
+
+        expect(res.status).toBe(200);
+
+        // Verify conversations exist
+        const conversations = ensureDb
+            .query("SELECT * FROM conversations WHERE user_id = ?")
+            .all(userId);
+        expect(conversations.length).toBe(2);
+
+        // Verify messages exist
+        for (const conv of conversations) {
+            const msgs = ensureDb
+                .query("SELECT COUNT(*) as count FROM messages WHERE conversation_id = ?")
+                .get(conv.id);
+            expect(msgs.count).toBeGreaterThan(0);
+        }
+    });
+
+    test("rejects invalid userId (not a UUID)", async () => {
+        const res = await testApp.request("/api/test/ensure-test-user", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: "not-a-uuid", name: "Test", mode: "gm" }),
+        });
+
+        expect(res.status).toBe(400);
+    });
+
+    test("rejects empty name", async () => {
+        const res = await testApp.request("/api/test/ensure-test-user", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                userId: "66666666-6666-4666-8666-666666666666",
+                name: "",
+                mode: "gm",
+            }),
+        });
+
+        expect(res.status).toBe(400);
     });
 });

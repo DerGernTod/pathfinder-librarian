@@ -1,36 +1,13 @@
 import { expect, test } from "playwright/test";
 
+import { setupTestUser } from "./helpers/test-user.js";
+
 test.describe("landing page visual regression", () => {
-    test.beforeEach(async ({ page, context }) => {
-        // Reset DB to clean seeded state before each test
-        const res = await fetch("http://localhost:3000/api/test/reset-db", { method: "POST" });
-        expect(res.ok).toBe(true);
+    test.beforeEach(async ({ page, context }, testInfo) => {
+        // Step 1: Create test user and log in (sets cookie on context)
+        const { userId: _userId } = await setupTestUser(context, testInfo);
 
-        // Quick-login as default seed user
-        const loginRes = await fetch("http://localhost:3000/api/auth/quick-login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId: "00000000-0000-4000-8000-000000000001" }),
-        });
-        expect(loginRes.ok).toBe(true);
-
-        // Set the session cookie on the page context
-        const setCookieHeader = loginRes.headers.get("set-cookie");
-        if (setCookieHeader) {
-            const cookieMatch = setCookieHeader.match(/session_token=([^;]+)/);
-            if (cookieMatch) {
-                await context.addCookies([
-                    {
-                        name: "session_token",
-                        value: cookieMatch[1],
-                        domain: "localhost",
-                        path: "/",
-                    },
-                ]);
-            }
-        }
-
-        // Intercept GET /api/conversations to return empty list so landing renders
+        // Step 2: Set up route interceptors (now that auth is ready, before navigation)
         await page.route("**/api/conversations*", async (route) => {
             const method = route.request().method();
             if (method === "GET") {
@@ -44,7 +21,6 @@ test.describe("landing page visual regression", () => {
             }
         });
 
-        // Intercept GET /api/conversations/:id/messages to return empty messages
         await page.route("**/api/conversations/*/messages*", async (route) => {
             const method = route.request().method();
             if (method === "GET") {
@@ -58,6 +34,7 @@ test.describe("landing page visual regression", () => {
             }
         });
 
+        // Step 3: Navigate (triggers fetch, now intercepted)
         await page.goto("/");
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
@@ -113,7 +90,6 @@ test.describe("landing page visual regression", () => {
                         data: {
                             id: "conv-landing",
                             title: "Hello world",
-                            userId: "00000000-0000-4000-8000-000000000001",
                             createdAt: new Date().toISOString(),
                         },
                     }),

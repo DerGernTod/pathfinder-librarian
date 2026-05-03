@@ -6,7 +6,7 @@ export default defineConfig({
     fullyParallel: true,
     retries: 2,
     snapshotDir: "./vrtests/__snapshots__",
-    workers: 1,
+    globalSetup: "./vrtests/global-setup.js",
 
     use: {
         baseURL: "http://localhost:3000",

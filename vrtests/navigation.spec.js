@@ -1,35 +1,10 @@
 import { expect, test } from "playwright/test";
 
+import { setupTestUser } from "./helpers/test-user.js";
+
 test.describe("navigation e2e tests", () => {
-    test.beforeEach(async ({ page, context }) => {
-        // Reset DB to clean seeded state before each test
-        const res = await fetch("http://localhost:3000/api/test/reset-db", { method: "POST" });
-        expect(res.ok).toBe(true);
-
-        // Quick-login as default seed user
-        const loginRes = await fetch("http://localhost:3000/api/auth/quick-login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId: "00000000-0000-4000-8000-000000000001" }),
-        });
-        expect(loginRes.ok).toBe(true);
-
-        // Set the session cookie on the page context
-        const setCookieHeader = loginRes.headers.get("set-cookie");
-        if (setCookieHeader) {
-            const cookieMatch = setCookieHeader.match(/session_token=([^;]+)/);
-            if (cookieMatch) {
-                await context.addCookies([
-                    {
-                        name: "session_token",
-                        value: cookieMatch[1],
-                        domain: "localhost",
-                        path: "/",
-                    },
-                ]);
-            }
-        }
-
+    test.beforeEach(async ({ page, context }, testInfo) => {
+        await setupTestUser(context, testInfo);
         await page.goto("/");
         await page.waitForSelector("main-page");
     });

@@ -1,8 +1,11 @@
+import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
 
+import { ensureTestUserSchema } from "../shared/schemas.js";
 import { db } from "./db/database.js";
-import { seedIfNeeded, resetAndReseedDb } from "./db/seed.js";
+import * as queries from "./db/queries.js";
+import { seedIfNeeded, clearAllTables, seedRuleItems, seedForUser } from "./db/seed.js";
 import { databaseMiddleware } from "./middleware/database.js";
 import { sessionMiddleware } from "./middleware/session.js";
 import { authRouter } from "./routes/auth.js";
@@ -27,11 +30,54 @@ const app = new Hono()
     .route("/api/rule-items", ruleItemsRouter)
     .route("/api/users", usersRouter);
 
-// Dev-only test reset endpoint
+// Dev-only test endpoints
 if (process.env.NODE_ENV !== "production") {
     app.post("/api/test/reset-db", async (c) => {
-        resetAndReseedDb(db);
+        clearAllTables(db);
+        seedRuleItems(db);
         return c.json({ ok: true });
+    });
+
+    app.post("/api/test/ensure-test-user", zValidator("json", ensureTestUserSchema), async (c) => {
+        const { userId, name, mode } = c.req.valid("json");
+
+        // Idempotent: return existing user if found
+        const existing = queries.getUserById(db, userId);
+        if (existing) {
+            return c.json({ result: "success", data: existing }, 200);
+        }
+
+        // Derive initials from name
+        const words = name.trim().split(/\s+/);
+        let initials;
+        if (words.length === 1) {
+            initials = words[0].substring(0, 2).toUpperCase();
+        } else {
+            initials = (words[0][0] + words[words.length - 1][0]).toUpperCase();
+        }
+
+        // Derive deterministic email
+        const hex8 = userId.replace(/-/g, "").substring(0, 8);
+        const email = `test-${hex8}@local.test`;
+
+        // Derive subtitle from mode
+        const subtitle = mode === "gm" ? "Game Master" : "Player";
+
+        // Insert user
+        db.run(
+            "INSERT INTO users (id, name, initials, subtitle, mode, email, is_test_user, webauthn_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            [userId, name, initials, subtitle, mode, email, 1, userId],
+        );
+
+        // Seed conversations and messages for this user
+        seedForUser(db, userId, mode);
+
+        const user = queries.getUserById(db, userId);
+        if (!user) {
+            return c.json({ result: "error", message: "Failed to create user" }, 500);
+        }
+
+        return c.json({ result: "success", data: user }, 200);
     });
 }
 

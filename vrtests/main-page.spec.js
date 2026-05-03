@@ -1,35 +1,10 @@
 import { expect, test } from "playwright/test";
 
+import { setupTestUser } from "./helpers/test-user.js";
+
 test.describe("main page visual regression", () => {
-    test.beforeEach(async ({ page, context }) => {
-        // Reset DB to clean seeded state before each test
-        const res = await fetch("http://localhost:3000/api/test/reset-db", { method: "POST" });
-        expect(res.ok).toBe(true);
-
-        // Quick-login as default seed user
-        const loginRes = await fetch("http://localhost:3000/api/auth/quick-login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId: "00000000-0000-4000-8000-000000000001" }),
-        });
-        expect(loginRes.ok).toBe(true);
-
-        // Set the session cookie on the page context
-        const setCookieHeader = loginRes.headers.get("set-cookie");
-        if (setCookieHeader) {
-            const cookieMatch = setCookieHeader.match(/session_token=([^;]+)/);
-            if (cookieMatch) {
-                await context.addCookies([
-                    {
-                        name: "session_token",
-                        value: cookieMatch[1],
-                        domain: "localhost",
-                        path: "/",
-                    },
-                ]);
-            }
-        }
-
+    test.beforeEach(async ({ page, context }, testInfo) => {
+        await setupTestUser(context, testInfo);
         await page.goto("/");
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
@@ -54,32 +29,173 @@ test.describe("main page visual regression", () => {
 });
 
 test.describe("stat block visual regression", () => {
-    test.beforeEach(async ({ page: _page, context }) => {
-        // Reset DB and login
-        const res = await fetch("http://localhost:3000/api/test/reset-db", { method: "POST" });
-        expect(res.ok).toBe(true);
+    test.beforeEach(async ({ page, context }, testInfo) => {
+        await setupTestUser(context, testInfo);
 
-        const loginRes = await fetch("http://localhost:3000/api/auth/quick-login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId: "00000000-0000-4000-8000-000000000001" }),
-        });
-        expect(loginRes.ok).toBe(true);
-
-        const setCookieHeader = loginRes.headers.get("set-cookie");
-        if (setCookieHeader) {
-            const cookieMatch = setCookieHeader.match(/session_token=([^;]+)/);
-            if (cookieMatch) {
-                await context.addCookies([
-                    {
-                        name: "session_token",
-                        value: cookieMatch[1],
-                        domain: "localhost",
-                        path: "/",
-                    },
-                ]);
+        // Mock conversations list with one conversation so chat-view renders instead of landing-view
+        await page.route("**/api/conversations*", async (route) => {
+            if (route.request().method() === "GET") {
+                await route.fulfill({
+                    status: 200,
+                    contentType: "application/json",
+                    body: JSON.stringify({
+                        result: "success",
+                        data: [
+                            {
+                                id: "conv-1",
+                                title: "Stat Block Test",
+                                userId: "00000000-0000-4000-8000-000000000001",
+                                createdAt: new Date().toISOString(),
+                                updatedAt: new Date().toISOString(),
+                                messageCount: 0,
+                            },
+                        ],
+                    }),
+                });
+            } else {
+                await route.continue();
             }
-        }
+        });
+
+        // Mock LLM response with deterministic stat block data to avoid flaky dimensions
+        const mockOrcStatBlock = {
+            type: "stat-block",
+            title: "Orc Warrior",
+            data: {
+                name: "Orc Warrior",
+                type: "Humanoid",
+                level: 1,
+                traits: ["Orc", "Humanoid"],
+                perception: "+7",
+                languages: "Common, Orcish",
+                attributes: { ac: 15, hp: 23, fortitude: "+9", reflex: "+8", will: "+6" },
+                skills: { Athletics: "+12", Intimidation: "+8" },
+                str: 18,
+                dex: 14,
+                con: 14,
+                int: 8,
+                wis: 8,
+                cha: 10,
+                actions: [
+                    {
+                        name: "Greataxe Strike",
+                        actionType: "single",
+                        description: "+9, 1d12+4 slashing",
+                    },
+                    {
+                        name: "Ferocity",
+                        actionType: "reaction",
+                        description:
+                            "When reduced to 0 HP, make a Strike before going unconscious.",
+                    },
+                ],
+                spells: [
+                    {
+                        name: "Darkness",
+                        tradition: "divine",
+                        rank: 2,
+                        dc: 14,
+                        description: "20-ft burst of magical darkness.",
+                    },
+                ],
+                abilities: [
+                    {
+                        name: "Pack Hunter",
+                        description: "Deals extra 1d4 damage to flanked creatures.",
+                    },
+                ],
+            },
+        };
+
+        const mockGoblinStatBlock = {
+            type: "stat-block",
+            title: "Goblin Scout",
+            data: {
+                name: "Goblin Scout",
+                type: "Humanoid",
+                level: 0,
+                traits: ["Goblin"],
+                perception: "+4",
+                languages: "Common, Goblin",
+                attributes: { ac: 12, hp: 6, fortitude: "+3", reflex: "+5", will: "+2" },
+                skills: { Stealth: "+5", Acrobatics: "+5" },
+                str: 10,
+                dex: 14,
+                con: 10,
+                int: 8,
+                wis: 8,
+                cha: 10,
+                actions: [
+                    { name: "Shortsword", actionType: "single", description: "+5, 1d6 piercing" },
+                    {
+                        name: "Shortbow",
+                        actionType: "single",
+                        description: "+5, 1d6 piercing, range 60 ft.",
+                    },
+                ],
+                abilities: [
+                    {
+                        name: "Sneak",
+                        description: "Deals extra 1d6 damage to flat-footed targets.",
+                    },
+                ],
+            },
+        };
+
+        await page.route("**/api/conversations/*/messages*", async (route) => {
+            if (route.request().method() === "POST") {
+                const body = route.request().postDataJSON();
+                const content = body.content || "";
+                const now = new Date().toISOString();
+
+                // Choose stat block based on prompt text
+                const block = content.toLowerCase().includes("goblin")
+                    ? mockGoblinStatBlock
+                    : mockOrcStatBlock;
+
+                const userMessage = {
+                    type: "userMessage",
+                    data: {
+                        id: "um-1",
+                        conversationId: "conv-1",
+                        role: "user",
+                        content,
+                        mode: body.mode || "gm",
+                        createdAt: now,
+                    },
+                };
+                const assistantComplete = {
+                    type: "assistantComplete",
+                    data: {
+                        id: "am-1",
+                        conversationId: "conv-1",
+                        role: "assistant",
+                        content: null,
+                        mode: body.mode || "gm",
+                        createdAt: now,
+                        blocks: [block],
+                    },
+                };
+
+                await route.fulfill({
+                    status: 200,
+                    contentType: "text/event-stream",
+                    body:
+                        JSON.stringify(userMessage) +
+                        "\n" +
+                        JSON.stringify(assistantComplete) +
+                        "\n",
+                });
+            } else if (route.request().method() === "GET") {
+                await route.fulfill({
+                    status: 200,
+                    contentType: "application/json",
+                    body: JSON.stringify({ result: "success", data: [] }),
+                });
+            } else {
+                await route.continue();
+            }
+        });
     });
 
     test("full stat block with all features", async ({ page }) => {
@@ -87,17 +203,16 @@ test.describe("stat block visual regression", () => {
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
 
-        const input = page.locator("chat-input textarea");
-        await input.fill("Show me a Mitflit King stat block");
-        await page.keyboard.press("Enter");
-        await page.waitForTimeout(2000);
+        const input = page.locator("[data-test='landing-input']");
+        await input.fill("Show me a stat block");
+        await input.press("Enter");
+        await page.waitForSelector("stat-block", { timeout: 5000 });
+        await page.waitForTimeout(500);
 
         const statBlock = page.locator("stat-block").first();
-        await expect(statBlock).toBeVisible();
-
         const details = statBlock.locator("sl-details");
-        await details.click();
-        await expect(details).toHaveAttribute("open", "");
+        await details.first().click();
+        await expect(details.first()).toHaveAttribute("open", "");
 
         await expect(statBlock).toHaveScreenshot("stat-block-full.png", {
             maxDiffPixelRatio: 0.05,
@@ -109,17 +224,16 @@ test.describe("stat block visual regression", () => {
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
 
-        const input = page.locator("chat-input textarea");
+        const input = page.locator("[data-test='landing-input']");
         await input.fill("Show me a simple goblin stat block");
-        await page.keyboard.press("Enter");
-        await page.waitForTimeout(2000);
+        await input.press("Enter");
+        await page.waitForSelector("stat-block", { timeout: 5000 });
+        await page.waitForTimeout(500);
 
         const statBlock = page.locator("stat-block").first();
-        await expect(statBlock).toBeVisible();
-
         const details = statBlock.locator("sl-details");
-        await details.click();
-        await expect(details).toHaveAttribute("open", "");
+        await details.first().click();
+        await expect(details.first()).toHaveAttribute("open", "");
 
         await expect(statBlock).toHaveScreenshot("stat-block-minimal.png", {
             maxDiffPixelRatio: 0.05,
@@ -131,17 +245,16 @@ test.describe("stat block visual regression", () => {
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
 
-        const input = page.locator("chat-input textarea");
-        await input.fill("Show me a Mitflit King stat block");
-        await page.keyboard.press("Enter");
-        await page.waitForTimeout(2000);
+        const input = page.locator("[data-test='landing-input']");
+        await input.fill("Show me a stat block");
+        await input.press("Enter");
+        await page.waitForSelector("stat-block", { timeout: 5000 });
+        await page.waitForTimeout(500);
 
         const statBlock = page.locator("stat-block").first();
-        await expect(statBlock).toBeVisible();
-
         const details = statBlock.locator("sl-details");
-        await details.click();
-        await expect(details).toHaveAttribute("open", "");
+        await details.first().click();
+        await expect(details.first()).toHaveAttribute("open", "");
 
         await page.setViewportSize({ width: 375, height: 812 });
         await page.waitForTimeout(300);
@@ -163,32 +276,8 @@ test.describe("stat block visual regression", () => {
 });
 
 test.describe("mode toggle visual regression", () => {
-    test.beforeEach(async ({ page: _page, context }) => {
-        // Reset DB and login
-        const res = await fetch("http://localhost:3000/api/test/reset-db", { method: "POST" });
-        expect(res.ok).toBe(true);
-
-        const loginRes = await fetch("http://localhost:3000/api/auth/quick-login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId: "00000000-0000-4000-8000-000000000001" }),
-        });
-        expect(loginRes.ok).toBe(true);
-
-        const setCookieHeader = loginRes.headers.get("set-cookie");
-        if (setCookieHeader) {
-            const cookieMatch = setCookieHeader.match(/session_token=([^;]+)/);
-            if (cookieMatch) {
-                await context.addCookies([
-                    {
-                        name: "session_token",
-                        value: cookieMatch[1],
-                        domain: "localhost",
-                        path: "/",
-                    },
-                ]);
-            }
-        }
+    test.beforeEach(async ({ page: _page, context }, testInfo) => {
+        await setupTestUser(context, testInfo);
     });
 
     test("player mode header", async ({ page }) => {
@@ -247,32 +336,8 @@ test.describe("mode toggle visual regression", () => {
 });
 
 test.describe("sidebar toggle visual regression", () => {
-    test.beforeEach(async ({ page: _page, context }) => {
-        // Reset DB and login
-        const res = await fetch("http://localhost:3000/api/test/reset-db", { method: "POST" });
-        expect(res.ok).toBe(true);
-
-        const loginRes = await fetch("http://localhost:3000/api/auth/quick-login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId: "00000000-0000-4000-8000-000000000001" }),
-        });
-        expect(loginRes.ok).toBe(true);
-
-        const setCookieHeader = loginRes.headers.get("set-cookie");
-        if (setCookieHeader) {
-            const cookieMatch = setCookieHeader.match(/session_token=([^;]+)/);
-            if (cookieMatch) {
-                await context.addCookies([
-                    {
-                        name: "session_token",
-                        value: cookieMatch[1],
-                        domain: "localhost",
-                        path: "/",
-                    },
-                ]);
-            }
-        }
+    test.beforeEach(async ({ page: _page, context }, testInfo) => {
+        await setupTestUser(context, testInfo);
     });
 
     test("sidebar expanded state", async ({ page }) => {
