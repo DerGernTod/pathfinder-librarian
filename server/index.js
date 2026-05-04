@@ -87,6 +87,10 @@ if (process.env.NODE_ENV !== "production") {
 // Everything else gets index.html so deep links like
 // /conversations/:uuid load the SPA correctly.
 
+// Resolve paths relative to this module's directory (server/)
+// to avoid working-directory mismatches in deployed environments.
+const clientDir = import.meta.dir + "/../client";
+
 /** @type {string | null} */
 let _indexHtml = null;
 
@@ -99,7 +103,7 @@ async function getIndexHtml() {
         return _indexHtml;
     }
     // oxlint-disable-next-line no-undef -- Bun is the runtime global
-    _indexHtml = await Bun.file("./client/index.html").text();
+    _indexHtml = await Bun.file(clientDir + "/index.html").text();
     return _indexHtml;
 }
 
@@ -113,7 +117,7 @@ app.get("/*", async (c) => {
     // Serve actual static files (JS, CSS, images, fonts, etc.)
     if (/\.\w+$/.test(path)) {
         // oxlint-disable-next-line no-undef -- Bun is the runtime global
-        const file = Bun.file(`./client${path}`);
+        const file = Bun.file(clientDir + path);
         if (await file.exists()) {
             return new Response(file);
         }
