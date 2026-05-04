@@ -807,7 +807,50 @@ describe("main-page", () => {
             expect(el._convState.activeConversationId).toBe("conv1");
         });
 
-        it("should call router.navigate() on handleSelectConversation()", async () => {
+        it("should navigate URL when falling back to first conversation at root URL", async () => {
+            // Mock getCurrentParams to return null (URL is "/" — no match)
+            router.getCurrentParams = mock(() => null);
+
+            const navigateSpy = mock((_path, _opts) => {});
+            router.navigate = navigateSpy;
+
+            const conversations = [{ id: "conv1", title: "First" }];
+
+            let callCount = 0;
+            // @ts-expect-error - override global fetch with our mock
+            globalThis.fetch = mock(() => {
+                callCount++;
+                if (callCount === 1) {
+                    return Promise.resolve({
+                        ok: true,
+                        json: () => Promise.resolve({ result: "success", data: conversations }),
+                    });
+                }
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ result: "success", data: [] }),
+                });
+            });
+
+            const el = createMainPage();
+            el.user = {
+                id: "u1",
+                name: "Test",
+                initials: "TS",
+                subtitle: "Player",
+                mode: "player",
+                email: null,
+            };
+            document.body.appendChild(el);
+            await el.updateComplete;
+            await new Promise((r) => setTimeout(r, 100));
+
+            expect(el._convState.activeConversationId).toBe("conv1");
+            // Should navigate to reflect the active conversation in the URL
+            expect(navigateSpy).toHaveBeenCalledWith("/conversations/conv1", { replace: true });
+        });
+
+        it("should navigate URL to match active conversation on first load", async () => {
             element._convState = {
                 conversations: [],
                 activeConversationId: "old-conv",
@@ -1129,6 +1172,34 @@ describe("main-page", () => {
             await element.handleLandingSubmit(event);
 
             expect(navigateSpy).toHaveBeenCalledTimes(0);
+        });
+
+        it("should navigate to / on handleLogout", async () => {
+            const navigateSpy = mock(() => {});
+            router.navigate = navigateSpy;
+
+            // @ts-expect-error - override global fetch for logout call
+            globalThis.fetch = mock(() =>
+                Promise.resolve({ ok: true, json: () => Promise.resolve({}) }),
+            );
+
+            await element.handleLogout();
+
+            expect(navigateSpy).toHaveBeenCalledWith("/", { replace: true });
+        });
+
+        it("should navigate to / on handleAccountDeleted", async () => {
+            const navigateSpy = mock(() => {});
+            router.navigate = navigateSpy;
+
+            // @ts-expect-error - override global fetch for logout call
+            globalThis.fetch = mock(() =>
+                Promise.resolve({ ok: true, json: () => Promise.resolve({}) }),
+            );
+
+            await element.handleAccountDeleted();
+
+            expect(navigateSpy).toHaveBeenCalledWith("/", { replace: true });
         });
     });
 });

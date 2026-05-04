@@ -214,9 +214,12 @@ class MainPage extends LitElement {
                 }
             }
 
-            // Fall back to first conversation if URL has no valid ID
+            // Fall back to first conversation if URL has no valid ID.
+            // Navigate to reflect the active conversation in the URL — data flows
+            // from URL to state, so the URL must always match the active conversation.
             if (!activeId && conversations.length > 0) {
                 activeId = conversations[0].id;
+                router.navigate(`/conversations/${activeId}`, { replace: true });
             }
 
             this._updateConvState({ conversations, activeConversationId: activeId, loading: true });
@@ -450,6 +453,9 @@ class MainPage extends LitElement {
     }
 
     async handleLogout() {
+        // Reset URL to landing before logout — prevents blank screen from
+        // staying on a conversation URL when logged-out user has no access.
+        router.navigate("/", { replace: true });
         await logout();
         this.dispatchEvent(
             new CustomEvent("user-logged-out", {
@@ -468,6 +474,7 @@ class MainPage extends LitElement {
     }
 
     async handleAccountDeleted() {
+        router.navigate("/", { replace: true });
         await logout();
         this.dispatchEvent(
             new CustomEvent("user-logged-out", {
