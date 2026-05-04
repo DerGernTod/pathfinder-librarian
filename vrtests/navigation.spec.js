@@ -245,22 +245,31 @@ test.describe("routing", () => {
     });
 
     test('"New chat" does not create history entry', async ({ page }) => {
-        // Get initial URL
-        const initialUrl = page.url();
+        const sidebar = page.locator("chat-sidebar");
 
-        // Click "New Chat" button
+        // Navigate to an existing conversation first (creates a history entry)
+        await sidebar.locator("conversation-item", { hasText: "Mitflit King Capture" }).click();
+        await page.waitForLoadState("networkidle");
+        const conv1Url = page.url();
+        expect(conv1Url).toContain("/conversations/");
+
+        // Click "New Chat" — this replaces the current history entry (conv1),
+        // so "new chat" does NOT create a new history entry.
         await page.locator("new-chat-button button, .new-chat button").click();
         await page.waitForTimeout(1000);
         await page.waitForLoadState("networkidle");
 
-        // URL should have changed to something with /conversations/
+        // URL should be updated to the new chat
         const newChatUrl = page.url();
         expect(newChatUrl).toContain("/conversations/");
+        expect(newChatUrl).not.toBe(conv1Url);
 
-        // Go back — should return to the URL before "New Chat" was clicked
+        // Go back — since new chat replaced conv1's entry (didn't push),
+        // going back returns to the page BEFORE conv1 was selected (the landing page)
         await page.goBack();
         await page.waitForTimeout(500);
-
-        expect(page.url()).toBe(initialUrl);
+        const afterBackUrl = page.url();
+        expect(afterBackUrl).not.toBe(conv1Url);
+        expect(afterBackUrl).not.toBe(newChatUrl);
     });
 });

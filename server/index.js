@@ -82,21 +82,44 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 // SPA fallback — serve index.html for client-rendered routes
-// Static files are served if they exist; otherwise fall back to index.html
-// so deep links like /conversations/:uuid load the SPA correctly.
+// Explicit deep-link routes registered before wildcard catch-all.
+// Static files with known extensions are served directly.
+// Everything else gets index.html so deep links like
+// /conversations/:uuid load the SPA correctly.
+
+/** @type {string | null} */
+let _indexHtml = null;
+
+/**
+ * Load index.html content once (cached).
+ * @returns {Promise<string>}
+ */
+async function getIndexHtml() {
+    if (_indexHtml !== null) {
+        return _indexHtml;
+    }
+    // oxlint-disable-next-line no-undef -- Bun is the runtime global
+    _indexHtml = await Bun.file("./client/index.html").text();
+    return _indexHtml;
+}
+
+app.get("/conversations/:conversationId", async (c) => {
+    return c.html(await getIndexHtml());
+});
+
 app.get("/", serveStatic({ path: "./client/index.html" }));
 app.get("/*", async (c) => {
     const path = c.req.path;
-    // oxlint-disable-next-line no-undef -- Bun is the runtime global
-    const file = Bun.file(`./client${path}`);
-    if (await file.exists()) {
-        return new Response(file);
+    // Serve actual static files (JS, CSS, images, fonts, etc.)
+    if (/\.\w+$/.test(path)) {
+        // oxlint-disable-next-line no-undef -- Bun is the runtime global
+        const file = Bun.file(`./client${path}`);
+        if (await file.exists()) {
+            return new Response(file);
+        }
     }
-    // oxlint-disable-next-line no-undef -- Bun is the runtime global
-    const html = await Bun.file("./client/index.html").text();
-    return new Response(html, {
-        headers: { "Content-Type": "text/html" },
-    });
+    // SPA fallback for everything else
+    return c.html(await getIndexHtml());
 });
 
 /**
