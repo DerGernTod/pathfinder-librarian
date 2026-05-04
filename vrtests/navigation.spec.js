@@ -258,23 +258,21 @@ test.describe("routing", () => {
         const conv1Url = page.url();
         expect(conv1Url).toContain("/conversations/");
 
-        // Click "New Chat" — this replaces the current history entry (conv1),
-        // so "new chat" does NOT create a new history entry.
+        // Get history length after one navigation
+        const historyAfterConv1 = await page.evaluate(() => history.length);
+
+        // Click "New Chat" — this replaces the current history entry,
+        // so the history length should NOT increase.
         await page.locator("new-chat-button button, .new-chat button").click();
         await page.waitForTimeout(1000);
         await page.waitForLoadState("networkidle");
 
-        // URL should be updated to the new chat
         const newChatUrl = page.url();
         expect(newChatUrl).toContain("/conversations/");
         expect(newChatUrl).not.toBe(conv1Url);
 
-        // Go back — since new chat replaced conv1's entry (didn't push),
-        // going back returns to the page BEFORE conv1 was selected (the landing page)
-        await page.goBack();
-        await page.waitForTimeout(500);
-        const afterBackUrl = page.url();
-        expect(afterBackUrl).not.toBe(conv1Url);
-        expect(afterBackUrl).not.toBe(newChatUrl);
+        // History length should be the same — new chat replaced entry, didn't push
+        const historyAfterNewChat = await page.evaluate(() => history.length);
+        expect(historyAfterNewChat).toBe(historyAfterConv1);
     });
 });
