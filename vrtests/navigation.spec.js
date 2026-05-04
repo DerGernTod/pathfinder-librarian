@@ -121,3 +121,146 @@ test.describe("navigation e2e tests", () => {
         expect(allCount).toBe(2);
     });
 });
+
+test.describe("routing", () => {
+    test.beforeEach(async ({ page, context }, testInfo) => {
+        await setupTestUser(context, testInfo);
+        await page.goto("/");
+        await page.waitForSelector("main-page");
+        await page.waitForTimeout(500);
+    });
+
+    test("URL updates when switching conversations", async ({ page }) => {
+        const sidebar = page.locator("chat-sidebar");
+
+        // Click second conversation
+        await sidebar.locator("conversation-item", { hasText: "Chandelier Assassination" }).click();
+        await page.waitForLoadState("networkidle");
+
+        const url = page.url();
+        expect(url).toContain("/conversations/");
+        // Should have a UUID after /conversations/
+        const match = url.match(/\/conversations\/([0-9a-f-]{36})/);
+        expect(match).not.toBeNull();
+    });
+
+    test("back button returns to previous conversation", async ({ page }) => {
+        const sidebar = page.locator("chat-sidebar");
+        const messageList = page.locator("message-list");
+
+        // Click conversation 2
+        await sidebar.locator("conversation-item", { hasText: "Chandelier Assassination" }).click();
+        await page.waitForLoadState("networkidle");
+        const conv2Url = page.url();
+
+        // Click conversation 1
+        await sidebar.locator("conversation-item", { hasText: "Mitflit King Capture" }).click();
+        await page.waitForLoadState("networkidle");
+
+        // Go back
+        await page.goBack();
+        await page.waitForTimeout(500);
+
+        // Should be back on conversation 2
+        expect(page.url()).toBe(conv2Url);
+        const lastMsg = messageList.locator("chat-message").last();
+        await expect(lastMsg).toContainText(/chandelier/i);
+    });
+
+    test("forward button returns to later conversation", async ({ page }) => {
+        const sidebar = page.locator("chat-sidebar");
+        const messageList = page.locator("message-list");
+
+        // Click conversation 2, then conv 1
+        await sidebar.locator("conversation-item", { hasText: "Chandelier Assassination" }).click();
+        await page.waitForLoadState("networkidle");
+
+        await sidebar.locator("conversation-item", { hasText: "Mitflit King Capture" }).click();
+        await page.waitForLoadState("networkidle");
+        const conv1Url = page.url();
+
+        // Go back then forward
+        await page.goBack();
+        await page.waitForTimeout(500);
+        await page.goForward();
+        await page.waitForTimeout(500);
+
+        // Should be on conversation 1
+        expect(page.url()).toBe(conv1Url);
+        const lastMsg = messageList.locator("chat-message").last();
+        await expect(lastMsg).toContainText(/mitflit king/i);
+    });
+
+    test("direct URL navigation loads correct conversation", async ({ page }) => {
+        const sidebar = page.locator("chat-sidebar");
+
+        // First, get the conversation ID by clicking conv2
+        await sidebar.locator("conversation-item", { hasText: "Chandelier Assassination" }).click();
+        await page.waitForLoadState("networkidle");
+
+        const url = page.url();
+        const match = url.match(/\/conversations\/([0-9a-f-]{36})/);
+        expect(match).not.toBeNull();
+        const convId = match?.[1];
+        if (!convId) {
+            return;
+        }
+
+        // Navigate directly to conv1 via URL
+        // First, extract conv1 ID
+        await sidebar.locator("conversation-item", { hasText: "Mitflit King Capture" }).click();
+        await page.waitForLoadState("networkidle");
+        const conv1Url = page.url();
+        const conv1Match = conv1Url.match(/\/conversations\/([0-9a-f-]{36})/);
+        const conv1Id = conv1Match?.[1];
+        if (!conv1Id) {
+            return;
+        }
+
+        // Navigate directly to the conv1 URL
+        await page.goto(`/conversations/${conv1Id}`);
+        await page.waitForSelector("main-page");
+        await page.waitForTimeout(500);
+
+        // Verify messages are shown for conv1
+        const messageList = page.locator("message-list");
+        const lastMsg = messageList.locator("chat-message").last();
+        await expect(lastMsg).toContainText(/mitflit king/i);
+    });
+
+    test("invalid conversation ID in URL falls back gracefully", async ({ page }) => {
+        // Navigate to a nonexistent conversation ID
+        await page.goto("/conversations/00000000-0000-0000-0000-000000000099");
+        await page.waitForSelector("main-page");
+        await page.waitForTimeout(500);
+
+        // Page should load without 404
+        const mainPage = page.locator("main-page");
+        await expect(mainPage).toBeVisible();
+
+        // Should either show the landing or first conversation
+        // (seeded user has conversations, so first conv should load)
+        // URL might have been replaced with the first conversation's ID
+        // or might still be the invalid one if fallback doesn't navigate
+    });
+
+    test('"New chat" does not create history entry', async ({ page }) => {
+        // Get initial URL
+        const initialUrl = page.url();
+
+        // Click "New Chat" button
+        await page.locator("new-chat-button button, .new-chat button").click();
+        await page.waitForTimeout(1000);
+        await page.waitForLoadState("networkidle");
+
+        // URL should have changed to something with /conversations/
+        const newChatUrl = page.url();
+        expect(newChatUrl).toContain("/conversations/");
+
+        // Go back — should return to the URL before "New Chat" was clicked
+        await page.goBack();
+        await page.waitForTimeout(500);
+
+        expect(page.url()).toBe(initialUrl);
+    });
+});

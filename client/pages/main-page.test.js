@@ -1,5 +1,7 @@
 import "./main-page.js";
-import { describe, it, expect, beforeEach, mock } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
+
+import { router } from "../utils/router.js";
 
 function createMainPage() {
     return /** @type {import("./main-page.js").MainPage} */ (document.createElement("main-page"));
@@ -692,6 +694,441 @@ describe("main-page", () => {
             await element.handleLandingSubmit(event);
 
             expect(element._landingSubmitting).toBe(false);
+        });
+    });
+
+    describe("routing", () => {
+        /** @type {typeof router.navigate} */
+        let origNavigate;
+        /** @type {typeof router.getCurrentParams} */
+        let origGetCurrentParams;
+
+        beforeEach(() => {
+            // Save original router methods
+            origNavigate = router.navigate;
+            origGetCurrentParams = router.getCurrentParams;
+        });
+
+        afterEach(() => {
+            // Restore original router methods
+            router.navigate = origNavigate;
+            router.getCurrentParams = origGetCurrentParams;
+        });
+
+        it("should hydrate active conversation from URL on load", async () => {
+            // Mock getCurrentParams to return a conversation ID
+            router.getCurrentParams = mock(() => ({
+                conversationId: "conv-from-url",
+            }));
+
+            // Mock conversation fetch
+            const conversations = [
+                { id: "conv1", title: "First" },
+                { id: "conv-from-url", title: "From URL" },
+            ];
+
+            let callCount = 0;
+            // @ts-expect-error - override global fetch with our mock
+            globalThis.fetch = mock(() => {
+                callCount++;
+                if (callCount === 1) {
+                    // fetchConversations
+                    return Promise.resolve({
+                        ok: true,
+                        json: () => Promise.resolve({ result: "success", data: conversations }),
+                    });
+                }
+                // fetchMessages for conv-from-url
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ result: "success", data: [] }),
+                });
+            });
+
+            // Create a fresh element so firstUpdated runs
+            const el = createMainPage();
+            el.user = {
+                id: "u1",
+                name: "Test",
+                initials: "TS",
+                subtitle: "Player",
+                mode: "player",
+                email: null,
+            };
+            document.body.appendChild(el);
+            // Wait for firstUpdated to complete
+            await el.updateComplete;
+            await new Promise((r) => setTimeout(r, 100));
+
+            expect(el._convState.activeConversationId).toBe("conv-from-url");
+            expect(router.getCurrentParams).toHaveBeenCalled();
+        });
+
+        it("should fall back to first conversation when URL has nonexistent ID", async () => {
+            // Mock getCurrentParams to return a non-existent conversation ID
+            router.getCurrentParams = mock(() => ({
+                conversationId: "nonexistent-id",
+            }));
+
+            const conversations = [
+                { id: "conv1", title: "First" },
+                { id: "conv2", title: "Second" },
+            ];
+
+            let callCount = 0;
+            // @ts-expect-error - override global fetch with our mock
+            globalThis.fetch = mock(() => {
+                callCount++;
+                if (callCount === 1) {
+                    return Promise.resolve({
+                        ok: true,
+                        json: () => Promise.resolve({ result: "success", data: conversations }),
+                    });
+                }
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ result: "success", data: [] }),
+                });
+            });
+
+            const el = createMainPage();
+            el.user = {
+                id: "u1",
+                name: "Test",
+                initials: "TS",
+                subtitle: "Player",
+                mode: "player",
+                email: null,
+            };
+            document.body.appendChild(el);
+            await el.updateComplete;
+            await new Promise((r) => setTimeout(r, 100));
+
+            expect(el._convState.activeConversationId).toBe("conv1");
+        });
+
+        it("should call router.navigate() on handleSelectConversation()", async () => {
+            element._convState = {
+                conversations: [],
+                activeConversationId: "old-conv",
+                loading: false,
+            };
+
+            // Mock fetch for messages
+            // @ts-expect-error - override global fetch with our mock
+            globalThis.fetch = mock(() =>
+                Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ result: "success", data: [] }),
+                }),
+            );
+
+            const navigateSpy = mock(() => {});
+            router.navigate = navigateSpy;
+
+            const event = new CustomEvent("select-conversation", {
+                detail: { id: "new-conv" },
+            });
+            await element.handleSelectConversation(event);
+
+            expect(element._convState.activeConversationId).toBe("new-conv");
+            expect(navigateSpy).toHaveBeenCalledTimes(1);
+            // @ts-expect-error - Bun mock tuple access
+            expect(navigateSpy.mock.calls[0][0]).toBe("/conversations/new-conv");
+        });
+
+        it("should NOT call router.navigate() when navigate: false passed", async () => {
+            element._convState = {
+                conversations: [],
+                activeConversationId: "old-conv",
+                loading: false,
+            };
+
+            // @ts-expect-error - override global fetch with our mock
+            globalThis.fetch = mock(() =>
+                Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ result: "success", data: [] }),
+                }),
+            );
+
+            const navigateSpy = mock(() => {});
+            router.navigate = navigateSpy;
+
+            const event = new CustomEvent("select-conversation", {
+                detail: { id: "new-conv" },
+            });
+            await element.handleSelectConversation(event, { navigate: false });
+
+            expect(element._convState.activeConversationId).toBe("new-conv");
+            expect(navigateSpy).toHaveBeenCalledTimes(0);
+        });
+
+        it("should call router.navigate with replace: true when navigate: replace passed", async () => {
+            element._convState = {
+                conversations: [],
+                activeConversationId: "old-conv",
+                loading: false,
+            };
+
+            // @ts-expect-error - override global fetch with our mock
+            globalThis.fetch = mock(() =>
+                Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ result: "success", data: [] }),
+                }),
+            );
+
+            const navigateSpy = mock(() => {});
+            router.navigate = navigateSpy;
+
+            const event = new CustomEvent("select-conversation", {
+                detail: { id: "new-conv" },
+            });
+            await element.handleSelectConversation(event, { navigate: "replace" });
+
+            expect(navigateSpy).toHaveBeenCalledTimes(1);
+            // @ts-expect-error - Bun mock tuple access
+            expect(navigateSpy.mock.calls[0][0]).toBe("/conversations/new-conv");
+            // @ts-expect-error - Bun mock tuple access
+            expect(navigateSpy.mock.calls[0][1]).toEqual({ replace: true });
+        });
+
+        it("should switch conversation on route-changed event with navigate: false", async () => {
+            element._convState = {
+                conversations: [
+                    { id: "conv1", title: "First" },
+                    { id: "conv2", title: "Second" },
+                ],
+                activeConversationId: "conv1",
+                loading: false,
+            };
+
+            // Mock fetch for messages of conv2
+            // @ts-expect-error - override global fetch with our mock
+            globalThis.fetch = mock(() =>
+                Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ result: "success", data: [] }),
+                }),
+            );
+
+            // Spy on navigation to confirm it's NOT called (navigate: false)
+            const navigateSpy = mock(() => {});
+            router.navigate = navigateSpy;
+
+            // Dispatch route-changed on window
+            window.dispatchEvent(
+                new CustomEvent("route-changed", {
+                    detail: {
+                        pattern: "conversation",
+                        params: { conversationId: "conv2" },
+                        pathname: "/conversations/conv2",
+                    },
+                }),
+            );
+
+            await new Promise((r) => setTimeout(r, 50));
+
+            expect(element._convState.activeConversationId).toBe("conv2");
+            expect(navigateSpy).toHaveBeenCalledTimes(0);
+        });
+
+        it("should be no-op when route-changed has same active conversation ID", async () => {
+            element._convState = {
+                conversations: [{ id: "conv1", title: "First" }],
+                activeConversationId: "conv1",
+                loading: false,
+            };
+
+            // Mock fetch — should NOT be called
+            let fetchCalled = false;
+            // @ts-expect-error - override global fetch with our mock
+            globalThis.fetch = mock(() => {
+                fetchCalled = true;
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ result: "success", data: [] }),
+                });
+            });
+
+            const navigateSpy = mock(() => {});
+            router.navigate = navigateSpy;
+
+            // Dispatch route-changed with same conversation ID
+            window.dispatchEvent(
+                new CustomEvent("route-changed", {
+                    detail: {
+                        pattern: "conversation",
+                        params: { conversationId: "conv1" },
+                        pathname: "/conversations/conv1",
+                    },
+                }),
+            );
+
+            await new Promise((r) => setTimeout(r, 50));
+
+            expect(element._convState.activeConversationId).toBe("conv1");
+            expect(fetchCalled).toBe(false);
+            expect(navigateSpy).toHaveBeenCalledTimes(0);
+        });
+
+        it("should skip route-changed when loading is true", () => {
+            element._convState = {
+                conversations: [],
+                activeConversationId: "",
+                loading: true,
+            };
+
+            // Route change during loading should be a no-op
+            let handled = false;
+            const origHandle = element.handleSelectConversation;
+            // @ts-expect-error - override for test
+            element.handleSelectConversation = mock(() => {
+                handled = true;
+            });
+
+            window.dispatchEvent(
+                new CustomEvent("route-changed", {
+                    detail: {
+                        pattern: "conversation",
+                        params: { conversationId: "some-conv" },
+                        pathname: "/conversations/some-conv",
+                    },
+                }),
+            );
+
+            expect(handled).toBe(false);
+
+            // Restore
+            element.handleSelectConversation = origHandle;
+        });
+
+        it("should navigate with replace: true when handleLandingSubmit creates first conversation", async () => {
+            element._convState = {
+                conversations: [],
+                activeConversationId: "",
+                loading: false,
+            };
+            element._msgState = { messages: [], responding: false };
+
+            const mockConv = {
+                id: "conv-land-123",
+                title: "Hello world",
+                userId: "u1",
+                createdAt: new Date().toISOString(),
+            };
+
+            const mockUserMessage = {
+                id: "um1",
+                conversationId: "conv-land-123",
+                content: "Hello world",
+                role: "user",
+                mode: "player",
+                createdAt: new Date().toISOString(),
+            };
+
+            const mockAssistantMessage = {
+                id: "am1",
+                conversationId: "conv-land-123",
+                content: null,
+                role: "assistant",
+                mode: "player",
+                createdAt: new Date().toISOString(),
+                blocks: [{ type: "paragraph", text: "Response" }],
+            };
+
+            let callCount = 0;
+            // @ts-expect-error - override global fetch with our mock
+            globalThis.fetch = mock(() => {
+                callCount++;
+                if (callCount === 1) {
+                    return Promise.resolve({
+                        ok: true,
+                        json: () => Promise.resolve({ result: "success", data: mockConv }),
+                    });
+                } else if (callCount === 2) {
+                    return Promise.resolve({
+                        ok: true,
+                        json: () => Promise.resolve({ result: "success", data: [] }),
+                    });
+                } else {
+                    return Promise.resolve(
+                        mockSSEResponse([
+                            { type: "userMessage", data: mockUserMessage },
+                            { type: "assistantComplete", data: mockAssistantMessage },
+                        ]),
+                    );
+                }
+            });
+
+            const navigateSpy = mock(() => {});
+            router.navigate = navigateSpy;
+
+            const event = new CustomEvent("landing-submit", { detail: { text: "Hello world" } });
+            await element.handleLandingSubmit(event);
+
+            expect(navigateSpy).toHaveBeenCalledTimes(1);
+            // @ts-expect-error - Bun mock tuple access
+            expect(navigateSpy.mock.calls[0][0]).toBe("/conversations/conv-land-123");
+            // @ts-expect-error - Bun mock tuple access
+            expect(navigateSpy.mock.calls[0][1]).toEqual({ replace: true });
+        });
+
+        it("should NOT navigate on handleLandingSubmit when reusing existing conversation", async () => {
+            // When conversations already exist, handleLandingSubmit reuses activeConversationId
+            // and should NOT call router.navigate
+            const conv = {
+                id: "conv-existing",
+                title: "Existing",
+                userId: "u1",
+                createdAt: new Date().toISOString(),
+            };
+            element._convState = {
+                conversations: [conv],
+                activeConversationId: "conv-existing",
+                loading: false,
+            };
+            element._msgState = { messages: [], responding: false };
+
+            const mockUserMessage = {
+                id: "um1",
+                conversationId: "conv-existing",
+                content: "Hello existing",
+                role: "user",
+                mode: "player",
+                createdAt: new Date().toISOString(),
+            };
+
+            const mockAssistantMessage = {
+                id: "am1",
+                conversationId: "conv-existing",
+                content: null,
+                role: "assistant",
+                mode: "player",
+                createdAt: new Date().toISOString(),
+                blocks: [{ type: "paragraph", text: "Response" }],
+            };
+
+            // @ts-expect-error - override global fetch with our mock
+            globalThis.fetch = mock(() =>
+                Promise.resolve(
+                    mockSSEResponse([
+                        { type: "userMessage", data: mockUserMessage },
+                        { type: "assistantComplete", data: mockAssistantMessage },
+                    ]),
+                ),
+            );
+
+            const navigateSpy = mock(() => {});
+            router.navigate = navigateSpy;
+
+            const event = new CustomEvent("landing-submit", {
+                detail: { text: "Hello existing" },
+            });
+            await element.handleLandingSubmit(event);
+
+            expect(navigateSpy).toHaveBeenCalledTimes(0);
         });
     });
 });

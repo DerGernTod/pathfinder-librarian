@@ -81,6 +81,15 @@ if (process.env.NODE_ENV !== "production") {
     });
 }
 
+// SPA deep-link fallback — serve index.html for client-rendered routes
+// Registered before wildcard static serving so they take precedence.
+const spaFallback = async () => {
+    // oxlint-disable-next-line no-undef -- Bun is the runtime global
+    const html = Bun.file("./client/index.html");
+    return new Response(html, { headers: { "Content-Type": "text/html" } });
+};
+app.get("/conversations/:id", spaFallback);
+
 // Static file serving
 app.get("/", serveStatic({ path: "./client/index.html" })).get(
     "/*",
