@@ -136,12 +136,7 @@ class LoginPage extends LitElement {
             const res = await client.api.auth["test-users"].$get();
             if (res.ok) {
                 const data = await res.json();
-                // Guard against API returning non-array data — Lit tracks
-                // testUsers as Array type, setting it to undefined causes
-                // render crash on `this.testUsers.length`.
-                if (Array.isArray(data.data)) {
-                    this.testUsers = data.data;
-                }
+                this.testUsers = data.data;
             }
         } catch {
             // Not in dev mode or endpoint unavailable
