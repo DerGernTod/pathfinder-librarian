@@ -14,6 +14,7 @@
         "start": "bun run --hot ./server/index.js --development",
         "serve": "bun run ./server/index.js --development",
         "lint": "oxlint",
+        "prepare": "simple-git-hooks",
         "format": "oxfmt",
         "test": "bun test",
         "check": "tsgo -p jsconfig.json --noEmit",
@@ -41,6 +42,10 @@
         "oxfmt": "0.46.0",
         "oxlint": "1.61.0",
         "oxlint-tsgolint": "^0.22.1",
-        "playwright": "1.59.1"
+        "playwright": "1.59.1",
+        "simple-git-hooks": "^2.12.1"
+    },
+    "simple-git-hooks": {
+        "pre-commit": "sh scripts/pre-commit.sh"
     }
 }
