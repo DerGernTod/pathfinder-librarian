@@ -81,20 +81,23 @@ if (process.env.NODE_ENV !== "production") {
     });
 }
 
-// SPA deep-link fallback — serve index.html for client-rendered routes
-// Registered before wildcard static serving so they take precedence.
-const spaFallback = async () => {
+// SPA fallback — serve index.html for client-rendered routes
+// Static files are served if they exist; otherwise fall back to index.html
+// so deep links like /conversations/:uuid load the SPA correctly.
+app.get("/", serveStatic({ path: "./client/index.html" }));
+app.get("/*", async (c) => {
+    const path = c.req.path;
     // oxlint-disable-next-line no-undef -- Bun is the runtime global
-    const html = Bun.file("./client/index.html");
-    return new Response(html, { headers: { "Content-Type": "text/html" } });
-};
-app.get("/conversations/:id", spaFallback);
-
-// Static file serving
-app.get("/", serveStatic({ path: "./client/index.html" })).get(
-    "/*",
-    serveStatic({ root: "./client" }),
-);
+    const file = Bun.file(`./client${path}`);
+    if (await file.exists()) {
+        return new Response(file);
+    }
+    // oxlint-disable-next-line no-undef -- Bun is the runtime global
+    const html = await Bun.file("./client/index.html").text();
+    return new Response(html, {
+        headers: { "Content-Type": "text/html" },
+    });
+});
 
 /**
  * @typedef {typeof app} App

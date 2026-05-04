@@ -302,16 +302,20 @@ class MainPage extends LitElement {
     async handleSelectConversation(e, opts) {
         const convId = e.detail.id;
         this._updateConvState({ ...this._convState, activeConversationId: convId });
-        const msgs = await this._msgStore.fetchMessages(convId);
-        this._updateMsgState({ messages: msgs, responding: false });
 
-        // Update URL to reflect current conversation (unless caller suppressed it)
+        // Update URL BEFORE awaiting fetch — ensures URL is updated before
+        // networkidle completes in Playwright tests, avoiding race conditions.
+        // Safe because _handleRouteChange guard checks activeConversationId
+        // (already set above) against the route-changed event params.
         const navigate = opts?.navigate ?? "push";
         if (navigate === "replace") {
             router.navigate(`/conversations/${convId}`, { replace: true });
         } else if (navigate !== false) {
             router.navigate(`/conversations/${convId}`);
         }
+
+        const msgs = await this._msgStore.fetchMessages(convId);
+        this._updateMsgState({ messages: msgs, responding: false });
     }
 
     /**
