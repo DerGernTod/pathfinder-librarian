@@ -66,6 +66,7 @@ class MainPage extends LitElement {
         _msgState: { type: Object },
         _modeState: { type: Object },
         _uiState: { type: Object },
+        _isNewChat: { type: Boolean },
     };
 
     constructor() {
@@ -74,6 +75,8 @@ class MainPage extends LitElement {
         this.user = null;
         /** @type {boolean} */
         this._landingSubmitting = false;
+        /** @type {boolean} */
+        this._isNewChat = false;
 
         /** @type {{ conversationId?: string }} */
         this._routeParams = {};
@@ -285,16 +288,19 @@ class MainPage extends LitElement {
     }
 
     async handleNewChat() {
-        const conv = await this._convStore.createConversation("New Conversation");
-        const newConversations = [...this._convState.conversations, conv];
+        // Set ephemeral state - don't create conversation yet
+        this._isNewChat = true;
+        router.navigate("/", { replace: true });
         this._updateConvState({
-            conversations: newConversations,
-            activeConversationId: conv.id,
+            conversations: this._convState.conversations,
+            activeConversationId: "__new__",
             loading: false,
         });
-        await this.handleSelectConversation(
-            new CustomEvent("select-conversation", { detail: { id: conv.id } }),
-            { navigate: "replace" },
+        this._updateMsgState({ messages: [], responding: false });
+
+        // Focus the input by dispatching select-conversation event
+        document.dispatchEvent(
+            new CustomEvent("select-conversation", { detail: { id: "__new__" } }),
         );
     }
 
@@ -304,6 +310,12 @@ class MainPage extends LitElement {
      */
     async handleSelectConversation(e, opts) {
         const convId = e.detail.id;
+
+        // Clear ephemeral new chat state if switching away
+        if (this._isNewChat && convId !== "__new__") {
+            this._isNewChat = false;
+        }
+
         this._updateConvState({ ...this._convState, activeConversationId: convId });
 
         // Update URL BEFORE awaiting fetch — ensures URL is updated before
@@ -362,6 +374,12 @@ class MainPage extends LitElement {
      * @param {CustomEvent<{ text: string }>} e
      */
     async handleSendMessage(e) {
+        // Handle ephemeral new chat state
+        if (this._isNewChat) {
+            await this._handleFirstMessage(e.detail.text);
+            return;
+        }
+
         const newResponding = { messages: this._msgState.messages, responding: true };
         this._updateMsgState(newResponding);
         const controller = new AbortController();
@@ -404,6 +422,109 @@ class MainPage extends LitElement {
                             blocks: [],
                             mode: this._modeState.mode,
                             conversationId: this._convState.activeConversationId,
+                            content: null,
+                            createdAt: new Date().toISOString(),
+                        };
+                    }
+                    assistantMessage = {
+                        ...assistantMessage,
+                        blocks: [...(assistantMessage?.blocks ?? []), event.data],
+                    };
+
+                    if (!assistantMessageAdded) {
+                        messages = [...messages, assistantMessage];
+                        assistantMessageAdded = true;
+                    } else {
+                        messages = [...messages.slice(0, -1), assistantMessage];
+                    }
+                    this._updateMsgState({ messages, responding: true });
+                } else if (event.type === "assistantComplete") {
+                    assistantMessage = event.data;
+                    if (!assistantMessageAdded) {
+                        messages = [...messages, assistantMessage];
+                        assistantMessageAdded = true;
+                    } else {
+                        messages = [...messages.slice(0, -1), assistantMessage];
+                    }
+                    this._updateMsgState({ messages, responding: true });
+                }
+            }
+        } catch (err) {
+            if (Error.isError(err) && err.name !== "AbortError") {
+                // Ignore error
+            }
+        } finally {
+            this._updateMsgState({ messages: this._msgState.messages, responding: false });
+            this._currentAssistantController = null;
+        }
+    }
+
+    /**
+     * Handles the first message in ephemeral new chat state.
+     * Sends to existing messages endpoint with "__new__" ID, server creates
+     * conversation and sends it via SSE before the response.
+     * @param {string} text - The message text
+     */
+    async _handleFirstMessage(text) {
+        this._isNewChat = false;
+
+        const newResponding = { messages: [], responding: true };
+        this._updateMsgState(newResponding);
+        const controller = new AbortController();
+        this._currentAssistantController = controller;
+
+        /** @type {import("../../shared/types.js").Conversation | null} */
+        let newConversation = null;
+        /** @type {import("../../shared/types.js").Message | null} */
+        let userMessage = null;
+        /** @type {import("../../shared/types.js").AssistantMessage | null} */
+        let assistantMessage = null;
+        let assistantMessageAdded = false;
+        /** @type {import("../../shared/types.js").Message[]} */
+        let messages = [];
+
+        try {
+            // Use existing messages endpoint with "__new__" as conversation ID
+            const res = await client.api.conversations[":id"].messages.$post(
+                {
+                    param: { id: "__new__" },
+                    json: { content: text, mode: this._modeState.mode },
+                },
+                {
+                    init: { signal: controller.signal },
+                },
+            );
+
+            /** @type {ReadableStream<Uint8Array>} */
+            const body = /** @type {ReadableStream<Uint8Array>} */ (res.body);
+            if (!body) {
+                throw new Error("No response body");
+            }
+
+            for await (const event of this._msgStore.parseSSEStream(body)) {
+                if (event.type === "conversation") {
+                    newConversation = event.data;
+                    const newConversations = [newConversation, ...this._convState.conversations];
+                    this._updateConvState({
+                        conversations: newConversations,
+                        activeConversationId: newConversation.id,
+                        loading: false,
+                    });
+                    router.navigate(`/conversations/${newConversation.id}`, {
+                        replace: true,
+                    });
+                } else if (event.type === "userMessage") {
+                    userMessage = event.data;
+                    messages = [...messages, userMessage];
+                    this._updateMsgState({ messages, responding: true });
+                } else if (event.type === "assistantChunk") {
+                    if (!assistantMessage) {
+                        assistantMessage = {
+                            id: "temp-assistant-" + Date.now(),
+                            role: "assistant",
+                            blocks: [],
+                            mode: this._modeState.mode,
+                            conversationId: newConversation?.id ?? "",
                             content: null,
                             createdAt: new Date().toISOString(),
                         };

@@ -2,6 +2,11 @@
 description: Validate the Architect's plan for technical soundess and scope creep.
 mode: subagent
 temperature: 0.15
+permission:
+    edit: deny
+    bash: deny
+    external_directory: deny
+    doom_loop: deny
 ---
 
 # Role: Plan Reviewer

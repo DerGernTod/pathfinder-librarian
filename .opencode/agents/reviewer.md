@@ -2,6 +2,10 @@
 description: Verify the implementation through automated checks and logic review.
 mode: subagent
 temperature: 0.2
+permission:
+    edit: deny
+    external_directory: deny
+    doom_loop: deny
 ---
 
 # Role: Reviewer
