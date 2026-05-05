@@ -191,26 +191,10 @@ test.describe("routing", () => {
         await expect(lastMsg).toContainText(/mitflit king/i);
     });
 
-    // Skipped: deep-link server routes require CI deploy to pick up server changes.
-    // The routes work locally but the CI deploy environment may use pre-built images.
-    // TODO(#50): Re-enable once CI deploy picks up server code changes.
-    test.skip("direct URL navigation loads correct conversation", async ({ page }) => {
+    test("direct URL navigation loads correct conversation", async ({ page }) => {
         const sidebar = page.locator("chat-sidebar");
 
-        // First, get the conversation ID by clicking conv2
-        await sidebar.locator("conversation-item", { hasText: "Chandelier Assassination" }).click();
-        await page.waitForLoadState("networkidle");
-
-        const url = page.url();
-        const match = url.match(/\/conversations\/([0-9a-f-]{36})/);
-        expect(match).not.toBeNull();
-        const convId = match?.[1];
-        if (!convId) {
-            return;
-        }
-
-        // Navigate directly to conv1 via URL
-        // First, extract conv1 ID
+        // Get the conversation ID for "Mitflit King Capture"
         await sidebar.locator("conversation-item", { hasText: "Mitflit King Capture" }).click();
         await page.waitForLoadState("networkidle");
         const conv1Url = page.url();
@@ -220,8 +204,9 @@ test.describe("routing", () => {
             return;
         }
 
-        // Navigate directly to the conv1 URL
+        // Navigate directly to the conv1 URL — tests deep-linking
         await page.goto(`/conversations/${conv1Id}`);
+        await page.waitForLoadState("networkidle");
         await page.waitForSelector("main-page");
         await page.waitForTimeout(500);
 
@@ -231,11 +216,10 @@ test.describe("routing", () => {
         await expect(lastMsg).toContainText(/mitflit king/i);
     });
 
-    // Skipped: same deep-link server route issue as direct URL navigation test.
-    // TODO(#50): Re-enable once CI deploy picks up server code changes.
-    test.skip("invalid conversation ID in URL falls back gracefully", async ({ page }) => {
+    test("invalid conversation ID in URL falls back gracefully", async ({ page }) => {
         // Navigate to a nonexistent conversation ID
         await page.goto("/conversations/00000000-0000-0000-0000-000000000099");
+        await page.waitForLoadState("networkidle");
         await page.waitForSelector("main-page");
         await page.waitForTimeout(500);
 
