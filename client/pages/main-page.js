@@ -461,7 +461,8 @@ class MainPage extends LitElement {
 
     /**
      * Handles the first message in ephemeral new chat state.
-     * Creates a conversation with a server-generated name, then streams the response.
+     * Sends to existing messages endpoint with "__new__" ID, server creates
+     * conversation and sends it via SSE before the response.
      * @param {string} text - The message text
      */
     async _handleFirstMessage(text) {
@@ -483,9 +484,16 @@ class MainPage extends LitElement {
         let messages = [];
 
         try {
-            const res = await client.api.conversations["first-message"].$post({
-                json: { prompt: text, mode: this._modeState.mode },
-            });
+            // Use existing messages endpoint with "__new__" as conversation ID
+            const res = await client.api.conversations[":id"].messages.$post(
+                {
+                    param: { id: "__new__" },
+                    json: { content: text, mode: this._modeState.mode },
+                },
+                {
+                    init: { signal: controller.signal },
+                },
+            );
 
             /** @type {ReadableStream<Uint8Array>} */
             const body = /** @type {ReadableStream<Uint8Array>} */ (res.body);
