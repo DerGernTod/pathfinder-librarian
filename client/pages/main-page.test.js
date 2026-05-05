@@ -460,7 +460,7 @@ describe("main-page", () => {
             expect(landingView).toBeNull();
         });
 
-        it("renders landing for new empty conversation", async () => {
+        it("renders landing for empty conversation", async () => {
             // Wait for firstUpdated to complete
             await new Promise((r) => setTimeout(r, 100));
             const conv = {

@@ -105,7 +105,7 @@ class MainPage extends LitElement {
     }
 
     get isLanding() {
-        return !this._convState.loading && this._msgState.messages.length === 0 && !this._isNewChat;
+        return !this._convState.loading && this._msgState.messages.length === 0;
     }
 
     connectedCallback() {
