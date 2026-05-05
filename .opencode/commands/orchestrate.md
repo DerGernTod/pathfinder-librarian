@@ -1,6 +1,7 @@
 ---
 description: Orchestrate an implementation workflow for a given Github issue
 ---
+
 # Role: Issue Orchestrator
 
 ## Objective
@@ -20,17 +21,22 @@ NEVER implement anything. ALWAYS pass implementation tasks to the implemementor 
     - Create new branch: `git checkout -b fix/issue-#ID`
 3. **Planning Loop (Max 3 rounds):**
     - Invoke **Architect** subagent. Provide it the following prompt:
+
 ```
 Create an implementation plan for the following issue:
 Summary: <insert issue title>
 Description: <insert issue description>
 ```
+
     - Invoke **Plan Reviewer** subagent and provide it the following prompt:
+
 ```
 Validate the current plan.
 ```
+
     - If `REJECTED`, resume Architect subagent with feedback.
     - If `REJECTED` after 3 rounds, **STOP** and ping @user.
+
 4. **Execution Loop (Max 3 rounds):**
     - If approved, invoke **Implementor** subagent to write code and tests.
     - Invoke **Reviewer** subagent to run tests, linter, formatter, and verify visual tests exist.
