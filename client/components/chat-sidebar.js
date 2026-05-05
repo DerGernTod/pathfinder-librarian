@@ -100,7 +100,12 @@ class ChatSidebar extends LitElement {
         /** @type {import("../../shared/types.js").AuthUser | null} */
         this.user = null;
         /** @type {import("../stores/conversation-store.js").ConversationState} */
-        this._convState = { conversations: [], activeConversationId: "", loading: true };
+        this._convState = {
+            conversations: [],
+            activeConversationId: "",
+            loading: true,
+            loadingConversationId: "",
+        };
         /** @type {import("../stores/mode-store.js").ModeState} */
         this._modeState = { mode: "gm" };
         /** @type {import("../stores/ui-store.js").UIState} */
@@ -148,6 +153,7 @@ class ChatSidebar extends LitElement {
                 <div class="toggle-container">
                     <sidebar-toggle
                         .expanded=${expanded}
+                        .loading=${!expanded && !!this._convState.loadingConversationId}
                         @toggle-sidebar=${this.handleToggle}
                     ></sidebar-toggle>
                 </div>

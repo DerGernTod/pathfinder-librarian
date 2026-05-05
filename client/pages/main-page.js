@@ -55,6 +55,12 @@ class MainPage extends LitElement {
                 display: flex;
                 flex-direction: column;
             }
+            chat-view {
+                transition: opacity 0.2s ease;
+            }
+            chat-view.fading {
+                opacity: 0.3;
+            }
         `,
     ];
 
@@ -83,7 +89,12 @@ class MainPage extends LitElement {
 
         // Internal state objects (provided via ContextProvider)
         /** @type {import("../stores/conversation-store.js").ConversationState} */
-        this._convState = { conversations: [], activeConversationId: "", loading: true };
+        this._convState = {
+            conversations: [],
+            activeConversationId: "",
+            loading: true,
+            loadingConversationId: "",
+        };
 
         /** @type {import("../stores/messages-store.js").MessagesState} */
         this._msgState = { messages: [], responding: false };
@@ -225,7 +236,12 @@ class MainPage extends LitElement {
                 router.navigate(`/conversations/${activeId}`, { replace: true });
             }
 
-            this._updateConvState({ conversations, activeConversationId: activeId, loading: true });
+            this._updateConvState({
+                conversations,
+                activeConversationId: activeId,
+                loading: true,
+                loadingConversationId: "",
+            });
 
             // Fetch messages for the active conversation
             if (activeId) {
@@ -269,6 +285,7 @@ class MainPage extends LitElement {
                           `
                         : html`
                               <chat-view
+                                  class="${this._convState.loadingConversationId ? "fading" : ""}"
                                   @mode-change=${this.handleModeChange}
                                   @send-message=${this.handleSendMessage}
                                   @stop-message=${this.handleStopMessage}
@@ -316,6 +333,9 @@ class MainPage extends LitElement {
             this._isNewChat = false;
         }
 
+        // Set loading state BEFORE fetching
+        this._updateConvState({ ...this._convState, loadingConversationId: convId });
+
         this._updateConvState({ ...this._convState, activeConversationId: convId });
 
         // Update URL BEFORE awaiting fetch — ensures URL is updated before
@@ -330,6 +350,8 @@ class MainPage extends LitElement {
         }
 
         const msgs = await this._msgStore.fetchMessages(convId);
+        // Clear loading AFTER fetch completes
+        this._updateConvState({ ...this._convState, loadingConversationId: "" });
         this._updateMsgState({ messages: msgs, responding: false });
     }
 

@@ -64,7 +64,12 @@ class SessionList extends LitElement {
         /** @type {string} */
         this.query = "";
         /** @type {import("../stores/conversation-store.js").ConversationState} */
-        this._convState = { conversations: [], activeConversationId: "", loading: true };
+        this._convState = {
+            conversations: [],
+            activeConversationId: "",
+            loading: true,
+            loadingConversationId: "",
+        };
     }
 
     connectedCallback() {
@@ -103,6 +108,7 @@ class SessionList extends LitElement {
                     (conv) => html`
                         <conversation-item
                             .conversation=${conv}
+                            .loading=${this._convState.loadingConversationId === conv.id}
                             @select=${this.handleSelect}
                             data-test="session-item"
                         ></conversation-item>
