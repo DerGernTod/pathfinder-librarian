@@ -81,11 +81,50 @@ if (process.env.NODE_ENV !== "production") {
     });
 }
 
-// Static file serving
-app.get("/", serveStatic({ path: "./client/index.html" })).get(
-    "/*",
-    serveStatic({ root: "./client" }),
-);
+// SPA fallback — serve index.html for client-rendered routes
+// Explicit deep-link routes registered before wildcard catch-all.
+// Static files with known extensions are served directly.
+// Everything else gets index.html so deep links like
+// /conversations/:uuid load the SPA correctly.
+
+// Resolve paths relative to this module's directory (server/)
+// to avoid working-directory mismatches in deployed environments.
+const clientDir = import.meta.dir + "/../client";
+
+/** @type {string | null} */
+let _indexHtml = null;
+
+/**
+ * Load index.html content once (cached).
+ * @returns {Promise<string>}
+ */
+async function getIndexHtml() {
+    if (_indexHtml !== null) {
+        return _indexHtml;
+    }
+    // oxlint-disable-next-line no-undef -- Bun is the runtime global
+    _indexHtml = await Bun.file(clientDir + "/index.html").text();
+    return _indexHtml;
+}
+
+app.get("/conversations/:conversationId", async (c) => {
+    return c.html(await getIndexHtml());
+});
+
+app.get("/", serveStatic({ path: "./client/index.html" }));
+app.get("/*", async (c) => {
+    const path = c.req.path;
+    // Serve actual static files (JS, CSS, images, fonts, etc.)
+    if (/\.\w+$/.test(path)) {
+        // oxlint-disable-next-line no-undef -- Bun is the runtime global
+        const file = Bun.file(clientDir + path);
+        if (await file.exists()) {
+            return new Response(file);
+        }
+    }
+    // SPA fallback for everything else
+    return c.html(await getIndexHtml());
+});
 
 /**
  * @typedef {typeof app} App

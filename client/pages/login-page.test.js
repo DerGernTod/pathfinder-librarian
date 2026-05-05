@@ -1,10 +1,13 @@
-import { describe, test, expect, beforeEach } from "bun:test";
+import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 
 import "./login-page.js";
 
 describe("login-page", () => {
     /** @type {HTMLDivElement} */
     let container;
+
+    /** @type {typeof globalThis.fetch} */
+    let origFetch;
 
     function createLoginPage() {
         /** @type {any} */
@@ -15,6 +18,25 @@ describe("login-page", () => {
     beforeEach(() => {
         container = document.createElement("div");
         document.body.appendChild(container);
+
+        // Mock fetch to return a valid test-users response matching the
+        // Hono RPC contract. Prevents uncontrolled requests in happy-dom/Bun
+        // that can return non-array data and crash on this.testUsers.length.
+        origFetch = globalThis.fetch;
+        // @ts-expect-error - mock fetch for test environment
+        globalThis.fetch = (url) => {
+            if (typeof url === "string" && url.includes("test-users")) {
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ result: "success", data: [] }),
+                });
+            }
+            return origFetch ? origFetch(url) : Promise.reject(new Error("not mocked"));
+        };
+    });
+
+    afterEach(() => {
+        globalThis.fetch = origFetch;
     });
 
     test("renders name input and buttons", async () => {
@@ -45,11 +67,15 @@ describe("login-page", () => {
         /** @type {any} */
         let dispatchedEvent = null;
         const el = createLoginPage();
-        el.testUsers = [{ id: "test-id", name: "Test User", initials: "TU", mode: "gm" }];
         el.addEventListener("login-success", (/** @type {CustomEvent<{ user: any }>} */ e) => {
             dispatchedEvent = e.detail;
         });
         container.appendChild(el);
+        await el.updateComplete;
+
+        // Set test users AFTER firstUpdated completes (so it doesn't get
+        // overwritten by the mocked fetch response from beforeEach).
+        el.testUsers = [{ id: "test-id", name: "Test User", initials: "TU", mode: "gm" }];
         await el.updateComplete;
 
         // Try to find quick login button

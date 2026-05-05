@@ -14,6 +14,7 @@ import { uiContext, createUIStore } from "../stores/ui-store.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
 import { logout } from "../utils/auth-client.js";
+import { router } from "../utils/router.js";
 import { client } from "../utils/rpc-client.js";
 
 /** @typedef {import("../../shared/types.js").Conversation} Conversation */
@@ -60,6 +61,7 @@ class MainPage extends LitElement {
     static properties = {
         user: { type: Object },
         _landingSubmitting: { type: Boolean },
+        _routeParams: { type: Object },
         _convState: { type: Object },
         _msgState: { type: Object },
         _modeState: { type: Object },
@@ -72,6 +74,9 @@ class MainPage extends LitElement {
         this.user = null;
         /** @type {boolean} */
         this._landingSubmitting = false;
+
+        /** @type {{ conversationId?: string }} */
+        this._routeParams = {};
 
         // Internal state objects (provided via ContextProvider)
         /** @type {import("../stores/conversation-store.js").ConversationState} */
@@ -128,6 +133,24 @@ class MainPage extends LitElement {
                 initialValue: this._uiState,
             });
         }
+
+        // Start the router and listen for route changes
+        router.start();
+        this._handleRouteChange = this._handleRouteChange.bind(this);
+        /** @type {(e: Event) => void} */
+        this._boundRouteChange = (e) => {
+            void this._handleRouteChange(
+                /** @type {CustomEvent<import("../utils/router.js").RouteChangeDetail>} */ (e),
+            );
+        };
+        window.addEventListener("route-changed", this._boundRouteChange);
+    }
+
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        if (this._boundRouteChange) {
+            window.removeEventListener("route-changed", this._boundRouteChange);
+        }
     }
 
     /**
@@ -182,9 +205,21 @@ class MainPage extends LitElement {
             const conversations = await this._convStore.fetchConversations();
             let activeId = "";
 
-            // Set active conversation from result (first conversation)
-            if (conversations.length > 0) {
+            // Check URL for conversation ID (deep link support)
+            const routeParams = router.getCurrentParams();
+            if (routeParams?.conversationId) {
+                const urlConv = conversations.find((c) => c.id === routeParams.conversationId);
+                if (urlConv) {
+                    activeId = routeParams.conversationId;
+                }
+            }
+
+            // Fall back to first conversation if URL has no valid ID.
+            // Navigate to reflect the active conversation in the URL — data flows
+            // from URL to state, so the URL must always match the active conversation.
+            if (!activeId && conversations.length > 0) {
                 activeId = conversations[0].id;
+                router.navigate(`/conversations/${activeId}`, { replace: true });
             }
 
             this._updateConvState({ conversations, activeConversationId: activeId, loading: true });
@@ -259,17 +294,60 @@ class MainPage extends LitElement {
         });
         await this.handleSelectConversation(
             new CustomEvent("select-conversation", { detail: { id: conv.id } }),
+            { navigate: "replace" },
         );
     }
 
     /**
      * @param {CustomEvent<{ id: string }>} e
+     * @param {{ navigate?: "push" | "replace" | false }} [opts]
      */
-    async handleSelectConversation(e) {
+    async handleSelectConversation(e, opts) {
         const convId = e.detail.id;
         this._updateConvState({ ...this._convState, activeConversationId: convId });
+
+        // Update URL BEFORE awaiting fetch — ensures URL is updated before
+        // networkidle completes in Playwright tests, avoiding race conditions.
+        // Safe because _handleRouteChange guard checks activeConversationId
+        // (already set above) against the route-changed event params.
+        const navigate = opts?.navigate ?? "push";
+        if (navigate === "replace") {
+            router.navigate(`/conversations/${convId}`, { replace: true });
+        } else if (navigate !== false) {
+            router.navigate(`/conversations/${convId}`);
+        }
+
         const msgs = await this._msgStore.fetchMessages(convId);
         this._updateMsgState({ messages: msgs, responding: false });
+    }
+
+    /**
+     * Handles route-changed events from the router.
+     * Triggered by popstate (back/forward) and direct URL loads.
+     * Uses navigate: false to avoid creating duplicate history entries.
+     * @param {CustomEvent<import("../utils/router.js").RouteChangeDetail>} e
+     */
+    async _handleRouteChange(e) {
+        // Guard: skip if component hasn't finished initial load
+        // (firstUpdated handles the initial URL hydration)
+        if (this._convState.loading) {
+            return;
+        }
+
+        const { params } = e.detail;
+        if (
+            params.conversationId &&
+            params.conversationId !== this._convState.activeConversationId
+        ) {
+            this._routeParams = params;
+            // Pass navigate: false — browser already changed the URL (popstate)
+            await this.handleSelectConversation(
+                new CustomEvent("select-conversation", {
+                    detail: { id: params.conversationId },
+                }),
+                { navigate: false },
+            );
+        }
     }
 
     /**
@@ -375,6 +453,9 @@ class MainPage extends LitElement {
     }
 
     async handleLogout() {
+        // Reset URL to landing before logout — prevents blank screen from
+        // staying on a conversation URL when logged-out user has no access.
+        router.navigate("/", { replace: true });
         await logout();
         this.dispatchEvent(
             new CustomEvent("user-logged-out", {
@@ -393,6 +474,7 @@ class MainPage extends LitElement {
     }
 
     async handleAccountDeleted() {
+        router.navigate("/", { replace: true });
         await logout();
         this.dispatchEvent(
             new CustomEvent("user-logged-out", {
@@ -424,6 +506,10 @@ class MainPage extends LitElement {
                 });
                 const msgs = await this._msgStore.fetchMessages(conv.id);
                 this._updateMsgState({ messages: msgs, responding: false });
+
+                // Navigate with replace: true — first conversation from landing should
+                // replace the landing URL without creating a history entry.
+                router.navigate(`/conversations/${conv.id}`, { replace: true });
             }
 
             const newResponding = { messages: this._msgState.messages, responding: true };
