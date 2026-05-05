@@ -54,6 +54,27 @@ class MainPage extends LitElement {
                 flex: 1;
                 display: flex;
                 flex-direction: column;
+                position: relative;
+            }
+            .fade-container {
+                position: absolute;
+                inset: 0;
+                display: flex;
+            }
+            .fade-container > * {
+                flex: 1;
+                transition:
+                    opacity 0.5s ease-out,
+                    transform 0.5s ease-out;
+            }
+            .fade-out {
+                opacity: 0;
+                transform: scale(0.95);
+                pointer-events: none;
+            }
+            .fade-in {
+                opacity: 1;
+                transform: scale(1);
             }
             chat-view {
             }
@@ -69,6 +90,8 @@ class MainPage extends LitElement {
         _modeState: { type: Object },
         _uiState: { type: Object },
         _isNewChat: { type: Boolean },
+        _leavingLanding: { type: Boolean },
+        _hasConversations: { type: Boolean },
     };
 
     constructor() {
@@ -79,6 +102,10 @@ class MainPage extends LitElement {
         this._landingSubmitting = false;
         /** @type {boolean} */
         this._isNewChat = false;
+        /** @type {boolean} */
+        this._leavingLanding = false;
+        /** @type {boolean} */
+        this._hasConversations = false;
 
         /** @type {{ conversationId?: string }} */
         this._routeParams = {};
@@ -112,7 +139,11 @@ class MainPage extends LitElement {
     }
 
     get isLanding() {
-        return !this._convState.loading && this._msgState.messages.length === 0;
+        return (
+            !this._convState.loading &&
+            this._msgState.messages.length === 0 &&
+            !this._hasConversations
+        );
     }
 
     connectedCallback() {
@@ -272,20 +303,24 @@ class MainPage extends LitElement {
                     }}
                 ></chat-sidebar>
                 <main class="main">
-                    ${this.isLanding
-                        ? html`
-                              <landing-view
-                                  .submitting=${this._landingSubmitting}
-                                  @landing-submit=${this.handleLandingSubmit}
-                              ></landing-view>
-                          `
-                        : html`
-                              <chat-view
-                                  @mode-change=${this.handleModeChange}
-                                  @send-message=${this.handleSendMessage}
-                                  @stop-message=${this.handleStopMessage}
-                              ></chat-view>
-                          `}
+                    <div class="fade-container">
+                        ${this.isLanding
+                            ? html`
+                                  <landing-view
+                                      class="${this._leavingLanding ? "fade-out" : "fade-in"}"
+                                      .submitting=${this._landingSubmitting}
+                                      @landing-submit=${this.handleLandingSubmit}
+                                  ></landing-view>
+                              `
+                            : html`
+                                  <chat-view
+                                      class="${this._leavingLanding ? "fade-in" : "fade-in"}"
+                                      @mode-change=${this.handleModeChange}
+                                      @send-message=${this.handleSendMessage}
+                                      @stop-message=${this.handleStopMessage}
+                                  ></chat-view>
+                              `}
+                    </div>
                 </main>
             </div>
             <settings-dialog
@@ -328,9 +363,12 @@ class MainPage extends LitElement {
             this._isNewChat = false;
         }
 
+        // Reset landing transition state on any conversation switch
+        this._leavingLanding = false;
+
         // Track if we need minimum display time for spinner
         const loadStartTime = Date.now();
-        const MIN_LOAD_TIME = 300;
+        const MIN_LOAD_TIME = 400;
 
         // Clear messages for different conversation only (keep for same conv)
         if (this._convState.activeConversationId !== convId) {
@@ -670,12 +708,13 @@ class MainPage extends LitElement {
     async handleLandingSubmit(e) {
         const text = e.detail.text;
         this._landingSubmitting = true;
+        this._leavingLanding = true;
 
         /** @type {string} */
         let targetConvId = this._convState.activeConversationId;
 
         const loadStartTime = Date.now();
-        const MIN_LOAD_TIME = 500;
+        const MIN_LOAD_TIME = 800;
 
         try {
             if (this._convState.conversations.length === 0) {
@@ -712,6 +751,12 @@ class MainPage extends LitElement {
                         loading: false,
                     });
                     const msgs = await this._msgStore.fetchMessages(conv.id);
+
+                    const elapsed = Date.now() - loadStartTime;
+                    if (elapsed < MIN_LOAD_TIME) {
+                        await new Promise((r) => setTimeout(r, MIN_LOAD_TIME - elapsed));
+                    }
+
                     this._updateMsgState({ messages: msgs, responding: false });
                     router.navigate(`/conversations/${conv.id}`, { replace: true });
                 }
@@ -726,6 +771,8 @@ class MainPage extends LitElement {
 
                 await this.updateComplete;
                 this.focusChatInput();
+                this._leavingLanding = false;
+                this._hasConversations = true;
                 return;
             }
 

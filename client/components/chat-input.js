@@ -58,7 +58,6 @@ class ChatInput extends LitElement {
                 line-height: 1.25rem;
                 padding: 0;
                 color: var(--foreground);
-                view-transition-name: landing-input;
             }
             sl-textarea::part(textarea)::placeholder {
                 color: var(--muted-foreground);
