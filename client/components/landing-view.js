@@ -63,9 +63,36 @@ class LandingView extends LitElement {
                 font-size: 1.125rem;
                 line-height: 1.5rem;
                 color: var(--foreground);
+                view-transition-name: landing-input;
             }
             .landing-prompt::placeholder {
                 color: var(--muted-foreground);
+            }
+            @keyframes fade-out {
+                from {
+                    opacity: 1;
+                    transform: scale(1);
+                }
+                to {
+                    opacity: 0;
+                    transform: scale(0.95);
+                }
+            }
+            @keyframes fade-in {
+                from {
+                    opacity: 0;
+                    transform: scale(1.05);
+                }
+                to {
+                    opacity: 1;
+                    transform: scale(1);
+                }
+            }
+            ::view-transition-old(landing-input) {
+                animation: 0.3s ease-out both fade-out;
+            }
+            ::view-transition-new(landing-input) {
+                animation: 0.3s ease-out both fade-in;
             }
             .landing-send-btn {
                 color: white;

@@ -616,6 +616,15 @@ class MainPage extends LitElement {
         this._currentAssistantController?.abort();
     }
 
+    focusChatInput() {
+        const chatInput = /** @type {{ focus: () => void } | null} */ (
+            this.shadowRoot?.querySelector("chat-input")
+        );
+        if (chatInput?.focus) {
+            chatInput.focus();
+        }
+    }
+
     /**
      * @param {CustomEvent<{ expanded: boolean }>} e
      */
@@ -665,22 +674,59 @@ class MainPage extends LitElement {
         /** @type {string} */
         let targetConvId = this._convState.activeConversationId;
 
+        const loadStartTime = Date.now();
+        const MIN_LOAD_TIME = 500;
+
         try {
             if (this._convState.conversations.length === 0) {
-                const conv = await this._convStore.createConversation(text.slice(0, 80));
-                const newConversations = [conv, ...this._convState.conversations];
-                targetConvId = conv.id;
-                this._updateConvState({
-                    conversations: newConversations,
-                    activeConversationId: conv.id,
-                    loading: false,
-                });
-                const msgs = await this._msgStore.fetchMessages(conv.id);
-                this._updateMsgState({ messages: msgs, responding: false });
+                /** @type {Promise<void> | { finished: Promise<void> } | undefined} */
+                let transition;
+                if (document.startViewTransition) {
+                    transition = document.startViewTransition(async () => {
+                        const conv = await this._convStore.createConversation(text.slice(0, 80));
+                        const newConversations = [conv, ...this._convState.conversations];
+                        targetConvId = conv.id;
+                        this._updateConvState({
+                            conversations: newConversations,
+                            activeConversationId: conv.id,
+                            loading: false,
+                        });
+                        const msgs = await this._msgStore.fetchMessages(conv.id);
 
-                // Navigate with replace: true — first conversation from landing should
-                // replace the landing URL without creating a history entry.
-                router.navigate(`/conversations/${conv.id}`, { replace: true });
+                        const elapsed = Date.now() - loadStartTime;
+                        if (elapsed < MIN_LOAD_TIME) {
+                            await new Promise((r) => setTimeout(r, MIN_LOAD_TIME - elapsed));
+                        }
+
+                        this._updateMsgState({ messages: msgs, responding: false });
+
+                        router.navigate(`/conversations/${conv.id}`, { replace: true });
+                    });
+                } else {
+                    const conv = await this._convStore.createConversation(text.slice(0, 80));
+                    const newConversations = [conv, ...this._convState.conversations];
+                    targetConvId = conv.id;
+                    this._updateConvState({
+                        conversations: newConversations,
+                        activeConversationId: conv.id,
+                        loading: false,
+                    });
+                    const msgs = await this._msgStore.fetchMessages(conv.id);
+                    this._updateMsgState({ messages: msgs, responding: false });
+                    router.navigate(`/conversations/${conv.id}`, { replace: true });
+                }
+
+                if (transition) {
+                    if ("finished" in transition) {
+                        await transition.finished;
+                    } else {
+                        await transition;
+                    }
+                }
+
+                await this.updateComplete;
+                this.focusChatInput();
+                return;
             }
 
             const newResponding = { messages: this._msgState.messages, responding: true };
