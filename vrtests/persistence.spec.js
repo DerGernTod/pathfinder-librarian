@@ -60,7 +60,10 @@ test.describe("persistence e2e tests", () => {
         const input = page.locator("chat-input textarea");
         await input.fill("Unique marker for new conv");
         await page.keyboard.press("Enter");
-        await page.waitForLoadState("networkidle");
+
+        // Wait for response to complete (not just user message)
+        await page.waitForSelector("assistant-message", { timeout: 10000 });
+        await page.waitForTimeout(1000);
 
         // Verify message appears before reload
         await expect(page.locator("chat-message").last()).toContainText(
