@@ -56,10 +56,6 @@ class MainPage extends LitElement {
                 flex-direction: column;
             }
             chat-view {
-                transition: opacity 0.2s ease;
-            }
-            chat-view.fading {
-                opacity: 0.3;
             }
         `,
     ];
@@ -285,7 +281,6 @@ class MainPage extends LitElement {
                           `
                         : html`
                               <chat-view
-                                  class="${this._convState.loadingConversationId ? "fading" : ""}"
                                   @mode-change=${this.handleModeChange}
                                   @send-message=${this.handleSendMessage}
                                   @stop-message=${this.handleStopMessage}
@@ -333,15 +328,15 @@ class MainPage extends LitElement {
             this._isNewChat = false;
         }
 
-        // Set loading state BEFORE fetching
-        this._updateConvState({ ...this._convState, loadingConversationId: convId });
+        // Track if we need minimum display time for spinner
+        const loadStartTime = Date.now();
+        const MIN_LOAD_TIME = 300;
 
+        // Set loading state BEFORE fetch and view transition
+        this._updateConvState({ ...this._convState, loadingConversationId: convId });
         this._updateConvState({ ...this._convState, activeConversationId: convId });
 
-        // Update URL BEFORE awaiting fetch — ensures URL is updated before
-        // networkidle completes in Playwright tests, avoiding race conditions.
-        // Safe because _handleRouteChange guard checks activeConversationId
-        // (already set above) against the route-changed event params.
+        // Update URL BEFORE await - networkidle waits for this in tests
         const navigate = opts?.navigate ?? "push";
         if (navigate === "replace") {
             router.navigate(`/conversations/${convId}`, { replace: true });
@@ -349,10 +344,38 @@ class MainPage extends LitElement {
             router.navigate(`/conversations/${convId}`);
         }
 
-        const msgs = await this._msgStore.fetchMessages(convId);
-        // Clear loading AFTER fetch completes
+        // Use View Transition API for smooth crossfade, fallback for testing
+        let transition;
+        if (document.startViewTransition) {
+            transition = document.startViewTransition(async () => {
+                const msgs = await this._msgStore.fetchMessages(convId);
+
+                // Ensure minimum loading time to prevent spinner flash
+                const elapsed = Date.now() - loadStartTime;
+                if (elapsed < MIN_LOAD_TIME) {
+                    await new Promise((r) => setTimeout(r, MIN_LOAD_TIME - elapsed));
+                }
+
+                // Update messages - this becomes the "new" state for the transition
+                this._updateMsgState({ messages: msgs, responding: false });
+            });
+        } else {
+            // Fallback for testing (happy-dom doesn't support View Transition API)
+            const msgs = await this._msgStore.fetchMessages(convId);
+            const elapsed = Date.now() - loadStartTime;
+            if (elapsed < MIN_LOAD_TIME) {
+                await new Promise((r) => setTimeout(r, MIN_LOAD_TIME - elapsed));
+            }
+            this._updateMsgState({ messages: msgs, responding: false });
+        }
+
+        // Wait for transition to complete if available
+        if (transition) {
+            await transition.finished;
+        }
+
+        // Clear loading state
         this._updateConvState({ ...this._convState, loadingConversationId: "" });
-        this._updateMsgState({ messages: msgs, responding: false });
     }
 
     /**
