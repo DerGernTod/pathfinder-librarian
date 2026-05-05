@@ -29,6 +29,11 @@ const createMessageSchema = z.object({
     mode: z.enum(["player", "gm"]),
 });
 
+const firstMessageSchema = z.object({
+    prompt: z.string().min(1),
+    mode: z.enum(["player", "gm"]).optional(),
+});
+
 const updateUserSchema = z.object({
     name: z.string().min(1).max(100).optional(),
     mode: z.enum(["gm", "player"]).optional(),
@@ -49,6 +54,7 @@ export {
     conversationSchema,
     createConversationSchema,
     createMessageSchema,
+    firstMessageSchema,
     updateUserSchema,
     ensureTestUserSchema,
 };

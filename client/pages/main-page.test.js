@@ -367,9 +367,9 @@ describe("main-page", () => {
 
         await element.handleNewChat();
 
-        expect(element._convState.conversations.length).toBe(2);
-        expect(element._convState.conversations[1].id).toBe("conv2");
-        expect(element._convState.activeConversationId).toBe("conv2");
+        // New chat should set ephemeral state instead of creating conversation immediately
+        expect(element._isNewChat).toBe(true);
+        expect(element._convState.activeConversationId).toBe("__new__");
     });
 
     describe("landing page", () => {

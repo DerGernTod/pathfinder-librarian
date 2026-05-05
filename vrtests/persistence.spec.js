@@ -53,13 +53,11 @@ test.describe("persistence e2e tests", () => {
     test("new conversation persists across page reload", async ({ page }) => {
         // Click new chat button
         await page.locator("new-chat-button button").click();
-        // Wait for landing view to render
-        await page.waitForSelector("landing-view", { timeout: 5000 });
+        // Should now show empty chat view (ephemeral state), not landing view
         await page.waitForTimeout(500);
 
         // Send a unique message to identify this conversation
-        const input = page.locator('[data-test="landing-input"]');
-        await expect(input).toBeVisible({ timeout: 5000 });
+        const input = page.locator("chat-input textarea");
         await input.fill("Unique marker for new conv");
         await page.keyboard.press("Enter");
         await page.waitForLoadState("networkidle");

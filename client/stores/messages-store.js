@@ -10,10 +10,11 @@ import { client } from "../utils/rpc-client.js";
  */
 
 /**
+ * @typedef {{ type: "conversation", data: import("../../shared/types.js").Conversation }} SSEConversationEvent
  * @typedef {{ type: "userMessage", data: import("../../shared/types.js").Message }} SSEUserMessageEvent
  * @typedef {{ type: "assistantChunk", data: import("../../shared/types.js").MessageBlock }} SSEChunkEvent
  * @typedef {{ type: "assistantComplete", data: import("../../shared/types.js").AssistantMessage }} SSECompleteEvent
- * @typedef {SSEUserMessageEvent | SSEChunkEvent | SSECompleteEvent} SSEEvent
+ * @typedef {SSEConversationEvent | SSEUserMessageEvent | SSEChunkEvent | SSECompleteEvent} SSEEvent
  */
 
 /** @type {ReturnType<typeof import("@lit/context").createContext<MessagesState>>} */
