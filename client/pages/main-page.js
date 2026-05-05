@@ -332,6 +332,9 @@ class MainPage extends LitElement {
         const loadStartTime = Date.now();
         const MIN_LOAD_TIME = 300;
 
+        // Clear messages BEFORE transition to show loading state
+        this._updateMsgState({ messages: [], responding: false });
+
         // Set loading state BEFORE fetch and view transition
         this._updateConvState({ ...this._convState, loadingConversationId: convId });
         this._updateConvState({ ...this._convState, activeConversationId: convId });
