@@ -97,6 +97,7 @@ class LandingView extends LitElement {
 
     static properties = {
         submitting: { type: Boolean },
+        key: { type: Number },
     };
 
     constructor() {
@@ -105,6 +106,8 @@ class LandingView extends LitElement {
         this.submitting = false;
         /** @type {string} */
         this._text = "";
+        /** @type {number} */
+        this.key = 0;
     }
 
     render() {

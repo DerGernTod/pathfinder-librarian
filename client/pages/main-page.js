@@ -89,6 +89,7 @@ class MainPage extends LitElement {
         _isNewChat: { type: Boolean },
         _viewState: { type: String },
         _prevViewState: { type: String },
+        _landingKey: { type: Number },
     };
 
     constructor() {
@@ -103,6 +104,8 @@ class MainPage extends LitElement {
         this._viewState = "loading";
         /** @type {string} */
         this._prevViewState = "loading";
+        /** @type {number} */
+        this._landingKey = 0;
 
         /** @type {{ conversationId?: string }} */
         this._routeParams = {};
@@ -313,6 +316,7 @@ class MainPage extends LitElement {
                 <main class="main">
                     <div class="view-layer ${this.isLanding ? "active" : ""}">
                         <landing-view
+                            .key=${this._landingKey}
                             .submitting=${this._landingSubmitting}
                             @landing-submit=${this.handleLandingSubmit}
                         ></landing-view>
@@ -348,6 +352,9 @@ class MainPage extends LitElement {
             loading: false,
         });
         this._updateMsgState({ messages: [], responding: false });
+
+        // Reset landing input by incrementing key to force re-render
+        this._landingKey = (this._landingKey || 0) + 1;
 
         // Focus the input by dispatching select-conversation event
         document.dispatchEvent(
