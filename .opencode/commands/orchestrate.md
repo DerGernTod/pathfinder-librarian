@@ -21,7 +21,7 @@ NEVER implement anything. ALWAYS pass implementation tasks to the implemementor 
     - Create new branch: `git checkout -b fix/issue-#ID`
 3. **Planning Loop (Max 3 rounds):**
     - Invoke **Architect** subagent. Provide it the following prompt:
-    
+
     ```
     Create an implementation plan for the following issue:
     Summary: <insert issue title>
@@ -29,7 +29,7 @@ NEVER implement anything. ALWAYS pass implementation tasks to the implemementor 
     ```
 
     - Invoke **Plan Reviewer** subagent and provide it the following prompt:
-    
+
     ```
     Validate the current plan.
     ```
