@@ -54,6 +54,8 @@ describe("main-page", () => {
         });
         element = createMainPage();
         document.body.appendChild(element);
+        // Set viewState for proper rendering
+        element._viewState = "conversation";
     });
 
     it("should initialize with empty state", () => {
@@ -417,24 +419,25 @@ describe("main-page", () => {
         });
 
         it("does not render landing when loading", async () => {
+            element._viewState = "conversation";
             element._convState = { conversations: [], activeConversationId: "", loading: true };
             element._msgState = { messages: [], responding: false };
             element.requestUpdate();
             await element.updateComplete;
 
-            const landingView = element.shadowRoot?.querySelector("landing-view");
-            expect(landingView).toBeNull();
+            // In new render, landing-view is always rendered but may be hidden
+            const landingLayer = element.shadowRoot?.querySelector(".view-layer:nth-child(1)");
+            expect(landingLayer?.classList.contains("visible")).toBe(false);
         });
 
         it("does not render landing when conversations exist with messages", async () => {
-            // Wait for firstUpdated to complete
-            await new Promise((r) => setTimeout(r, 100));
             const conv = {
                 id: "c1",
                 title: "Test",
                 userId: "u1",
                 createdAt: new Date().toISOString(),
             };
+            element._viewState = "conversation";
             element._convState = {
                 conversations: [conv],
                 activeConversationId: "c1",
@@ -456,19 +459,19 @@ describe("main-page", () => {
             element.requestUpdate();
             await element.updateComplete;
 
-            const landingView = element.shadowRoot?.querySelector("landing-view");
-            expect(landingView).toBeNull();
+            // With conversations, landing-view should be hidden
+            const landingLayer = element.shadowRoot?.querySelector(".view-layer:nth-child(1)");
+            expect(landingLayer?.classList.contains("visible")).toBe(false);
         });
 
         it("renders landing for empty conversation", async () => {
-            // Wait for firstUpdated to complete
-            await new Promise((r) => setTimeout(r, 100));
             const conv = {
                 id: "c1",
                 title: "New Chat",
                 userId: "u1",
                 createdAt: new Date().toISOString(),
             };
+            element._viewState = "landing";
             element._convState = {
                 conversations: [conv],
                 activeConversationId: "c1",

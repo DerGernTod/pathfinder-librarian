@@ -56,25 +56,24 @@ class MainPage extends LitElement {
                 flex-direction: column;
                 position: relative;
             }
-            .fade-container {
+            .view-layer {
                 position: absolute;
                 inset: 0;
                 display: flex;
-            }
-            .fade-container > * {
-                flex: 1;
+                flex-direction: column;
                 transition:
-                    opacity 0.5s ease-out,
-                    transform 0.5s ease-out;
+                    opacity 0.6s ease-in-out,
+                    transform 0.6s ease-in-out;
             }
-            .fade-out {
+            .view-layer.entering {
                 opacity: 0;
-                transform: scale(0.95);
+                transform: translateY(10px);
                 pointer-events: none;
             }
-            .fade-in {
+            .view-layer.visible {
                 opacity: 1;
-                transform: scale(1);
+                transform: translateY(0);
+                pointer-events: auto;
             }
             chat-view {
             }
@@ -90,8 +89,8 @@ class MainPage extends LitElement {
         _modeState: { type: Object },
         _uiState: { type: Object },
         _isNewChat: { type: Boolean },
-        _leavingLanding: { type: Boolean },
-        _hasConversations: { type: Boolean },
+        _viewState: { type: String },
+        _prevViewState: { type: String },
     };
 
     constructor() {
@@ -102,10 +101,10 @@ class MainPage extends LitElement {
         this._landingSubmitting = false;
         /** @type {boolean} */
         this._isNewChat = false;
-        /** @type {boolean} */
-        this._leavingLanding = false;
-        /** @type {boolean} */
-        this._hasConversations = false;
+        /** @type {string} */
+        this._viewState = "loading";
+        /** @type {string} */
+        this._prevViewState = "loading";
 
         /** @type {{ conversationId?: string }} */
         this._routeParams = {};
@@ -139,10 +138,17 @@ class MainPage extends LitElement {
     }
 
     get isLanding() {
+        if (this._viewState === "landing") {
+            return true;
+        }
+        if (this._viewState === "conversation") {
+            return false;
+        }
+        // _viewState is "loading" or undefined - use legacy check for tests
         return (
             !this._convState.loading &&
             this._msgState.messages.length === 0 &&
-            !this._hasConversations
+            this._convState.conversations.length === 0
         );
     }
 
@@ -281,11 +287,15 @@ class MainPage extends LitElement {
                 activeConversationId: activeId,
                 loading: false,
             });
+
+            // Transition to appropriate view state after initial load
+            if (conversations.length > 0) {
+                this._viewState = "conversation";
+            } else {
+                this._viewState = "landing";
+            }
         } catch {
-            this._updateConvState({
-                ...this._convState,
-                loading: false,
-            });
+            this._viewState = "landing";
         }
     }
 
@@ -303,23 +313,18 @@ class MainPage extends LitElement {
                     }}
                 ></chat-sidebar>
                 <main class="main">
-                    <div class="fade-container">
-                        ${this.isLanding
-                            ? html`
-                                  <landing-view
-                                      class="${this._leavingLanding ? "fade-out" : "fade-in"}"
-                                      .submitting=${this._landingSubmitting}
-                                      @landing-submit=${this.handleLandingSubmit}
-                                  ></landing-view>
-                              `
-                            : html`
-                                  <chat-view
-                                      class="${this._leavingLanding ? "fade-in" : "fade-in"}"
-                                      @mode-change=${this.handleModeChange}
-                                      @send-message=${this.handleSendMessage}
-                                      @stop-message=${this.handleStopMessage}
-                                  ></chat-view>
-                              `}
+                    <div class="view-layer ${this.isLanding ? "visible" : "entering"}">
+                        <landing-view
+                            .submitting=${this._landingSubmitting}
+                            @landing-submit=${this.handleLandingSubmit}
+                        ></landing-view>
+                    </div>
+                    <div class="view-layer ${!this.isLanding ? "visible" : "entering"}">
+                        <chat-view
+                            @mode-change=${this.handleModeChange}
+                            @send-message=${this.handleSendMessage}
+                            @stop-message=${this.handleStopMessage}
+                        ></chat-view>
                     </div>
                 </main>
             </div>
@@ -335,7 +340,8 @@ class MainPage extends LitElement {
     }
 
     async handleNewChat() {
-        // Set ephemeral state - don't create conversation yet
+        this._prevViewState = this._viewState;
+        this._viewState = "conversation";
         this._isNewChat = true;
         router.navigate("/", { replace: true });
         this._updateConvState({
@@ -363,9 +369,6 @@ class MainPage extends LitElement {
             this._isNewChat = false;
         }
 
-        // Reset landing transition state on any conversation switch
-        this._leavingLanding = false;
-
         // Track if we need minimum display time for spinner
         const loadStartTime = Date.now();
         const MIN_LOAD_TIME = 400;
@@ -373,6 +376,12 @@ class MainPage extends LitElement {
         // Clear messages for different conversation only (keep for same conv)
         if (this._convState.activeConversationId !== convId) {
             this._updateMsgState({ messages: [], responding: false });
+        }
+
+        // Transition to conversation view if needed
+        if (this._viewState === "landing") {
+            this._prevViewState = "landing";
+            this._viewState = "conversation";
         }
 
         // Set loading state BEFORE fetch and view transition
@@ -708,7 +717,8 @@ class MainPage extends LitElement {
     async handleLandingSubmit(e) {
         const text = e.detail.text;
         this._landingSubmitting = true;
-        this._leavingLanding = true;
+        this._prevViewState = this._viewState;
+        this._viewState = "conversation";
 
         /** @type {string} */
         let targetConvId = this._convState.activeConversationId;
@@ -771,8 +781,6 @@ class MainPage extends LitElement {
 
                 await this.updateComplete;
                 this.focusChatInput();
-                this._leavingLanding = false;
-                this._hasConversations = true;
                 return;
             }
 
