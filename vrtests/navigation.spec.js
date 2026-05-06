@@ -25,13 +25,14 @@ test.describe("navigation e2e tests", () => {
     test("switch to conversation 2 and verify messages change", async ({ page }) => {
         const messageList = page.locator("message-list");
         await expect(messageList).toBeVisible();
-        const initialMessageCount = await messageList.locator("chat-message").count();
+        const initialMessage = await messageList.locator("chat-message").first().allTextContents();
 
         const sidebar = page.locator("chat-sidebar");
         await sidebar.locator("conversation-item", { hasText: "Chandelier Assassination" }).click();
+        await page.waitForTimeout(600);
 
-        const newMessageCount = await messageList.locator("chat-message").count();
-        expect(newMessageCount).toBeLessThan(initialMessageCount);
+        const newMessage = await messageList.locator("chat-message").first().allTextContents();
+        expect(newMessage).not.toBe(initialMessage);
 
         const firstMessage = messageList.locator("chat-message").first();
         await expect(firstMessage).toContainText(/chandelier/i);

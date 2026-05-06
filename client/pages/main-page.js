@@ -73,8 +73,6 @@ class MainPage extends LitElement {
                 transform: translateY(0);
                 pointer-events: auto;
             }
-            chat-view {
-            }
         `,
     ];
 
@@ -89,7 +87,6 @@ class MainPage extends LitElement {
         _isNewChat: { type: Boolean },
         _viewState: { type: String },
         _prevViewState: { type: String },
-        _landingKey: { type: Number },
     };
 
     constructor() {
@@ -104,8 +101,6 @@ class MainPage extends LitElement {
         this._viewState = "loading";
         /** @type {string} */
         this._prevViewState = "loading";
-        /** @type {number} */
-        this._landingKey = 0;
 
         /** @type {{ conversationId?: string }} */
         this._routeParams = {};
@@ -316,7 +311,6 @@ class MainPage extends LitElement {
                 <main class="main">
                     <div class="view-layer ${this.isLanding ? "active" : ""}">
                         <landing-view
-                            .key=${this._landingKey}
                             .submitting=${this._landingSubmitting}
                             @landing-submit=${this.handleLandingSubmit}
                         ></landing-view>
@@ -353,9 +347,6 @@ class MainPage extends LitElement {
         });
         this._updateMsgState({ messages: [], responding: false });
 
-        // Reset landing input by incrementing key to force re-render
-        this._landingKey = (this._landingKey || 0) + 1;
-
         // Focus the input by dispatching select-conversation event
         document.dispatchEvent(
             new CustomEvent("select-conversation", { detail: { id: "__new__" } }),
@@ -376,10 +367,6 @@ class MainPage extends LitElement {
 
         // Save previous view for crossfade transition
         this._prevViewState = this._viewState;
-
-        // Track if we need minimum display time for spinner
-        const loadStartTime = Date.now();
-        const MIN_LOAD_TIME = 400;
 
         // Transition to conversation view if needed
         if (this._viewState === "landing") {
@@ -404,22 +391,12 @@ class MainPage extends LitElement {
             transition = document.startViewTransition(async () => {
                 const msgs = await this._msgStore.fetchMessages(convId);
 
-                // Ensure minimum loading time to prevent spinner flash
-                const elapsed = Date.now() - loadStartTime;
-                if (elapsed < MIN_LOAD_TIME) {
-                    await new Promise((r) => setTimeout(r, MIN_LOAD_TIME - elapsed));
-                }
-
                 // Update messages - this becomes the "new" state for the transition
                 this._updateMsgState({ messages: msgs, responding: false });
             });
         } else {
             // Fallback for testing (happy-dom doesn't support View Transition API)
             const msgs = await this._msgStore.fetchMessages(convId);
-            const elapsed = Date.now() - loadStartTime;
-            if (elapsed < MIN_LOAD_TIME) {
-                await new Promise((r) => setTimeout(r, MIN_LOAD_TIME - elapsed));
-            }
             this._updateMsgState({ messages: msgs, responding: false });
         }
 
@@ -725,9 +702,6 @@ class MainPage extends LitElement {
         /** @type {string} */
         let targetConvId = this._convState.activeConversationId;
 
-        const loadStartTime = Date.now();
-        const MIN_LOAD_TIME = 800;
-
         try {
             if (
                 this._convState.activeConversationId === "__new__" ||
@@ -747,16 +721,9 @@ class MainPage extends LitElement {
                         });
                         const msgs = await this._msgStore.fetchMessages(conv.id);
 
-                        const elapsed = Date.now() - loadStartTime;
-                        if (elapsed < MIN_LOAD_TIME) {
-                            await new Promise((r) => setTimeout(r, MIN_LOAD_TIME - elapsed));
-                        }
-
                         this._updateMsgState({ messages: msgs, responding: false });
 
                         router.navigate(`/conversations/${conv.id}`, { replace: true });
-
-                        this._landingKey = (this._landingKey || 0) + 1;
 
                         this.dispatchEvent(
                             new CustomEvent("conversations-updated", {
@@ -776,15 +743,8 @@ class MainPage extends LitElement {
                     });
                     const msgs = await this._msgStore.fetchMessages(conv.id);
 
-                    const elapsed = Date.now() - loadStartTime;
-                    if (elapsed < MIN_LOAD_TIME) {
-                        await new Promise((r) => setTimeout(r, MIN_LOAD_TIME - elapsed));
-                    }
-
                     this._updateMsgState({ messages: msgs, responding: false });
                     router.navigate(`/conversations/${conv.id}`, { replace: true });
-
-                    this._landingKey = (this._landingKey || 0) + 1;
 
                     this.dispatchEvent(
                         new CustomEvent("conversations-updated", {
