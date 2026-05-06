@@ -729,7 +729,10 @@ class MainPage extends LitElement {
         const MIN_LOAD_TIME = 800;
 
         try {
-            if (this._convState.conversations.length === 0) {
+            if (
+                this._convState.activeConversationId === "__new__" ||
+                this._convState.conversations.length === 0
+            ) {
                 /** @type {Promise<void> | { finished: Promise<void> } | undefined} */
                 let transition;
                 if (document.startViewTransition) {
@@ -752,6 +755,8 @@ class MainPage extends LitElement {
                         this._updateMsgState({ messages: msgs, responding: false });
 
                         router.navigate(`/conversations/${conv.id}`, { replace: true });
+
+                        this._landingKey = (this._landingKey || 0) + 1;
 
                         this.dispatchEvent(
                             new CustomEvent("conversations-updated", {
