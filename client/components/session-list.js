@@ -84,6 +84,10 @@ class SessionList extends LitElement {
                 },
             subscribe: true,
         });
+
+        this.addEventListener("conversations-updated", () => {
+            this.requestUpdate();
+        });
     }
 
     render() {

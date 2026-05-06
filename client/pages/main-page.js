@@ -752,6 +752,13 @@ class MainPage extends LitElement {
                         this._updateMsgState({ messages: msgs, responding: false });
 
                         router.navigate(`/conversations/${conv.id}`, { replace: true });
+
+                        this.dispatchEvent(
+                            new CustomEvent("conversations-updated", {
+                                bubbles: true,
+                                composed: true,
+                            }),
+                        );
                     });
                 } else {
                     const conv = await this._convStore.createConversation(text.slice(0, 80));
@@ -771,6 +778,13 @@ class MainPage extends LitElement {
 
                     this._updateMsgState({ messages: msgs, responding: false });
                     router.navigate(`/conversations/${conv.id}`, { replace: true });
+
+                    this.dispatchEvent(
+                        new CustomEvent("conversations-updated", {
+                            bubbles: true,
+                            composed: true,
+                        }),
+                    );
                 }
 
                 if (transition) {

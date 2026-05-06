@@ -98,6 +98,7 @@ class LandingView extends LitElement {
     static properties = {
         submitting: { type: Boolean },
         key: { type: Number },
+        _text: { type: String, state: true },
     };
 
     constructor() {
@@ -111,6 +112,7 @@ class LandingView extends LitElement {
     }
 
     render() {
+        const displayText = this.key > 0 ? "" : this._text;
         return html`
             <section role="region" aria-label="Welcome" class="landing-welcome" part="welcome">
                 <h1 part="title">Pathfinder Librarian</h1>
@@ -120,7 +122,7 @@ class LandingView extends LitElement {
                         aria-label="Type your first prompt"
                         data-test="landing-input"
                         class="landing-prompt"
-                        .value=${this._text}
+                        .value=${displayText}
                         ?disabled=${this.submitting}
                         @input=${this._handleInput}
                         @keydown=${this._handleKeydown}
@@ -141,16 +143,6 @@ class LandingView extends LitElement {
                 <p class="landing-hint" part="hint">Press Enter to send</p>
             </section>
         `;
-    }
-
-    /**
-     * @param {import("lit-element").PropertyValues} changedProperties
-     */
-    updated(changedProperties) {
-        if (changedProperties.has("key") && this.key > 0) {
-            this._text = "";
-            this.requestUpdate();
-        }
     }
 
     /**
