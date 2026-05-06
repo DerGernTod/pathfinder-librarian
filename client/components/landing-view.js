@@ -111,6 +111,15 @@ class LandingView extends LitElement {
         this.key = 0;
     }
 
+    /**
+     * @param {Map<string, unknown>} changedProperties
+     */
+    willUpdate(changedProperties) {
+        if (changedProperties.has("key") && this.key > 0) {
+            this._text = "";
+        }
+    }
+
     render() {
         const displayText = this.key > 0 ? "" : this._text;
         return html`
