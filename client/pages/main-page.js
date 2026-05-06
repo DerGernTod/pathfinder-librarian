@@ -61,16 +61,14 @@ class MainPage extends LitElement {
                 inset: 0;
                 display: flex;
                 flex-direction: column;
-                transition:
-                    opacity 0.6s ease-in-out,
-                    transform 0.6s ease-in-out;
-            }
-            .view-layer.entering {
                 opacity: 0;
                 transform: translateY(10px);
                 pointer-events: none;
+                transition:
+                    opacity 0.5s ease-in-out,
+                    transform 0.5s ease-in-out;
             }
-            .view-layer.visible {
+            .view-layer.active {
                 opacity: 1;
                 transform: translateY(0);
                 pointer-events: auto;
@@ -313,13 +311,13 @@ class MainPage extends LitElement {
                     }}
                 ></chat-sidebar>
                 <main class="main">
-                    <div class="view-layer ${this.isLanding ? "visible" : "entering"}">
+                    <div class="view-layer ${this.isLanding ? "active" : ""}">
                         <landing-view
                             .submitting=${this._landingSubmitting}
                             @landing-submit=${this.handleLandingSubmit}
                         ></landing-view>
                     </div>
-                    <div class="view-layer ${!this.isLanding ? "visible" : "entering"}">
+                    <div class="view-layer ${!this.isLanding ? "active" : ""}">
                         <chat-view
                             @mode-change=${this.handleModeChange}
                             @send-message=${this.handleSendMessage}
@@ -341,7 +339,7 @@ class MainPage extends LitElement {
 
     async handleNewChat() {
         this._prevViewState = this._viewState;
-        this._viewState = "conversation";
+        this._viewState = "landing";
         this._isNewChat = true;
         router.navigate("/", { replace: true });
         this._updateConvState({
@@ -369,18 +367,15 @@ class MainPage extends LitElement {
             this._isNewChat = false;
         }
 
+        // Save previous view for crossfade transition
+        this._prevViewState = this._viewState;
+
         // Track if we need minimum display time for spinner
         const loadStartTime = Date.now();
         const MIN_LOAD_TIME = 400;
 
-        // Clear messages for different conversation only (keep for same conv)
-        if (this._convState.activeConversationId !== convId) {
-            this._updateMsgState({ messages: [], responding: false });
-        }
-
         // Transition to conversation view if needed
         if (this._viewState === "landing") {
-            this._prevViewState = "landing";
             this._viewState = "conversation";
         }
 
