@@ -804,7 +804,6 @@ class MainPage extends LitElement {
 
                 await this.updateComplete;
                 this.focusChatInput();
-                return;
             }
 
             const newResponding = { messages: this._msgState.messages, responding: true };
