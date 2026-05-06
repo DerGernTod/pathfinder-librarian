@@ -81,10 +81,10 @@ class SessionList extends LitElement {
                     v,
                 ) => {
                     this._convState = v;
+                    this.requestUpdate();
                 },
             subscribe: true,
         });
-
         this.addEventListener("conversations-updated", () => {
             this.requestUpdate();
         });

@@ -779,6 +779,8 @@ class MainPage extends LitElement {
                     this._updateMsgState({ messages: msgs, responding: false });
                     router.navigate(`/conversations/${conv.id}`, { replace: true });
 
+                    this._landingKey = (this._landingKey || 0) + 1;
+
                     this.dispatchEvent(
                         new CustomEvent("conversations-updated", {
                             bubbles: true,

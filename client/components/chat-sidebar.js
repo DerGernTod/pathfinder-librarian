@@ -121,6 +121,7 @@ class ChatSidebar extends LitElement {
                     v,
                 ) => {
                     this._convState = v;
+                    this.requestUpdate();
                 },
             subscribe: true,
         });
