@@ -21,18 +21,18 @@ NEVER implement anything. ALWAYS pass implementation tasks to the implemementor 
     - Create new branch: `git checkout -b fix/issue-#ID`
 3. **Planning Loop (Max 3 rounds):**
     - Invoke **Architect** subagent. Provide it the following prompt:
-
-```
-Create an implementation plan for the following issue:
-Summary: <insert issue title>
-Description: <insert issue description>
-```
+    
+    ```
+    Create an implementation plan for the following issue:
+    Summary: <insert issue title>
+    Description: <insert issue description>
+    ```
 
     - Invoke **Plan Reviewer** subagent and provide it the following prompt:
-
-```
-Validate the current plan.
-```
+    
+    ```
+    Validate the current plan.
+    ```
 
     - If `REJECTED`, resume Architect subagent with feedback.
     - If `REJECTED` after 3 rounds, **STOP** and ping @user.
