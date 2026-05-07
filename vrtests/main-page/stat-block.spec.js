@@ -1,32 +1,6 @@
 import { expect, test } from "playwright/test";
 
-import { setupTestUser } from "./helpers/test-user.js";
-
-test.describe("main page visual regression", () => {
-    test.beforeEach(async ({ page, context }, testInfo) => {
-        await setupTestUser(context, testInfo);
-        await page.goto("/");
-        await page.waitForSelector("main-page");
-        await page.waitForTimeout(1000);
-    });
-
-    test("full page matches baseline", async ({ page }) => {
-        await expect(page).toHaveScreenshot("main-page.png", {
-            fullPage: true,
-            maxDiffPixelRatio: 0.01,
-        });
-    });
-
-    test("sidebar matches baseline", async ({ page }) => {
-        const sidebar = page.locator("chat-sidebar");
-        await expect(sidebar).toHaveScreenshot("sidebar.png");
-    });
-
-    test("chat area matches baseline", async ({ page }) => {
-        const chatArea = page.locator("main.main");
-        await expect(chatArea).toHaveScreenshot("chat-area.png");
-    });
-});
+import { setupTestUser } from "../helpers/test-user.js";
 
 test.describe("stat block visual regression", () => {
     test.beforeEach(async ({ page, context }, testInfo) => {
@@ -240,7 +214,8 @@ test.describe("stat block visual regression", () => {
         });
     });
 
-    test("stat block responsive layout", async ({ page }) => {
+    test("stat block mobile layout", async ({ page }) => {
+        await page.setViewportSize({ width: 375, height: 812 });
         await page.goto("/");
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
@@ -256,222 +231,55 @@ test.describe("stat block visual regression", () => {
         await details.first().click();
         await expect(details.first()).toHaveAttribute("open", "");
 
-        await page.setViewportSize({ width: 375, height: 812 });
         await page.waitForTimeout(300);
-
         await expect(statBlock).toHaveScreenshot("stat-block-mobile.png", {
             maxDiffPixelRatio: 0.05,
         });
+    });
 
+    test("stat block tablet layout", async ({ page }) => {
         await page.setViewportSize({ width: 768, height: 1024 });
-        await page.waitForTimeout(300);
+        await page.goto("/");
+        await page.waitForSelector("main-page");
+        await page.waitForTimeout(1000);
 
+        const input = page.locator("[data-test='landing-input']");
+        await input.fill("Show me a stat block");
+        await input.press("Enter");
+        await page.waitForSelector("stat-block", { timeout: 5000 });
+        await page.waitForTimeout(500);
+
+        const statBlock = page.locator("stat-block").first();
+        const details = statBlock.locator("sl-details");
+        await details.first().click();
+        await expect(details.first()).toHaveAttribute("open", "");
+
+        await page.waitForTimeout(300);
         await expect(statBlock).toHaveScreenshot("stat-block-tablet.png", {
             maxDiffPixelRatio: 0.05,
         });
+    });
 
+    test("stat block desktop layout", async ({ page }) => {
         await page.setViewportSize({ width: 1920, height: 1080 });
+        await page.goto("/");
+        await page.waitForSelector("main-page");
+        await page.waitForTimeout(1000);
+
+        const input = page.locator("[data-test='landing-input']");
+        await input.fill("Show me a stat block");
+        await input.press("Enter");
+        await page.waitForSelector("stat-block", { timeout: 5000 });
+        await page.waitForTimeout(500);
+
+        const statBlock = page.locator("stat-block").first();
+        const details = statBlock.locator("sl-details");
+        await details.first().click();
+        await expect(details.first()).toHaveAttribute("open", "");
+
         await page.waitForTimeout(300);
-    });
-});
-
-test.describe("mode toggle visual regression", () => {
-    test.beforeEach(async ({ page: _page, context }, testInfo) => {
-        await setupTestUser(context, testInfo);
-    });
-
-    test("player mode header", async ({ page }) => {
-        await page.goto("/");
-        await page.waitForSelector("chat-header");
-        await page.waitForTimeout(1000);
-        const header = page.locator("chat-header");
-        await expect(header).toHaveScreenshot("header-player-mode.png");
-    });
-
-    test("gm mode header", async ({ page }) => {
-        await page.goto("/");
-        await page.waitForSelector("chat-header");
-        await page.waitForTimeout(1000);
-        await page.locator("chat-header button", { hasText: "GM Mode" }).click();
-        await page.waitForTimeout(500);
-        const header = page.locator("chat-header");
-        await expect(header).toHaveScreenshot("header-gm-mode.png");
-    });
-
-    test("player mode sidebar profile", async ({ page }) => {
-        await page.goto("/");
-        await page.waitForSelector("main-page");
-        await page.waitForTimeout(1000);
-        const profile = page.locator("sidebar-profile");
-        await expect(profile).toHaveScreenshot("sidebar-profile-player.png");
-    });
-
-    test("gm mode sidebar profile", async ({ page }) => {
-        await page.goto("/");
-        await page.waitForSelector("chat-header");
-        await page.waitForTimeout(1000);
-        await page.locator("chat-header button", { hasText: "GM Mode" }).click();
-        await page.waitForTimeout(500);
-        const profile = page.locator("sidebar-profile");
-        await expect(profile).toHaveScreenshot("sidebar-profile-gm.png");
-    });
-
-    test("player mode chat input", async ({ page }) => {
-        await page.goto("/");
-        await page.waitForSelector("chat-input");
-        await page.waitForTimeout(1000);
-        const input = page.locator("chat-input");
-        await expect(input).toHaveScreenshot("chat-input-player.png");
-    });
-
-    test("gm mode chat input", async ({ page }) => {
-        await page.goto("/");
-        await page.waitForSelector("chat-header");
-        await page.waitForTimeout(1000);
-        await page.locator("chat-header button", { hasText: "GM Mode" }).click();
-        await page.waitForTimeout(500);
-        const input = page.locator("chat-input");
-        await expect(input).toHaveScreenshot("chat-input-gm.png");
-    });
-});
-
-test.describe("sidebar toggle visual regression", () => {
-    test.beforeEach(async ({ page: _page, context }, testInfo) => {
-        await setupTestUser(context, testInfo);
-    });
-
-    test("sidebar expanded state", async ({ page }) => {
-        await page.goto("/");
-        await page.waitForSelector("main-page");
-        await page.waitForTimeout(1000);
-        const sidebar = page.locator("chat-sidebar");
-        await expect(sidebar).toHaveScreenshot("sidebar-expanded.png");
-    });
-
-    test("sidebar collapsed state", async ({ page }) => {
-        await page.goto("/");
-        await page.waitForSelector("main-page");
-        await page.waitForTimeout(1000);
-        await page.locator("sidebar-toggle button").click();
-        await page.waitForTimeout(500);
-        const sidebar = page.locator("chat-sidebar");
-        await expect(sidebar).toHaveScreenshot("sidebar-collapsed.png");
-    });
-
-    test("toggle button expanded state", async ({ page }) => {
-        await page.goto("/");
-        await page.waitForSelector("sidebar-toggle");
-        await page.waitForTimeout(1000);
-        const sidebar = page.locator("chat-sidebar");
-        await expect(sidebar).toHaveScreenshot("toggle-expanded.png");
-    });
-
-    test("toggle button collapsed state", async ({ page }) => {
-        await page.goto("/");
-        await page.waitForSelector("sidebar-toggle");
-        await page.waitForTimeout(1000);
-        await page.locator("sidebar-toggle button").click();
-        await page.waitForTimeout(500);
-        const sidebar = page.locator("chat-sidebar");
-        await expect(sidebar).toHaveScreenshot("toggle-collapsed.png");
-    });
-
-    test("new chat button expanded state", async ({ page }) => {
-        await page.goto("/");
-        await page.waitForSelector("new-chat-button");
-        await page.waitForTimeout(1000);
-        const sidebar = page.locator("chat-sidebar");
-        await expect(sidebar).toHaveScreenshot("new-chat-expanded.png");
-    });
-
-    test("new chat button collapsed state", async ({ page }) => {
-        await page.goto("/");
-        await page.waitForSelector("new-chat-button");
-        await page.waitForTimeout(1000);
-        await page.locator("sidebar-toggle button").click();
-        await page.waitForTimeout(500);
-        const sidebar = page.locator("chat-sidebar");
-        await expect(sidebar).toHaveScreenshot("new-chat-collapsed.png");
-    });
-
-    test("conversation menu dropdown trigger", async ({ page }) => {
-        await page.goto("/");
-        await page.waitForSelector("main-page");
-        await page.waitForTimeout(1000);
-        await page.locator("sidebar-toggle button").click();
-        await page.waitForTimeout(500);
-        const sidebar = page.locator("chat-sidebar");
-        await expect(sidebar).toHaveScreenshot("conversation-menu-trigger.png");
-    });
-
-    test("conversation menu with active conversation highlighted", async ({ page }) => {
-        await page.goto("/");
-        await page.waitForSelector("main-page");
-        await page.waitForTimeout(1000);
-        await page.locator("sidebar-toggle button").click();
-        await page.waitForTimeout(500);
-        await page.locator("conversation-menu button.menu-trigger").click();
-        await page.waitForTimeout(500);
-        const dropdown = page.locator("conversation-menu sl-dropdown");
-        await expect(dropdown).toHaveScreenshot("conversation-menu-active.png");
-    });
-
-    test("sidebar-profile collapsed state", async ({ page }) => {
-        await page.goto("/");
-        await page.waitForSelector("main-page");
-        await page.waitForTimeout(1000);
-        await page.locator("sidebar-toggle button").click();
-        await page.waitForTimeout(500);
-        const profile = page.locator("sidebar-profile");
-        await expect(profile).toHaveScreenshot("sidebar-profile-collapsed.png");
-    });
-});
-
-test.describe("routed state visual regression", () => {
-    test.beforeEach(async ({ page, context }, testInfo) => {
-        await setupTestUser(context, testInfo);
-        await page.goto("/");
-        await page.waitForSelector("main-page");
-        await page.waitForTimeout(1000);
-    });
-
-    test("conversation URL state", async ({ page }) => {
-        // Click on a conversation to navigate to its URL
-        const sidebar = page.locator("chat-sidebar");
-        await sidebar.locator("conversation-item", { hasText: "Chandelier Assassination" }).click();
-        await page.waitForLoadState("networkidle");
-        await page.waitForTimeout(500);
-
-        // Verify URL contains /conversations/
-        const url = page.url();
-        expect(url).toContain("/conversations/");
-
-        // Take full page snapshot
-        await expect(page).toHaveScreenshot("main-page-conversation-url.png", {
-            fullPage: true,
-            maxDiffPixelRatio: 0.01,
-        });
-    });
-
-    test("back navigation state", async ({ page }) => {
-        const sidebar = page.locator("chat-sidebar");
-
-        // Navigate to conv2, then conv1, then go back
-        await sidebar.locator("conversation-item", { hasText: "Chandelier Assassination" }).click();
-        await page.waitForLoadState("networkidle");
-
-        await sidebar.locator("conversation-item", { hasText: "Mitflit King Capture" }).click();
-        await page.waitForLoadState("networkidle");
-        await page.waitForTimeout(500);
-
-        // Go back
-        await page.goBack();
-        await page.waitForTimeout(500);
-
-        // Take screenshot of the back-navigated state
-        await expect(page).toHaveScreenshot("main-page-back-navigation.png", {
-            fullPage: true,
-            maxDiffPixelRatio: 0.01,
+        await expect(statBlock).toHaveScreenshot("stat-block-desktop.png", {
+            maxDiffPixelRatio: 0.05,
         });
     });
 });

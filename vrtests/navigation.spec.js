@@ -79,8 +79,9 @@ test.describe("navigation e2e tests", () => {
         await page.keyboard.press("Enter");
         await page.waitForLoadState("networkidle");
         const conv1Count = await messageList.locator("chat-message").count();
-
+        const requestPromise = page.waitForRequest("**/api/conversations/*/messages");
         await sidebar.locator("conversation-item", { hasText: "Chandelier Assassination" }).click();
+        await requestPromise;
         await page.waitForLoadState("networkidle");
 
         const conv2Count = await messageList.locator("chat-message").count();
