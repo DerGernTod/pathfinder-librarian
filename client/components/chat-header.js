@@ -19,6 +19,16 @@ class ChatHeader extends LitElement {
         tokens,
         baseStyles,
         css`
+            :host {
+                flex-shrink: 0;
+            }
+            @media (max-width: 767px) {
+                :host {
+                    flex-shrink: 100;
+                    min-height: 0;
+                    overflow: hidden;
+                }
+            }
             .header {
                 height: 3.5rem;
                 border-bottom: 1px solid var(--border);

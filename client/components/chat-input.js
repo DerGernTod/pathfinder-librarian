@@ -24,6 +24,9 @@ class ChatInput extends LitElement {
         tokens,
         baseStyles,
         css`
+            :host {
+                flex-shrink: 0;
+            }
             .wrapper {
                 padding: 1rem;
                 border-top: 1px solid var(--border);

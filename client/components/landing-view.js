@@ -24,9 +24,12 @@ class LandingView extends LitElement {
                 flex: 1;
                 display: flex;
                 flex-direction: column;
+                min-height: 0;
+                overflow: hidden;
             }
             .landing-header {
                 height: 3.5rem;
+                flex-shrink: 0;
                 border-bottom: 1px solid var(--border);
                 display: flex;
                 align-items: center;
@@ -143,6 +146,11 @@ class LandingView extends LitElement {
                 outline-offset: 2px;
             }
             @media (max-width: 767px) {
+                .landing-header {
+                    flex-shrink: 100;
+                    min-height: 0;
+                    overflow: hidden;
+                }
                 .landing-welcome {
                     padding: 1.5rem 1rem;
                 }

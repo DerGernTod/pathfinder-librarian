@@ -62,6 +62,7 @@ class MainPage extends LitElement {
                 inset: 0;
                 display: flex;
                 flex-direction: column;
+                overflow: hidden;
                 opacity: 0;
                 transform: translateY(10px);
                 pointer-events: none;

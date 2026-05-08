@@ -24,6 +24,7 @@ class ChatView extends LitElement {
                 flex: 1;
                 flex-direction: column;
                 min-height: 0;
+                overflow: hidden;
             }
         `,
     ];
