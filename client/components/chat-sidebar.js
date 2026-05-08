@@ -88,6 +88,27 @@ class ChatSidebar extends LitElement {
                 transform: translateX(0);
                 pointer-events: auto;
             }
+            @media (max-width: 767px) {
+                .sidebar {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    bottom: 0;
+                    z-index: 20;
+                    transform: translateX(-100%);
+                    transition: transform 0.3s ease;
+                    box-shadow: none;
+                }
+                .sidebar.expanded-mobile {
+                    transform: translateX(0);
+                    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
+                }
+                .sidebar.collapsed {
+                    transform: translateX(-100%);
+                    width: 16rem;
+                    padding: 1rem;
+                }
+            }
         `,
     ];
 
@@ -109,7 +130,7 @@ class ChatSidebar extends LitElement {
         /** @type {import("../stores/mode-store.js").ModeState} */
         this._modeState = { mode: "gm" };
         /** @type {import("../stores/ui-store.js").UIState} */
-        this._uiState = { sidebarExpanded: true, settingsOpen: false };
+        this._uiState = { sidebarExpanded: true, settingsOpen: false, breakpoint: "desktop" };
     }
 
     connectedCallback() {
@@ -149,8 +170,16 @@ class ChatSidebar extends LitElement {
      */
     render() {
         const expanded = this._uiState.sidebarExpanded;
+        const isPhone = this._uiState.breakpoint === "phone";
+        const sidebarClasses = [
+            "sidebar",
+            !expanded ? "collapsed" : "",
+            isPhone && expanded ? "expanded-mobile" : "",
+        ]
+            .filter(Boolean)
+            .join(" ");
         return html`
-            <aside class="sidebar ${!expanded ? "collapsed" : ""}">
+            <aside class=${sidebarClasses}>
                 <div class="toggle-container">
                     <sidebar-toggle
                         .expanded=${expanded}

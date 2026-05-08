@@ -4,7 +4,7 @@ import "../components/landing-view.js";
 import "../components/settings-dialog.js";
 import { ContextProvider } from "@lit/context";
 import { LitElement, css } from "lit-element";
-import { html } from "lit-html";
+import { html, nothing } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
 import { conversationContext, createConversationStore } from "../stores/conversation-store.js";
@@ -29,6 +29,7 @@ class MainPage extends LitElement {
         css`
             :host {
                 height: 100vh;
+                height: 100dvh;
             }
             .app {
                 height: 100%;
@@ -72,6 +73,17 @@ class MainPage extends LitElement {
                 opacity: 1;
                 transform: translateY(0);
                 pointer-events: auto;
+            }
+            .sidebar-backdrop {
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 10;
+            }
+            @media (max-width: 767px) {
+                .main {
+                    width: 100%;
+                }
             }
         `,
     ];
@@ -121,7 +133,7 @@ class MainPage extends LitElement {
         this._modeState = { mode: "player" };
 
         /** @type {import("../stores/ui-store.js").UIState} */
-        this._uiState = { sidebarExpanded: true, settingsOpen: false };
+        this._uiState = { sidebarExpanded: true, settingsOpen: false, breakpoint: "desktop" };
 
         // Store instances
         this._convStore = createConversationStore();
@@ -187,12 +199,51 @@ class MainPage extends LitElement {
             );
         };
         window.addEventListener("route-changed", this._boundRouteChange);
+
+        const phoneMql = window.matchMedia("(max-width: 767px)");
+        const tabletMql = window.matchMedia("(min-width: 768px) and (max-width: 1024px)");
+
+        const updateBreakpoint = () => {
+            /** @type {"phone" | "tablet" | "desktop"} */
+            let bp;
+            if (phoneMql.matches) {
+                bp = "phone";
+            } else if (tabletMql.matches) {
+                bp = "tablet";
+            } else {
+                bp = "desktop";
+            }
+            const newState = this._uiStore.setBreakpoint(this._uiState, bp);
+            if (bp === "phone" && this._uiState.sidebarExpanded) {
+                newState.sidebarExpanded = false;
+            }
+            if (bp === "tablet" && this._uiState.sidebarExpanded) {
+                newState.sidebarExpanded = false;
+            }
+            if (bp === "desktop" && !this._uiState.sidebarExpanded) {
+                newState.sidebarExpanded = true;
+            }
+            this._updateUIState(newState);
+        };
+        updateBreakpoint();
+        phoneMql.addEventListener("change", updateBreakpoint);
+        tabletMql.addEventListener("change", updateBreakpoint);
+
+        this._phoneMql = phoneMql;
+        this._tabletMql = tabletMql;
+        this._updateBreakpoint = updateBreakpoint;
     }
 
     disconnectedCallback() {
         super.disconnectedCallback();
         if (this._boundRouteChange) {
             window.removeEventListener("route-changed", this._boundRouteChange);
+        }
+        if (this._phoneMql && this._updateBreakpoint) {
+            this._phoneMql.removeEventListener("change", this._updateBreakpoint);
+        }
+        if (this._tabletMql && this._updateBreakpoint) {
+            this._tabletMql.removeEventListener("change", this._updateBreakpoint);
         }
     }
 
@@ -298,6 +349,9 @@ class MainPage extends LitElement {
     render() {
         return html`
             <div class="app" data-mode=${this._modeState.mode}>
+                ${this._uiState.breakpoint === "phone" && this._uiState.sidebarExpanded
+                    ? html`<div class="sidebar-backdrop" @click=${this.handleCloseSidebar}></div>`
+                    : nothing}
                 <chat-sidebar
                     .user=${this.user}
                     @new-chat=${this.handleNewChat}
@@ -320,6 +374,7 @@ class MainPage extends LitElement {
                             @mode-change=${this.handleModeChange}
                             @send-message=${this.handleSendMessage}
                             @stop-message=${this.handleStopMessage}
+                            @toggle-sidebar=${this.handleSidebarToggle}
                         ></chat-view>
                     </div>
                 </main>
@@ -656,6 +711,10 @@ class MainPage extends LitElement {
      */
     handleSidebarToggle(e) {
         this._updateUIState({ ...this._uiState, sidebarExpanded: e.detail.expanded });
+    }
+
+    handleCloseSidebar() {
+        this._updateUIState({ ...this._uiState, sidebarExpanded: false });
     }
 
     async handleLogout() {

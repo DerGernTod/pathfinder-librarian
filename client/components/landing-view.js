@@ -92,6 +92,24 @@ class LandingView extends LitElement {
                 outline: 2px solid var(--accent);
                 outline-offset: 2px;
             }
+            @media (max-width: 767px) {
+                .landing-welcome {
+                    padding: 1.5rem 1rem;
+                }
+                .landing-welcome h1 {
+                    font-size: 1.5rem;
+                }
+                .landing-welcome p {
+                    font-size: 0.875rem;
+                    margin-bottom: 1.5rem;
+                }
+                .landing-input-row {
+                    padding: 0.5rem 0.75rem;
+                }
+                .landing-prompt {
+                    font-size: 1rem;
+                }
+            }
         `,
     ];
 
