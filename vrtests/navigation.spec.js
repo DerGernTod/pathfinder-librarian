@@ -76,10 +76,12 @@ test.describe("navigation e2e tests", () => {
         const sidebar = page.locator("chat-sidebar");
 
         await input.fill("Test message for conv 1");
+        let requestPromise = page.waitForRequest("**/api/conversations/*/messages");
         await page.keyboard.press("Enter");
+        await requestPromise;
         await page.waitForLoadState("networkidle");
         const conv1Count = await messageList.locator("chat-message").count();
-        const requestPromise = page.waitForRequest("**/api/conversations/*/messages");
+        requestPromise = page.waitForRequest("**/api/conversations/*/messages");
         await sidebar.locator("conversation-item", { hasText: "Chandelier Assassination" }).click();
         await requestPromise;
         await page.waitForLoadState("networkidle");
@@ -95,7 +97,9 @@ test.describe("navigation e2e tests", () => {
         const firstMessage = messageList.locator("chat-message").first();
         await expect(firstMessage).not.toContainText("Test message for conv 1");
 
+        requestPromise = page.waitForRequest("**/api/conversations/*/messages");
         await sidebar.locator("conversation-item", { hasText: "Mitflit King Capture" }).click();
+        await requestPromise;
         await page.waitForLoadState("networkidle");
 
         await expect(messageList.locator("chat-message")).toHaveCount(conv1Count);
