@@ -42,11 +42,13 @@ class SidebarToggle extends LitElement {
 
     static properties = {
         expanded: { type: Boolean },
+        loading: { type: Boolean },
     };
 
     constructor() {
         super();
         this.expanded = true;
+        this.loading = false;
     }
 
     render() {
@@ -56,14 +58,18 @@ class SidebarToggle extends LitElement {
 
         return html`
             <button @click=${this.handleClick} class="toggle-btn" aria-label=${ariaLabel}>
-                <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d=${iconPath}
-                    />
-                </svg>
+                ${this.loading
+                    ? html`<sl-spinner style="font-size: 1rem;"></sl-spinner>`
+                    : html`
+                          <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="2"
+                                  d=${iconPath}
+                              />
+                          </svg>
+                      `}
             </button>
         `;
     }

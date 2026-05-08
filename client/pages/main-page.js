@@ -54,6 +54,24 @@ class MainPage extends LitElement {
                 flex: 1;
                 display: flex;
                 flex-direction: column;
+                position: relative;
+            }
+            .view-layer {
+                position: absolute;
+                inset: 0;
+                display: flex;
+                flex-direction: column;
+                opacity: 0;
+                transform: translateY(10px);
+                pointer-events: none;
+                transition:
+                    opacity 0.5s ease-in-out,
+                    transform 0.5s ease-in-out;
+            }
+            .view-layer.active {
+                opacity: 1;
+                transform: translateY(0);
+                pointer-events: auto;
             }
         `,
     ];
@@ -67,6 +85,8 @@ class MainPage extends LitElement {
         _modeState: { type: Object },
         _uiState: { type: Object },
         _isNewChat: { type: Boolean },
+        _viewState: { type: String },
+        _prevViewState: { type: String },
     };
 
     constructor() {
@@ -77,13 +97,22 @@ class MainPage extends LitElement {
         this._landingSubmitting = false;
         /** @type {boolean} */
         this._isNewChat = false;
+        /** @type {string} */
+        this._viewState = "loading";
+        /** @type {string} */
+        this._prevViewState = "loading";
 
         /** @type {{ conversationId?: string }} */
         this._routeParams = {};
 
         // Internal state objects (provided via ContextProvider)
         /** @type {import("../stores/conversation-store.js").ConversationState} */
-        this._convState = { conversations: [], activeConversationId: "", loading: true };
+        this._convState = {
+            conversations: [],
+            activeConversationId: "",
+            loading: true,
+            loadingConversationId: "",
+        };
 
         /** @type {import("../stores/messages-store.js").MessagesState} */
         this._msgState = { messages: [], responding: false };
@@ -105,7 +134,18 @@ class MainPage extends LitElement {
     }
 
     get isLanding() {
-        return !this._convState.loading && this._msgState.messages.length === 0;
+        if (this._viewState === "landing") {
+            return true;
+        }
+        if (this._viewState === "conversation") {
+            return false;
+        }
+        // _viewState is "loading" or undefined - use legacy check for tests
+        return (
+            !this._convState.loading &&
+            this._msgState.messages.length === 0 &&
+            this._convState.conversations.length === 0
+        );
     }
 
     connectedCallback() {
@@ -225,7 +265,12 @@ class MainPage extends LitElement {
                 router.navigate(`/conversations/${activeId}`, { replace: true });
             }
 
-            this._updateConvState({ conversations, activeConversationId: activeId, loading: true });
+            this._updateConvState({
+                conversations,
+                activeConversationId: activeId,
+                loading: true,
+                loadingConversationId: "",
+            });
 
             // Fetch messages for the active conversation
             if (activeId) {
@@ -238,11 +283,15 @@ class MainPage extends LitElement {
                 activeConversationId: activeId,
                 loading: false,
             });
+
+            // Transition to appropriate view state after initial load
+            if (conversations.length > 0) {
+                this._viewState = "conversation";
+            } else {
+                this._viewState = "landing";
+            }
         } catch {
-            this._updateConvState({
-                ...this._convState,
-                loading: false,
-            });
+            this._viewState = "landing";
         }
     }
 
@@ -260,20 +309,19 @@ class MainPage extends LitElement {
                     }}
                 ></chat-sidebar>
                 <main class="main">
-                    ${this.isLanding
-                        ? html`
-                              <landing-view
-                                  .submitting=${this._landingSubmitting}
-                                  @landing-submit=${this.handleLandingSubmit}
-                              ></landing-view>
-                          `
-                        : html`
-                              <chat-view
-                                  @mode-change=${this.handleModeChange}
-                                  @send-message=${this.handleSendMessage}
-                                  @stop-message=${this.handleStopMessage}
-                              ></chat-view>
-                          `}
+                    <div class="view-layer ${this.isLanding ? "active" : ""}">
+                        <landing-view
+                            .submitting=${this._landingSubmitting}
+                            @landing-submit=${this.handleLandingSubmit}
+                        ></landing-view>
+                    </div>
+                    <div class="view-layer ${!this.isLanding ? "active" : ""}">
+                        <chat-view
+                            @mode-change=${this.handleModeChange}
+                            @send-message=${this.handleSendMessage}
+                            @stop-message=${this.handleStopMessage}
+                        ></chat-view>
+                    </div>
                 </main>
             </div>
             <settings-dialog
@@ -288,7 +336,8 @@ class MainPage extends LitElement {
     }
 
     async handleNewChat() {
-        // Set ephemeral state - don't create conversation yet
+        this._prevViewState = this._viewState;
+        this._viewState = "landing";
         this._isNewChat = true;
         router.navigate("/", { replace: true });
         this._updateConvState({
@@ -316,12 +365,19 @@ class MainPage extends LitElement {
             this._isNewChat = false;
         }
 
+        // Save previous view for crossfade transition
+        this._prevViewState = this._viewState;
+
+        // Transition to conversation view if needed
+        if (this._viewState === "landing") {
+            this._viewState = "conversation";
+        }
+
+        // Set loading state BEFORE fetch and view transition
+        this._updateConvState({ ...this._convState, loadingConversationId: convId });
         this._updateConvState({ ...this._convState, activeConversationId: convId });
 
-        // Update URL BEFORE awaiting fetch — ensures URL is updated before
-        // networkidle completes in Playwright tests, avoiding race conditions.
-        // Safe because _handleRouteChange guard checks activeConversationId
-        // (already set above) against the route-changed event params.
+        // Update URL BEFORE await - networkidle waits for this in tests
         const navigate = opts?.navigate ?? "push";
         if (navigate === "replace") {
             router.navigate(`/conversations/${convId}`, { replace: true });
@@ -329,8 +385,28 @@ class MainPage extends LitElement {
             router.navigate(`/conversations/${convId}`);
         }
 
-        const msgs = await this._msgStore.fetchMessages(convId);
-        this._updateMsgState({ messages: msgs, responding: false });
+        // Use View Transition API for smooth crossfade, fallback for testing
+        let transition;
+        if (document.startViewTransition) {
+            transition = document.startViewTransition(async () => {
+                const msgs = await this._msgStore.fetchMessages(convId);
+
+                // Update messages - this becomes the "new" state for the transition
+                this._updateMsgState({ messages: msgs, responding: false });
+            });
+        } else {
+            // Fallback for testing (happy-dom doesn't support View Transition API)
+            const msgs = await this._msgStore.fetchMessages(convId);
+            this._updateMsgState({ messages: msgs, responding: false });
+        }
+
+        // Wait for transition to complete if available
+        if (transition) {
+            await transition.finished;
+        }
+
+        // Clear loading state
+        this._updateConvState({ ...this._convState, loadingConversationId: "" });
     }
 
     /**
@@ -566,6 +642,15 @@ class MainPage extends LitElement {
         this._currentAssistantController?.abort();
     }
 
+    focusChatInput() {
+        const chatInput = /** @type {{ focus: () => void } | null} */ (
+            this.shadowRoot?.querySelector("chat-input")
+        );
+        if (chatInput?.focus) {
+            chatInput.focus();
+        }
+    }
+
     /**
      * @param {CustomEvent<{ expanded: boolean }>} e
      */
@@ -611,26 +696,74 @@ class MainPage extends LitElement {
     async handleLandingSubmit(e) {
         const text = e.detail.text;
         this._landingSubmitting = true;
+        this._prevViewState = this._viewState;
+        this._viewState = "conversation";
 
         /** @type {string} */
         let targetConvId = this._convState.activeConversationId;
 
         try {
-            if (this._convState.conversations.length === 0) {
-                const conv = await this._convStore.createConversation(text.slice(0, 80));
-                const newConversations = [conv, ...this._convState.conversations];
-                targetConvId = conv.id;
-                this._updateConvState({
-                    conversations: newConversations,
-                    activeConversationId: conv.id,
-                    loading: false,
-                });
-                const msgs = await this._msgStore.fetchMessages(conv.id);
-                this._updateMsgState({ messages: msgs, responding: false });
+            if (
+                this._convState.activeConversationId === "__new__" ||
+                this._convState.conversations.length === 0
+            ) {
+                /** @type {Promise<void> | { finished: Promise<void> } | undefined} */
+                let transition;
+                if (document.startViewTransition) {
+                    transition = document.startViewTransition(async () => {
+                        const conv = await this._convStore.createConversation(text.slice(0, 80));
+                        const newConversations = [conv, ...this._convState.conversations];
+                        targetConvId = conv.id;
+                        this._updateConvState({
+                            conversations: newConversations,
+                            activeConversationId: conv.id,
+                            loading: false,
+                        });
+                        const msgs = await this._msgStore.fetchMessages(conv.id);
 
-                // Navigate with replace: true — first conversation from landing should
-                // replace the landing URL without creating a history entry.
-                router.navigate(`/conversations/${conv.id}`, { replace: true });
+                        this._updateMsgState({ messages: msgs, responding: false });
+
+                        router.navigate(`/conversations/${conv.id}`, { replace: true });
+
+                        this.dispatchEvent(
+                            new CustomEvent("conversations-updated", {
+                                bubbles: true,
+                                composed: true,
+                            }),
+                        );
+                    });
+                } else {
+                    const conv = await this._convStore.createConversation(text.slice(0, 80));
+                    const newConversations = [conv, ...this._convState.conversations];
+                    targetConvId = conv.id;
+                    this._updateConvState({
+                        conversations: newConversations,
+                        activeConversationId: conv.id,
+                        loading: false,
+                    });
+                    const msgs = await this._msgStore.fetchMessages(conv.id);
+
+                    this._updateMsgState({ messages: msgs, responding: false });
+                    router.navigate(`/conversations/${conv.id}`, { replace: true });
+
+                    this.dispatchEvent(
+                        new CustomEvent("conversations-updated", {
+                            bubbles: true,
+                            composed: true,
+                        }),
+                    );
+                }
+
+                if (transition) {
+                    if ("finished" in transition) {
+                        await transition.finished;
+                    } else {
+                        await transition;
+                    }
+                }
+
+                await this.updateComplete;
+                this.focusChatInput();
             }
 
             const newResponding = { messages: this._msgState.messages, responding: true };

@@ -92,10 +92,9 @@ test.describe("persistence e2e tests", () => {
         await page.waitForLoadState("networkidle");
 
         // Verify message NOT in conv 2
-        const conv2Messages = page.locator("chat-message");
-        for (const msg of await conv2Messages.all()) {
-            await expect(msg).not.toContainText("Conv 1 isolation test");
-        }
+        await expect(
+            page.locator("chat-message", { hasText: "Conv 1 isolation test" }),
+        ).toHaveCount(0);
 
         // Switch back — message IS in conv 1
         await sidebar.locator("conversation-item", { hasText: "Mitflit" }).click();

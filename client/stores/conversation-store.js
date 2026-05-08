@@ -6,7 +6,8 @@ import { client } from "../utils/rpc-client.js";
  * @typedef {{
  *   conversations: import("../../shared/types.js").Conversation[],
  *   activeConversationId: string,
- *   loading: boolean
+ *   loading: boolean,
+ *   loadingConversationId?: string
  * }} ConversationState
  */
 

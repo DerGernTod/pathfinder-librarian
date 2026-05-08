@@ -19,7 +19,8 @@
         "test": "bun test",
         "check": "tsgo -p jsconfig.json --noEmit",
         "e2e": "playwright test",
-        "e2e-local": "playwright test --project=chromium --retries=0 --ui"
+        "e2e-local": "playwright test --project=chromium --retries=0 --ui",
+        "gh:update-snapshots": "gh workflow run \"Update Snapshots\" --ref main"
     },
     "dependencies": {
         "@hono/zod-validator": "0.7.6",

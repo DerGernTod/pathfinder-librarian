@@ -152,10 +152,9 @@ test.describe("landing page visual regression", () => {
         await page.click('[data-test="landing-send"]');
 
         // Wait for UI to swap — either session item or composer appears
-        await page.waitForSelector('[data-test="session-item"]', { timeout: 5000 }).catch(() => {
-            // If session item doesn't appear, wait for composer
-        });
-        await page.waitForTimeout(1500);
+        await page.waitForLoadState("networkidle");
+        await page.waitForSelector('[data-test="session-item"]', { timeout: 5000 });
+        await page.waitForSelector("chat-message", { timeout: 5000 });
 
         await expect(page).toHaveScreenshot("landing-after-submit.png", {
             fullPage: true,

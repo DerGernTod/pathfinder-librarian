@@ -1,6 +1,6 @@
 import { ContextConsumer } from "@lit/context";
 import { LitElement, css } from "lit-element";
-import { html } from "lit-html";
+import { html, nothing } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
 import { conversationContext } from "../stores/conversation-store.js";
@@ -48,12 +48,15 @@ class ConversationItem extends LitElement {
 
     static properties = {
         conversation: { type: Object },
+        loading: { type: Boolean },
     };
 
     constructor() {
         super();
         /** @type {Conversation} */
         this.conversation = { id: "", title: "" };
+        /** @type {boolean} */
+        this.loading = false;
         /** @type {import("../stores/conversation-store.js").ConversationState} */
         this._convState = { conversations: [], activeConversationId: "", loading: true };
     }
@@ -76,6 +79,9 @@ class ConversationItem extends LitElement {
         const active = this._convState.activeConversationId === this.conversation.id;
         return html`
             <div class="item ${active ? "active" : ""}" @click=${() => this.handleClick()}>
+                ${this.loading
+                    ? html`<sl-spinner style="font-size: 0.75rem;"></sl-spinner>`
+                    : nothing}
                 ${this.conversation.title}
             </div>
         `;

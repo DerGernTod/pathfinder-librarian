@@ -97,6 +97,7 @@ class LandingView extends LitElement {
 
     static properties = {
         submitting: { type: Boolean },
+        _text: { type: String, state: true },
     };
 
     constructor() {
@@ -109,10 +110,10 @@ class LandingView extends LitElement {
 
     render() {
         return html`
-            <section role="region" aria-label="Welcome" class="landing-welcome">
-                <h1>Pathfinder Librarian</h1>
-                <p>Ask about rules, lore, or mechanics...</p>
-                <div class="landing-input-row">
+            <section role="region" aria-label="Welcome" class="landing-welcome" part="welcome">
+                <h1 part="title">Pathfinder Librarian</h1>
+                <p part="subtitle">Ask about rules, lore, or mechanics...</p>
+                <div class="landing-input-row" part="input-row">
                     <input
                         aria-label="Type your first prompt"
                         data-test="landing-input"
@@ -122,6 +123,7 @@ class LandingView extends LitElement {
                         @input=${this._handleInput}
                         @keydown=${this._handleKeydown}
                         placeholder="e.g. How does flanking work?"
+                        part="input"
                     />
                     <button
                         aria-label="Send prompt"
@@ -129,11 +131,12 @@ class LandingView extends LitElement {
                         data-test="landing-send"
                         ?disabled=${this.submitting}
                         @click=${this._handleSubmit}
+                        part="send"
                     >
                         Send
                     </button>
                 </div>
-                <p class="landing-hint">Press Enter to send</p>
+                <p class="landing-hint" part="hint">Press Enter to send</p>
             </section>
         `;
     }
