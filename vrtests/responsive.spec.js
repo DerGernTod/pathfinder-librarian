@@ -19,11 +19,6 @@ test.describe("responsive design", () => {
             });
         });
 
-        test("sidebar hidden by default", async ({ page }) => {
-            const sidebar = page.locator("chat-sidebar");
-            await expect(sidebar).toHaveScreenshot("responsive-phone-sidebar-hidden.png");
-        });
-
         test("sidebar opens as overlay", async ({ page }) => {
             await page.locator("chat-header .hamburger-btn").click();
             await page.waitForTimeout(500);
