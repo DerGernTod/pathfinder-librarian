@@ -710,7 +710,8 @@ class MainPage extends LitElement {
      * @param {CustomEvent<{ expanded: boolean }>} e
      */
     handleSidebarToggle(e) {
-        this._updateUIState({ ...this._uiState, sidebarExpanded: e.detail.expanded });
+        const expanded = e.detail?.expanded ?? !this._uiState.sidebarExpanded;
+        this._updateUIState({ ...this._uiState, sidebarExpanded: expanded });
     }
 
     handleCloseSidebar() {
