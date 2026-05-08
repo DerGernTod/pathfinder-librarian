@@ -1,7 +1,12 @@
+/** @typedef {import("../../shared/types.js").Mode} Mode */
+
+import "./mode-toggle.js";
+import { ContextConsumer } from "@lit/context";
 import { LitElement, css } from "lit-element";
-import { html } from "lit-html";
+import { html, nothing } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
+import { uiContext } from "../stores/ui-store.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
 
@@ -18,6 +23,48 @@ class LandingView extends LitElement {
             :host {
                 flex: 1;
                 display: flex;
+                flex-direction: column;
+            }
+            .landing-header {
+                height: 3.5rem;
+                border-bottom: 1px solid var(--border);
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0 1.5rem;
+                flex-shrink: 0;
+            }
+            .header-left {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+            .hamburger-btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 2rem;
+                height: 2rem;
+                background: transparent;
+                border: none;
+                color: var(--muted-foreground);
+                cursor: pointer;
+                border-radius: 0.375rem;
+                padding: 0;
+                flex-shrink: 0;
+            }
+            .hamburger-btn:hover {
+                background: var(--secondary);
+                color: var(--foreground);
+            }
+            .hamburger-icon {
+                width: 1.25rem;
+                height: 1.25rem;
+            }
+            @media (min-width: 768px) {
+                .hamburger-btn {
+                    display: none;
+                }
             }
             .landing-welcome {
                 flex: 1;
@@ -63,6 +110,9 @@ class LandingView extends LitElement {
                 font-size: 1.125rem;
                 line-height: 1.5rem;
                 color: var(--foreground);
+            }
+            .landing-prompt:focus-visible {
+                outline: none;
             }
             .landing-prompt::placeholder {
                 color: var(--muted-foreground);
@@ -124,10 +174,49 @@ class LandingView extends LitElement {
         this.submitting = false;
         /** @type {string} */
         this._text = "";
+        /** @type {import("../stores/ui-store.js").UIState} */
+        this._uiState = { sidebarExpanded: true, settingsOpen: false, breakpoint: "desktop" };
+    }
+
+    connectedCallback() {
+        super.connectedCallback();
+        new ContextConsumer(this, {
+            context: uiContext,
+            callback: /** @param {import("../stores/ui-store.js").UIState} v */ (v) => {
+                this._uiState = v;
+            },
+            subscribe: true,
+        });
     }
 
     render() {
         return html`
+            <header class="landing-header">
+                <div class="header-left">
+                    ${this._uiState.breakpoint === "phone"
+                        ? html`<button
+                              class="hamburger-btn"
+                              @click=${this.handleMenuToggle}
+                              aria-label="Open sidebar"
+                          >
+                              <svg
+                                  class="hamburger-icon"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                              >
+                                  <path
+                                      stroke-linecap="round"
+                                      stroke-linejoin="round"
+                                      stroke-width="2"
+                                      d="M4 6h16M4 12h16M4 18h16"
+                                  />
+                              </svg>
+                          </button>`
+                        : nothing}
+                </div>
+                <mode-toggle @mode-change=${this.handleModeChange}></mode-toggle>
+            </header>
             <section role="region" aria-label="Welcome" class="landing-welcome" part="welcome">
                 <h1 part="title">Pathfinder Librarian</h1>
                 <p part="subtitle">Ask about rules, lore, or mechanics...</p>
@@ -193,6 +282,29 @@ class LandingView extends LitElement {
             }),
         );
         this._text = "";
+    }
+
+    /**
+     * @param {CustomEvent<{ mode: Mode }>} e
+     */
+    handleModeChange(e) {
+        this.dispatchEvent(
+            new CustomEvent("mode-change", {
+                detail: { mode: e.detail.mode },
+                bubbles: true,
+                composed: true,
+            }),
+        );
+    }
+
+    handleMenuToggle() {
+        this.dispatchEvent(
+            new CustomEvent("toggle-sidebar", {
+                detail: { expanded: true },
+                bubbles: true,
+                composed: true,
+            }),
+        );
     }
 }
 

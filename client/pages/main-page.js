@@ -367,6 +367,8 @@ class MainPage extends LitElement {
                         <landing-view
                             .submitting=${this._landingSubmitting}
                             @landing-submit=${this.handleLandingSubmit}
+                            @mode-change=${this.handleModeChange}
+                            @toggle-sidebar=${this.handleSidebarToggle}
                         ></landing-view>
                     </div>
                     <div class="view-layer ${!this.isLanding ? "active" : ""}">

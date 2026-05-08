@@ -201,7 +201,9 @@ class ChatSidebar extends LitElement {
         `;
     }
 
-    handleToggle() {
+    /** @param {Event} e */
+    handleToggle(e) {
+        e.stopPropagation();
         const newExpanded = !this._uiState.sidebarExpanded;
         this.dispatchEvent(
             new CustomEvent("toggle-sidebar", {
