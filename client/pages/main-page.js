@@ -422,13 +422,6 @@ class MainPage extends LitElement {
         this._updateMsgState({ messages: [], responding: false });
 
         const root = this.shadowRoot;
-        if (root) {
-            const ci = /** @type {{ value: string } | null} */ (root.querySelector("chat-input"));
-            if (ci) {
-                ci.value = "";
-            }
-        }
-
         document.dispatchEvent(
             new CustomEvent("select-conversation", { detail: { id: "__new__" } }),
         );

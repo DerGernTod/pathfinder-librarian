@@ -102,6 +102,17 @@ class ChatInput extends LitElement {
         value: { type: String },
     };
 
+    clearValue() {
+        this.value = "";
+    }
+
+    updated() {
+        const slTextarea = this.shadowRoot?.querySelector("sl-textarea");
+        if (slTextarea && slTextarea.value !== this.value) {
+            slTextarea.value = this.value;
+        }
+    }
+
     constructor() {
         super();
         this.value = "";
@@ -110,9 +121,8 @@ class ChatInput extends LitElement {
         /** @type {import("../stores/messages-store.js").MessagesState} */
         this._msgState = { messages: [], responding: false };
         document.addEventListener("select-conversation", () => {
-            const textarea = /** @type {HTMLTextAreaElement | null} */ (
-                this.shadowRoot?.querySelector("sl-textarea")
-            );
+            this.clearValue();
+            const textarea = this.shadowRoot?.querySelector("sl-textarea");
             textarea?.focus();
         });
     }
