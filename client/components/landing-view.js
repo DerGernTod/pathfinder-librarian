@@ -198,6 +198,19 @@ class LandingView extends LitElement {
         _text: { type: String, state: true },
     };
 
+    firstUpdated() {
+        const root = this.shadowRoot;
+        if (!root) {
+            return;
+        }
+        const input = /** @type {HTMLInputElement | null} */ (
+            root.querySelector(".landing-prompt")
+        );
+        if (input) {
+            input.focus();
+        }
+    }
+
     constructor() {
         super();
         /** @type {boolean} */
