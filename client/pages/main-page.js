@@ -381,6 +381,7 @@ class MainPage extends LitElement {
                             @landing-submit=${this.handleLandingSubmit}
                             @mode-change=${this.handleModeChange}
                             @toggle-sidebar=${this.handleSidebarToggle}
+                            @new-chat=${this.handleNewChat}
                         ></landing-view>
                     </div>
                     <div class="view-layer ${!this.isLanding ? "active" : ""}">
@@ -389,6 +390,7 @@ class MainPage extends LitElement {
                             @send-message=${this.handleSendMessage}
                             @stop-message=${this.handleStopMessage}
                             @toggle-sidebar=${this.handleSidebarToggle}
+                            @new-chat=${this.handleNewChat}
                         ></chat-view>
                     </div>
                 </main>
@@ -405,6 +407,9 @@ class MainPage extends LitElement {
     }
 
     async handleNewChat() {
+        if (this._uiState.breakpoint === "phone" && this._uiState.sidebarExpanded) {
+            this._updateUIState({ ...this._uiState, sidebarExpanded: false });
+        }
         this._prevViewState = this._viewState;
         this._viewState = "landing";
         this._isNewChat = true;

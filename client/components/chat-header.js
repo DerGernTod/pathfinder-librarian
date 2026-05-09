@@ -77,6 +77,28 @@ class ChatHeader extends LitElement {
                 width: 1.25rem;
                 height: 1.25rem;
             }
+            .new-chat-icon-btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 2rem;
+                height: 2rem;
+                background: transparent;
+                border: none;
+                color: var(--muted-foreground);
+                cursor: pointer;
+                border-radius: 0.375rem;
+                padding: 0;
+                flex-shrink: 0;
+            }
+            .new-chat-icon-btn:hover {
+                background: var(--secondary);
+                color: var(--foreground);
+            }
+            .new-chat-icon {
+                width: 1.125rem;
+                height: 1.125rem;
+            }
             @media (min-width: 768px) {
                 .hamburger-btn {
                     display: none;
@@ -131,7 +153,30 @@ class ChatHeader extends LitElement {
                         ? html`<span class="subtitle">Rules Assistant</span>`
                         : nothing}
                 </div>
-                <mode-toggle @mode-change=${this.handleModeChange}></mode-toggle>
+                <div style="display:flex;align-items:center;gap:0.25rem;">
+                    ${this._uiState.breakpoint === "phone"
+                        ? html`<button
+                              class="new-chat-icon-btn"
+                              @click=${this.handleNewChat}
+                              aria-label="New chat"
+                          >
+                              <svg
+                                  class="new-chat-icon"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                              >
+                                  <path
+                                      stroke-linecap="round"
+                                      stroke-linejoin="round"
+                                      stroke-width="2"
+                                      d="M12 4v16m8-8H4"
+                                  />
+                              </svg>
+                          </button>`
+                        : nothing}
+                    <mode-toggle @mode-change=${this.handleModeChange}></mode-toggle>
+                </div>
             </header>
         `;
     }
@@ -153,6 +198,15 @@ class ChatHeader extends LitElement {
         this.dispatchEvent(
             new CustomEvent("toggle-sidebar", {
                 detail: { expanded: true },
+                bubbles: true,
+                composed: true,
+            }),
+        );
+    }
+
+    handleNewChat() {
+        this.dispatchEvent(
+            new CustomEvent("new-chat", {
                 bubbles: true,
                 composed: true,
             }),
