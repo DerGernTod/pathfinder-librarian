@@ -29,7 +29,6 @@ class MainPage extends LitElement {
         css`
             :host {
                 height: 100vh;
-                height: 100dvh;
             }
             .app {
                 height: 100%;
@@ -233,6 +232,15 @@ class MainPage extends LitElement {
         this._phoneMql = phoneMql;
         this._tabletMql = tabletMql;
         this._updateBreakpoint = updateBreakpoint;
+
+        if (window.visualViewport) {
+            const vv = window.visualViewport;
+            this._onVvResize = () => {
+                this.style.height = `${vv.height}px`;
+            };
+            vv.addEventListener("resize", this._onVvResize);
+            this._onVvResize();
+        }
     }
 
     disconnectedCallback() {
@@ -245,6 +253,9 @@ class MainPage extends LitElement {
         }
         if (this._tabletMql && this._updateBreakpoint) {
             this._tabletMql.removeEventListener("change", this._updateBreakpoint);
+        }
+        if (this._onVvResize) {
+            window.visualViewport?.removeEventListener("resize", this._onVvResize);
         }
     }
 
