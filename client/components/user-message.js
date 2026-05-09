@@ -39,6 +39,11 @@ class UserMessage extends LitElement {
                 font-size: 0.875rem;
                 line-height: 1.625;
             }
+            @media (max-width: 767px) {
+                .user-bubble {
+                    max-width: 85%;
+                }
+            }
         `,
     ];
 

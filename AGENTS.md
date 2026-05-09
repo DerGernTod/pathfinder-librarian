@@ -43,6 +43,17 @@ Full architecture and patterns in `docs/architecture.md`.
 - Zod schemas in `shared/` for reuse
 - Aria labels for elements without visual labels
 
+## Responsive design
+
+Three breakpoints: phone (<768px), tablet (768–1024px), desktop (>1024px). Breakpoint state flows through `uiContext` via `UIState.breakpoint`.
+
+Any UI change that affects layout must:
+
+- Consider all 3 viewport sizes
+- Include VR tests for each relevant viewport (phone 375×812, tablet 768×1024, desktop 1280×800)
+- Use `@media` queries inside component static styles (work inside Shadow DOM)
+- Test sidebar behavior (hidden/overlay on phone, collapsed on tablet, expanded on desktop)
+
 ## Testing
 
 See `docs/testing.md` for unit test patterns, mocking, happy-dom limitations, and SSE event names. Load the `playwright` skill for visual regression test gotchas. Load the `testing` skill for test writing best practices.

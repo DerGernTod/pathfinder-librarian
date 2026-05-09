@@ -38,7 +38,6 @@ describe("main-page", () => {
     let element;
 
     beforeEach(() => {
-        // Clean up any existing elements
         while (document.body.firstChild) {
             document.body.removeChild(document.body.firstChild);
         }
@@ -52,9 +51,14 @@ describe("main-page", () => {
             }
             throw new Error(`Unexpected fetch URL: ${url}`);
         });
+        // @ts-expect-error - override matchMedia for desktop breakpoint in tests
+        window.matchMedia = mock((/** @type {string} */ _query) => ({
+            matches: false,
+            addEventListener: mock(() => {}),
+            removeEventListener: mock(() => {}),
+        }));
         element = createMainPage();
         document.body.appendChild(element);
-        // Set viewState for proper rendering
         element._viewState = "conversation";
     });
 

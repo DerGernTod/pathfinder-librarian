@@ -4,7 +4,7 @@ import "../components/landing-view.js";
 import "../components/settings-dialog.js";
 import { ContextProvider } from "@lit/context";
 import { LitElement, css } from "lit-element";
-import { html } from "lit-html";
+import { html, nothing } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
 import { conversationContext, createConversationStore } from "../stores/conversation-store.js";
@@ -61,6 +61,7 @@ class MainPage extends LitElement {
                 inset: 0;
                 display: flex;
                 flex-direction: column;
+                overflow: hidden;
                 opacity: 0;
                 transform: translateY(10px);
                 pointer-events: none;
@@ -72,6 +73,17 @@ class MainPage extends LitElement {
                 opacity: 1;
                 transform: translateY(0);
                 pointer-events: auto;
+            }
+            .sidebar-backdrop {
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 10;
+            }
+            @media (max-width: 767px) {
+                .main {
+                    width: 100%;
+                }
             }
         `,
     ];
@@ -121,7 +133,7 @@ class MainPage extends LitElement {
         this._modeState = { mode: "player" };
 
         /** @type {import("../stores/ui-store.js").UIState} */
-        this._uiState = { sidebarExpanded: true, settingsOpen: false };
+        this._uiState = { sidebarExpanded: true, settingsOpen: false, breakpoint: "desktop" };
 
         // Store instances
         this._convStore = createConversationStore();
@@ -187,12 +199,63 @@ class MainPage extends LitElement {
             );
         };
         window.addEventListener("route-changed", this._boundRouteChange);
+
+        const phoneMql = window.matchMedia("(max-width: 767px)");
+        const tabletMql = window.matchMedia("(min-width: 768px) and (max-width: 1024px)");
+
+        const updateBreakpoint = () => {
+            /** @type {"phone" | "tablet" | "desktop"} */
+            let bp;
+            if (phoneMql.matches) {
+                bp = "phone";
+            } else if (tabletMql.matches) {
+                bp = "tablet";
+            } else {
+                bp = "desktop";
+            }
+            const newState = this._uiStore.setBreakpoint(this._uiState, bp);
+            if (bp === "phone" && this._uiState.sidebarExpanded) {
+                newState.sidebarExpanded = false;
+            }
+            if (bp === "tablet" && this._uiState.sidebarExpanded) {
+                newState.sidebarExpanded = false;
+            }
+            if (bp === "desktop" && !this._uiState.sidebarExpanded) {
+                newState.sidebarExpanded = true;
+            }
+            this._updateUIState(newState);
+        };
+        updateBreakpoint();
+        phoneMql.addEventListener("change", updateBreakpoint);
+        tabletMql.addEventListener("change", updateBreakpoint);
+
+        this._phoneMql = phoneMql;
+        this._tabletMql = tabletMql;
+        this._updateBreakpoint = updateBreakpoint;
+
+        if (window.visualViewport) {
+            const vv = window.visualViewport;
+            this._onVvResize = () => {
+                this.style.height = `${vv.height}px`;
+            };
+            vv.addEventListener("resize", this._onVvResize);
+            this._onVvResize();
+        }
     }
 
     disconnectedCallback() {
         super.disconnectedCallback();
         if (this._boundRouteChange) {
             window.removeEventListener("route-changed", this._boundRouteChange);
+        }
+        if (this._phoneMql && this._updateBreakpoint) {
+            this._phoneMql.removeEventListener("change", this._updateBreakpoint);
+        }
+        if (this._tabletMql && this._updateBreakpoint) {
+            this._tabletMql.removeEventListener("change", this._updateBreakpoint);
+        }
+        if (this._onVvResize) {
+            window.visualViewport?.removeEventListener("resize", this._onVvResize);
         }
     }
 
@@ -298,6 +361,9 @@ class MainPage extends LitElement {
     render() {
         return html`
             <div class="app" data-mode=${this._modeState.mode}>
+                ${this._uiState.breakpoint === "phone" && this._uiState.sidebarExpanded
+                    ? html`<div class="sidebar-backdrop" @click=${this.handleCloseSidebar}></div>`
+                    : nothing}
                 <chat-sidebar
                     .user=${this.user}
                     @new-chat=${this.handleNewChat}
@@ -313,6 +379,9 @@ class MainPage extends LitElement {
                         <landing-view
                             .submitting=${this._landingSubmitting}
                             @landing-submit=${this.handleLandingSubmit}
+                            @mode-change=${this.handleModeChange}
+                            @toggle-sidebar=${this.handleSidebarToggle}
+                            @new-chat=${this.handleNewChat}
                         ></landing-view>
                     </div>
                     <div class="view-layer ${!this.isLanding ? "active" : ""}">
@@ -320,6 +389,8 @@ class MainPage extends LitElement {
                             @mode-change=${this.handleModeChange}
                             @send-message=${this.handleSendMessage}
                             @stop-message=${this.handleStopMessage}
+                            @toggle-sidebar=${this.handleSidebarToggle}
+                            @new-chat=${this.handleNewChat}
                         ></chat-view>
                     </div>
                 </main>
@@ -336,6 +407,9 @@ class MainPage extends LitElement {
     }
 
     async handleNewChat() {
+        if (this._uiState.breakpoint === "phone" && this._uiState.sidebarExpanded) {
+            this._updateUIState({ ...this._uiState, sidebarExpanded: false });
+        }
         this._prevViewState = this._viewState;
         this._viewState = "landing";
         this._isNewChat = true;
@@ -347,10 +421,20 @@ class MainPage extends LitElement {
         });
         this._updateMsgState({ messages: [], responding: false });
 
-        // Focus the input by dispatching select-conversation event
+        const root = this.shadowRoot;
         document.dispatchEvent(
             new CustomEvent("select-conversation", { detail: { id: "__new__" } }),
         );
+
+        if (root) {
+            const lv = /** @type {import("../components/landing-view.js").LandingView | null} */ (
+                root.querySelector("landing-view")
+            );
+            if (lv) {
+                lv.clearText();
+                lv.focusInput();
+            }
+        }
     }
 
     /**
@@ -359,6 +443,10 @@ class MainPage extends LitElement {
      */
     async handleSelectConversation(e, opts) {
         const convId = e.detail.id;
+
+        if (this._uiState.breakpoint === "phone" && this._uiState.sidebarExpanded) {
+            this._updateUIState({ ...this._uiState, sidebarExpanded: false });
+        }
 
         // Clear ephemeral new chat state if switching away
         if (this._isNewChat && convId !== "__new__") {
@@ -655,7 +743,12 @@ class MainPage extends LitElement {
      * @param {CustomEvent<{ expanded: boolean }>} e
      */
     handleSidebarToggle(e) {
-        this._updateUIState({ ...this._uiState, sidebarExpanded: e.detail.expanded });
+        const expanded = e.detail?.expanded ?? !this._uiState.sidebarExpanded;
+        this._updateUIState({ ...this._uiState, sidebarExpanded: expanded });
+    }
+
+    handleCloseSidebar() {
+        this._updateUIState({ ...this._uiState, sidebarExpanded: false });
     }
 
     async handleLogout() {
@@ -698,6 +791,7 @@ class MainPage extends LitElement {
         this._landingSubmitting = true;
         this._prevViewState = this._viewState;
         this._viewState = "conversation";
+        this._isNewChat = false;
 
         /** @type {string} */
         let targetConvId = this._convState.activeConversationId;

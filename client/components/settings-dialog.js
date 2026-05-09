@@ -129,7 +129,7 @@ class SettingsDialog extends LitElement {
         /** @type {string} */
         this.error = "";
         /** @type {import("../stores/ui-store.js").UIState} */
-        this._uiState = { sidebarExpanded: true, settingsOpen: false };
+        this._uiState = { sidebarExpanded: true, settingsOpen: false, breakpoint: "desktop" };
     }
 
     connectedCallback() {

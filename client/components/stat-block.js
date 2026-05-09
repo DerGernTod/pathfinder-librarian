@@ -211,6 +211,17 @@ class StatBlock extends LitElement {
             .spell-tradition {
                 font-size: 0.75rem;
             }
+            @media (max-width: 767px) {
+                .ability-scores {
+                    grid-template-columns: repeat(3, 1fr);
+                }
+                .skills {
+                    grid-template-columns: 1fr;
+                }
+                .defense-grid {
+                    grid-template-columns: repeat(2, 1fr);
+                }
+            }
         `,
     ];
 

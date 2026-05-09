@@ -96,6 +96,11 @@ class AssistantMessage extends LitElement {
                 color: var(--foreground);
                 font-weight: 700;
             }
+            @media (max-width: 767px) {
+                .assistant-content {
+                    max-width: 92%;
+                }
+            }
         `,
     ];
 

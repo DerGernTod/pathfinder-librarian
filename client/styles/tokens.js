@@ -17,5 +17,8 @@ export const tokens = css`
         --border-radius: 4px;
         --accent-gm: hsl(262, 83%, 58%);
         --accent-player: hsl(25, 83%, 48%);
+        --breakpoint-phone: 767px;
+        --breakpoint-tablet: 768px;
+        --breakpoint-desktop: 1024px;
     }
 `;

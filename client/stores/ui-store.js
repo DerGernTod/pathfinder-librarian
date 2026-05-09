@@ -3,7 +3,8 @@ import { createContext } from "@lit/context";
 /**
  * @typedef {{
  *   sidebarExpanded: boolean,
- *   settingsOpen: boolean
+ *   settingsOpen: boolean,
+ *   breakpoint: "phone" | "tablet" | "desktop"
  * }} UIState
  */
 
@@ -15,7 +16,8 @@ const uiContext = createContext("ui");
  * @returns {{
  *   toggleSidebar: (current: UIState) => UIState,
  *   openSettings: (current: UIState) => UIState,
- *   closeSettings: (current: UIState) => UIState
+ *   closeSettings: (current: UIState) => UIState,
+ *   setBreakpoint: (current: UIState, breakpoint: "phone" | "tablet" | "desktop") => UIState
  * }}
  */
 function createUIStore() {
@@ -42,6 +44,11 @@ function createUIStore() {
          */
         closeSettings(current) {
             return { ...current, settingsOpen: false };
+        },
+
+        /** @param {"phone" | "tablet" | "desktop"} breakpoint */
+        setBreakpoint(current, breakpoint) {
+            return { ...current, breakpoint };
         },
     };
 }

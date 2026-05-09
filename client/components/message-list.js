@@ -53,6 +53,12 @@ class MessageList extends LitElement {
             .loading-text {
                 font-size: 0.875rem;
             }
+            @media (max-width: 767px) {
+                .messages {
+                    padding: 1rem 0.75rem;
+                    gap: 0.75rem;
+                }
+            }
         `,
     ];
 

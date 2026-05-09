@@ -51,6 +51,14 @@ class ModeToggle extends LitElement {
             .mode-btn.inactive:hover {
                 color: var(--foreground);
             }
+            @media (max-width: 767px) {
+                .mode-label {
+                    display: none;
+                }
+                .mode-btn {
+                    padding: 0.375rem 0.5rem;
+                }
+            }
         `,
     ];
 
@@ -78,13 +86,13 @@ class ModeToggle extends LitElement {
                     @click=${() => this.setMode("player")}
                     class="mode-btn ${this._modeState.mode === "player" ? "active" : "inactive"}"
                 >
-                    ⚔️ Player Mode
+                    ⚔️ <span class="mode-label">Player Mode</span>
                 </button>
                 <button
                     @click=${() => this.setMode("gm")}
                     class="mode-btn ${this._modeState.mode === "gm" ? "active" : "inactive"}"
                 >
-                    📜 GM Mode
+                    📜 <span class="mode-label">GM Mode</span>
                 </button>
             </div>
         `;
