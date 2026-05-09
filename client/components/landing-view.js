@@ -198,7 +198,9 @@ class LandingView extends LitElement {
         _text: { type: String, state: true },
     };
 
-    firstUpdated() {
+    firstUpdated() {}
+
+    focusInput() {
         const root = this.shadowRoot;
         if (!root) {
             return;
@@ -209,6 +211,10 @@ class LandingView extends LitElement {
         if (input) {
             input.focus();
         }
+    }
+
+    clearText() {
+        this._text = "";
     }
 
     constructor() {

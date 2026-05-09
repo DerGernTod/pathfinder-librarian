@@ -421,10 +421,21 @@ class MainPage extends LitElement {
         });
         this._updateMsgState({ messages: [], responding: false });
 
-        // Focus the input by dispatching select-conversation event
         document.dispatchEvent(
             new CustomEvent("select-conversation", { detail: { id: "__new__" } }),
         );
+
+        await this.updateComplete;
+        const root = this.shadowRoot;
+        if (root) {
+            const lv = /** @type {import("../components/landing-view.js").LandingView | null} */ (
+                root.querySelector("landing-view")
+            );
+            if (lv) {
+                lv.clearText();
+                lv.focusInput();
+            }
+        }
     }
 
     /**
@@ -433,6 +444,10 @@ class MainPage extends LitElement {
      */
     async handleSelectConversation(e, opts) {
         const convId = e.detail.id;
+
+        if (this._uiState.breakpoint === "phone" && this._uiState.sidebarExpanded) {
+            this._updateUIState({ ...this._uiState, sidebarExpanded: false });
+        }
 
         // Clear ephemeral new chat state if switching away
         if (this._isNewChat && convId !== "__new__") {
