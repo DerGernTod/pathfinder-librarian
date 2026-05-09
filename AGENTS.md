@@ -14,19 +14,6 @@ No-build ESM web app: Hono server (Bun runtime) serving a Lit-component client. 
 - `bunx playwright test` — visual regression tests
 - `bunx playwright test --update-snapshots` — regenerate baselines
 
-## Architecture
-
-```
-server/index.js   — Hono app, Bun entrypoint
-client/           — Lit web components (no build)
-  pages/          — page-level components
-  components/     — reusable components
-  utils/          — RPC client, auth, styles
-shared/           — types/schemas shared between server and client
-```
-
-Full architecture and patterns in `docs/architecture.md`.
-
 ## Lint & formatting rules
 
 - **`no-default-export: error`** — always use named exports
@@ -69,3 +56,9 @@ Each Playwright test gets its own user via `setupTestUser(context, testInfo)` fr
 `global-setup.js` resets the DB once before all workers via `POST /api/test/reset-db`. Individual tests must NOT call `reset-db`.
 
 DB seed functions: `clearAllTables(db)`, `seedRuleItems(db)`, `seedForUser(db, userId, mode)` — all idempotent.
+
+## Further reading
+
+- `docs/architecture.md` — project structure, Lit/Hono/Shoelace patterns, RPC signatures
+- `docs/gotchas.md` — framework pitfalls (Shoelace state sync, Shadow DOM events, mobile viewport)
+- `docs/state-management.md` — UI state, view transitions, context providers, event catalog
