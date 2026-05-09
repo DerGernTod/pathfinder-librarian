@@ -421,12 +421,18 @@ class MainPage extends LitElement {
         });
         this._updateMsgState({ messages: [], responding: false });
 
+        const root = this.shadowRoot;
+        if (root) {
+            const ci = /** @type {{ value: string } | null} */ (root.querySelector("chat-input"));
+            if (ci) {
+                ci.value = "";
+            }
+        }
+
         document.dispatchEvent(
             new CustomEvent("select-conversation", { detail: { id: "__new__" } }),
         );
 
-        await this.updateComplete;
-        const root = this.shadowRoot;
         if (root) {
             const lv = /** @type {import("../components/landing-view.js").LandingView | null} */ (
                 root.querySelector("landing-view")
