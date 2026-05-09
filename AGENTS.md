@@ -43,44 +43,6 @@ Full architecture and patterns in `docs/architecture.md`.
 - Zod schemas in `shared/` for reuse
 - Aria labels for elements without visual labels
 
-### Shoelace component state
-
-Shoelace components (`sl-textarea`, `sl-input`, etc.) maintain internal state that does NOT sync from Lit property bindings back to their native inner elements. Setting `.value` on the host Lit element triggers a re-render that sets the Shoelace property, but the native `<textarea>`/`<input>` inside Shoelace's shadow DOM may not update.
-
-**Fix**: Use the `updated()` lifecycle to force-sync:
-
-```js
-updated() {
-    const sl = this.shadowRoot?.querySelector("sl-textarea");
-    if (sl && sl.value !== this.value) {
-        sl.value = this.value;
-    }
-}
-```
-
-For Playwright tests, prefer clicking send buttons over `page.keyboard.press("Enter")` on Shoelace-controlled textareas — Enter keydown may not propagate through Shoelace's event system reliably.
-
-### Event architecture
-
-Custom events that cross shadow DOM boundaries MUST use `bubbles: true, composed: true`. Key events:
-
-| Event            | Dispatched by                                                          | Caught by (in main-page)                                         |
-| ---------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| `toggle-sidebar` | `sidebar-toggle`, `chat-header` hamburger, `chat-sidebar.handleToggle` | `@toggle-sidebar` on `<chat-sidebar>` AND `<chat-view>`          |
-| `new-chat`       | `new-chat-button`                                                      | `@new-chat` on `<chat-sidebar>`, `<chat-view>`, `<landing-view>` |
-| `mode-change`    | `mode-toggle` (via `chat-header`)                                      | `@mode-change` on `<chat-view>`, `<landing-view>`                |
-| `send-message`   | `chat-input`                                                           | `@send-message` on `<chat-view>`                                 |
-
-**Warning**: When `chat-sidebar.handleToggle` catches `toggle-sidebar` and re-dispatches a new event, call `e.stopPropagation()` on the original to prevent both events from reaching `main-page.handleSidebarToggle` and toggling twice (open → close → open).
-
-### View state machine
-
-`_viewState` transitions: `"loading"` → `"landing"` | `"conversation"`. The `_isNewChat` flag marks ephemeral new-chat state. It MUST be reset to `false` when:
-
-- `handleLandingSubmit` creates a conversation (the conversation now exists)
-- `_handleFirstMessage` creates a conversation
-- `handleSelectConversation` switches to an existing conversation (`convId !== "__new__"`)
-
 ## Responsive design
 
 Three breakpoints: phone (<768px), tablet (768–1024px), desktop (>1024px). Breakpoint state flows through `uiContext` via `UIState.breakpoint`.
@@ -91,10 +53,6 @@ Any UI change that affects layout must:
 - Include VR tests for each relevant viewport (phone 375×812, tablet 768×1024, desktop 1280×800)
 - Use `@media` queries inside component static styles (work inside Shadow DOM)
 - Test sidebar behavior (hidden/overlay on phone, collapsed on tablet, expanded on desktop)
-
-### Mobile viewport (keyboard handling)
-
-Do NOT use `height: 100dvh` in CSS — it does not reliably restore on all mobile browsers after the on-screen keyboard dismisses. Instead, `main-page.js` uses `window.visualViewport.height` via a JS listener on `visualViewport.resize`. The CSS `:host` uses `height: 100vh` as a static fallback. `html` and `body` have `overflow: hidden; height: 100%` to prevent document-level scrolling.
 
 ## Testing
 
