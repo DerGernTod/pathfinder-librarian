@@ -791,6 +791,7 @@ class MainPage extends LitElement {
         this._landingSubmitting = true;
         this._prevViewState = this._viewState;
         this._viewState = "conversation";
+        this._isNewChat = false;
 
         /** @type {string} */
         let targetConvId = this._convState.activeConversationId;
