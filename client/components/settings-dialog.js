@@ -1,6 +1,6 @@
 import { ContextConsumer } from "@lit/context";
 import { startRegistration } from "@simplewebauthn/browser";
-import { LitElement, css } from "lit-element";
+import { css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
@@ -8,8 +8,23 @@ import { uiContext } from "../stores/ui-store.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
 import { client } from "../utils/rpc-client.js";
+import { BaseElement } from "./base-element.js";
 /** @typedef {import("../../shared/types.js").Mode} Mode */
 /** @typedef {import("../../shared/types.js").AuthUser} AuthUser */
+
+/**
+ * Shoelace input guard functions for settings dialog.
+ * @type {{ nameInput: (newVal: unknown, oldVal: unknown) => boolean, modeInput: (newVal: unknown, oldVal: unknown) => boolean }}
+ */
+const SHOELACE_GUARDS = {
+    nameInput: (newVal, oldVal) => newVal !== oldVal,
+    modeInput: (newVal, oldVal) => newVal !== oldVal,
+};
+
+/**
+ * @type {Record<string, (newVal: unknown, oldVal: unknown) => boolean>}
+ */
+const GUARDS = SHOELACE_GUARDS;
 
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/dialog/dialog.js?deps=lit@3.3.2";
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/input/input.js?deps=lit@3.3.2";
@@ -19,7 +34,7 @@ import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/divider/d
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/radio-group/radio-group.js?deps=lit@3.3.2";
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/radio-button/radio-button.js?deps=lit@3.3.2";
 
-class SettingsDialog extends LitElement {
+class SettingsDialog extends BaseElement {
     static styles = [
         tokens,
         baseStyles,
@@ -314,14 +329,22 @@ class SettingsDialog extends LitElement {
      * @param {import("@shoelace-style/shoelace").SlInputEvent} e
      */
     handleNameInput(e) {
-        this.nameInput = /** @type {HTMLInputElement} */ (e.target).value;
+        const newVal = /** @type {HTMLInputElement} */ (e.target).value;
+        const guard = GUARDS.nameInput;
+        if (guard(newVal, this.nameInput)) {
+            this.nameInput = newVal;
+        }
     }
 
     /**
      * @param {import("@shoelace-style/shoelace").SlChangeEvent} e
      */
     handleModeChange(e) {
-        this.modeInput = /** @type {Mode} */ (/** @type {HTMLInputElement} */ (e.target).value);
+        const newVal = /** @type {Mode} */ (/** @type {HTMLInputElement} */ (e.target).value);
+        const guard = GUARDS.modeInput;
+        if (guard(newVal, this.modeInput)) {
+            this.modeInput = newVal;
+        }
     }
 
     async handleSave() {

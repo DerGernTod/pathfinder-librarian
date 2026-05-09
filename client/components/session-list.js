@@ -1,13 +1,14 @@
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/input/input.js?deps=lit@3.3.2";
 import "./conversation-item.js";
 import { ContextConsumer } from "@lit/context";
-import { LitElement, css } from "lit-element";
+import { css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
 import { conversationContext } from "../stores/conversation-store.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
+import { BaseElement } from "./base-element.js";
 
 /** @typedef {import("../../shared/types.js").Conversation} Conversation */
 
@@ -21,7 +22,7 @@ import { tokens } from "../styles/tokens.js";
  * @property {string} query - The current search query for filtering conversations.
  * @fires select-conversation - Fired when the user selects a conversation from the list, with the conversation ID in the event detail.
  */
-class SessionList extends LitElement {
+class SessionList extends BaseElement {
     static styles = [
         tokens,
         baseStyles,

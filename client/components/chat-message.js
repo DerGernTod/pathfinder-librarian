@@ -1,8 +1,10 @@
 import "./user-message.js";
 import "./assistant-message.js";
-import { LitElement, css } from "lit-element";
+import { css } from "lit-element";
 import { html, nothing } from "lit-html";
 import { customElement } from "lit/decorators.js";
+
+import { BaseElement } from "./base-element.js";
 
 /** @typedef {import("../../shared/types.js").Message} Message */
 
@@ -10,7 +12,7 @@ import { customElement } from "lit/decorators.js";
  * @customElement chat-message
  * @property {Message} message - The message to display, either from the user or the assistant.
  */
-class ChatMessage extends LitElement {
+class ChatMessage extends BaseElement {
     static styles = css`
         :host {
             display: block;

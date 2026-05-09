@@ -1,11 +1,12 @@
 import { ContextConsumer } from "@lit/context";
-import { LitElement, css } from "lit-element";
+import { css } from "lit-element";
 import { html, nothing } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
 import { conversationContext } from "../stores/conversation-store.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
+import { BaseElement } from "./base-element.js";
 
 /** @typedef {import("../../shared/types.js").Conversation} Conversation */
 
@@ -14,7 +15,7 @@ import { tokens } from "../styles/tokens.js";
  * @property {Conversation} conversation - The conversation to display in the item.
  * @fires select - Fired when the user clicks on the conversation item, with the conversation ID in the event detail.
  */
-class ConversationItem extends LitElement {
+class ConversationItem extends BaseElement {
     static styles = [
         tokens,
         baseStyles,

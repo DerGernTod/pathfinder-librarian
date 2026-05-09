@@ -1,7 +1,8 @@
-import { LitElement, css } from "lit-element";
+import { css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
+import { BaseElement } from "../components/base-element.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
 import { registerWithPasskey, loginWithPasskey, quickLogin } from "../utils/auth-client.js";
@@ -11,7 +12,7 @@ import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/button/bu
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/card/card.js?deps=lit@3.3.2";
 import { client } from "../utils/rpc-client.js";
 
-class LoginPage extends LitElement {
+class LoginPage extends BaseElement {
     static styles = [
         tokens,
         baseStyles,
@@ -132,6 +133,8 @@ class LoginPage extends LitElement {
     }
 
     async firstUpdated() {
+        super.firstUpdated();
+        await this.ready;
         try {
             const res = await client.api.auth["test-users"].$get();
             if (res.ok) {

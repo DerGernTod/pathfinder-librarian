@@ -2,19 +2,20 @@
 
 import "./mode-toggle.js";
 import { ContextConsumer } from "@lit/context";
-import { LitElement, css } from "lit-element";
+import { css } from "lit-element";
 import { html, nothing } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
 import { uiContext } from "../stores/ui-store.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
+import { BaseElement } from "./base-element.js";
 
 /**
  * @customElement chat-header
  * @fires mode-change - Fired when the user changes the mode using the mode toggle.
  */
-class ChatHeader extends LitElement {
+class ChatHeader extends BaseElement {
     static styles = [
         tokens,
         baseStyles,
@@ -175,23 +176,10 @@ class ChatHeader extends LitElement {
                               </svg>
                           </button>`
                         : nothing}
-                    <mode-toggle @mode-change=${this.handleModeChange}></mode-toggle>
+                    <mode-toggle></mode-toggle>
                 </div>
             </header>
         `;
-    }
-
-    /**
-     * @param {CustomEvent<{ mode: Mode }>} e
-     */
-    handleModeChange(e) {
-        this.dispatchEvent(
-            new CustomEvent("mode-change", {
-                detail: { mode: e.detail.mode },
-                bubbles: true,
-                composed: true,
-            }),
-        );
     }
 
     handleMenuToggle() {

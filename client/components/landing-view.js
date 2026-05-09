@@ -2,20 +2,21 @@
 
 import "./mode-toggle.js";
 import { ContextConsumer } from "@lit/context";
-import { LitElement, css } from "lit-element";
+import { css } from "lit-element";
 import { html, nothing } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
 import { uiContext } from "../stores/ui-store.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
+import { BaseElement } from "./base-element.js";
 
 /**
  * @customElement landing-view
  * @property {boolean} submitting - When true, disables the input and button to prevent double-submission.
  * @fires landing-submit - Fired when the user submits a prompt. Detail: { text: string }
  */
-class LandingView extends LitElement {
+class LandingView extends BaseElement {
     static styles = [
         tokens,
         baseStyles,
@@ -286,7 +287,7 @@ class LandingView extends LitElement {
                               </svg>
                           </button>`
                         : nothing}
-                    <mode-toggle @mode-change=${this.handleModeChange}></mode-toggle>
+                    <mode-toggle></mode-toggle>
                 </div>
             </header>
             <section role="region" aria-label="Welcome" class="landing-welcome" part="welcome">
@@ -354,19 +355,6 @@ class LandingView extends LitElement {
             }),
         );
         this._text = "";
-    }
-
-    /**
-     * @param {CustomEvent<{ mode: Mode }>} e
-     */
-    handleModeChange(e) {
-        this.dispatchEvent(
-            new CustomEvent("mode-change", {
-                detail: { mode: e.detail.mode },
-                bubbles: true,
-                composed: true,
-            }),
-        );
     }
 
     handleMenuToggle() {

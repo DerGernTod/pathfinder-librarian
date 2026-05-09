@@ -1,16 +1,17 @@
-import { LitElement, css } from "lit-element";
+import { css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
+import { BaseElement } from "./base-element.js";
 
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/dropdown/dropdown.js?deps=lit@3.3.2";
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/menu/menu.js?deps=lit@3.3.2";
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/menu-item/menu-item.js?deps=lit@3.3.2";
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/divider/divider.js?deps=lit@3.3.2";
 
-class ProfileMenu extends LitElement {
+class ProfileMenu extends BaseElement {
     static styles = [
         tokens,
         baseStyles,
@@ -64,9 +65,29 @@ class ProfileMenu extends LitElement {
                     ${this.initials}
                 </button>
                 <sl-menu>
-                    <sl-menu-item @click=${this.handleSettings}> ⚙️ Settings </sl-menu-item>
+                    <sl-menu-item
+                        @click=${() =>
+                            this.dispatchEvent(
+                                new CustomEvent("open-settings", {
+                                    bubbles: true,
+                                    composed: true,
+                                }),
+                            )}
+                    >
+                        ⚙️ Settings
+                    </sl-menu-item>
                     <sl-divider></sl-divider>
-                    <sl-menu-item @click=${this.handleLogout}> 🚪 Logout </sl-menu-item>
+                    <sl-menu-item
+                        @click=${() =>
+                            this.dispatchEvent(
+                                new CustomEvent("logout", {
+                                    bubbles: true,
+                                    composed: true,
+                                }),
+                            )}
+                    >
+                        🚪 Logout
+                    </sl-menu-item>
                 </sl-menu>
             </sl-dropdown>
         `;
@@ -80,24 +101,6 @@ class ProfileMenu extends LitElement {
             return sidebarProfile.initials || "U";
         }
         return "U";
-    }
-
-    handleSettings() {
-        this.dispatchEvent(
-            new CustomEvent("open-settings", {
-                bubbles: true,
-                composed: true,
-            }),
-        );
-    }
-
-    handleLogout() {
-        this.dispatchEvent(
-            new CustomEvent("logout", {
-                bubbles: true,
-                composed: true,
-            }),
-        );
     }
 }
 

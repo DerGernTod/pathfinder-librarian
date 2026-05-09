@@ -1,18 +1,19 @@
 import "../components/chat-message.js";
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/spinner/spinner.js?deps=lit@3.3.2";
 import { ContextConsumer } from "@lit/context";
-import { LitElement, css } from "lit-element";
+import { css } from "lit-element";
 import { html, nothing } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
 import { messagesContext } from "../stores/messages-store.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
+import { BaseElement } from "./base-element.js";
 
 /**
  * @customElement message-list
  */
-class MessageList extends LitElement {
+class MessageList extends BaseElement {
     static styles = [
         tokens,
         baseStyles,

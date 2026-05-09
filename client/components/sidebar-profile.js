@@ -1,12 +1,13 @@
 import { ContextConsumer } from "@lit/context";
-import { LitElement, css } from "lit-element";
+import { css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
 import { modeContext } from "../stores/mode-store.js";
 import { baseStyles } from "../styles/base-styles.js";
-import "./profile-menu.js";
 import { tokens } from "../styles/tokens.js";
+import "./profile-menu.js";
+import { BaseElement } from "./base-element.js";
 
 /** @typedef {import("../../shared/types.js").AuthUser} AuthUser */
 
@@ -17,7 +18,7 @@ import { tokens } from "../styles/tokens.js";
  * @property {string} initials - The initials of the user to display in the avatar.
  * @property {boolean} collapsed - Whether the sidebar is currently collapsed, which affects the profile's appearance.
  */
-class SidebarProfile extends LitElement {
+class SidebarProfile extends BaseElement {
     static styles = [
         tokens,
         baseStyles,
@@ -138,34 +139,13 @@ class SidebarProfile extends LitElement {
                 class="profile ${this.collapsed ? "collapsed" : ""}"
                 aria-label=${this.collapsed ? `${this.name} - ${this.subtitle}` : ""}
             >
-                <profile-menu
-                    @logout=${this.handleLogout}
-                    @open-settings=${this.handleOpenSettings}
-                ></profile-menu>
+                <profile-menu></profile-menu>
                 <div class="text-container">
                     <p class="name">${this.name}</p>
                     <p class="subtitle">${this.subtitle}</p>
                 </div>
             </div>
         `;
-    }
-
-    handleLogout() {
-        this.dispatchEvent(
-            new CustomEvent("logout", {
-                bubbles: true,
-                composed: true,
-            }),
-        );
-    }
-
-    handleOpenSettings() {
-        this.dispatchEvent(
-            new CustomEvent("open-settings", {
-                bubbles: true,
-                composed: true,
-            }),
-        );
     }
 }
 

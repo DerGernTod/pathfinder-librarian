@@ -2,12 +2,13 @@ import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/card/card
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/details/details.js?deps=lit@3.3.2";
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/tag/tag.js?deps=lit@3.3.2";
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/divider/divider.js?deps=lit@3.3.2";
-import { LitElement, css } from "lit-element";
+import { css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
+import { BaseElement } from "./base-element.js";
 
 /** @typedef {string} ActionType */
 /** @typedef {{ name: string; description: string; actionType?: ActionType }} Action */
@@ -47,7 +48,7 @@ import { tokens } from "../styles/tokens.js";
  * @property {string} title - The title of the stat block, used in the details summary.
  * @property {StatBlockData} data - The data for the stat block, containing all the relevant stats and information to display.
  */
-class StatBlock extends LitElement {
+class StatBlock extends BaseElement {
     static styles = [
         tokens,
         baseStyles,

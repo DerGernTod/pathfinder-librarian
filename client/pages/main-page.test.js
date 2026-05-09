@@ -381,7 +381,7 @@ describe("main-page", () => {
     describe("landing page", () => {
         it("renders landing when no conversations and not loading", async () => {
             // Wait for firstUpdated to complete (sets loading=false)
-            await new Promise((r) => setTimeout(r, 100));
+            await element.ready;
             element._convState = { conversations: [], activeConversationId: "", loading: false };
             element._msgState = { messages: [], responding: false };
             element.requestUpdate();
@@ -403,7 +403,7 @@ describe("main-page", () => {
 
         it("focuses landing input", async () => {
             // Wait for firstUpdated to complete
-            await new Promise((r) => setTimeout(r, 100));
+            await element.ready;
             element._convState = { conversations: [], activeConversationId: "", loading: false };
             element._msgState = { messages: [], responding: false };
             element.requestUpdate();
@@ -494,7 +494,7 @@ describe("main-page", () => {
 
         it("enter key triggers landing submit", async () => {
             // Wait for firstUpdated to complete
-            await new Promise((r) => setTimeout(r, 100));
+            await element.ready;
             const submitSpy = mock(() => Promise.resolve());
             element.handleLandingSubmit = /** @type {any} */ (submitSpy);
 
@@ -561,7 +561,7 @@ describe("main-page", () => {
 
         it("submits landing prompt into existing empty conversation", async () => {
             // Wait for firstUpdated to complete
-            await new Promise((r) => setTimeout(r, 100));
+            await element.ready;
             const conv = {
                 id: "conv-existing",
                 title: "Existing",
@@ -617,7 +617,7 @@ describe("main-page", () => {
 
         it("submits landing prompt and swaps to normal UI", async () => {
             // Wait for firstUpdated to complete
-            await new Promise((r) => setTimeout(r, 100));
+            await element.ready;
             element._convState = { conversations: [], activeConversationId: "", loading: false };
             element._msgState = { messages: [], responding: false };
             element.requestUpdate();
@@ -713,7 +713,7 @@ describe("main-page", () => {
         beforeEach(() => {
             // Save original router methods
             origNavigate = router.navigate;
-            origGetCurrentParams = router.getCurrentParams;
+            origGetCurrentParams = router.getCurrentParams ?? (() => null);
         });
 
         afterEach(() => {
@@ -765,7 +765,9 @@ describe("main-page", () => {
             document.body.appendChild(el);
             // Wait for firstUpdated to complete
             await el.updateComplete;
-            await new Promise((r) => setTimeout(r, 100));
+            // Allow microtask to complete for async firstUpdated
+            await new Promise((r) => setTimeout(r, 0));
+            await el.updateComplete;
 
             expect(el._convState.activeConversationId).toBe("conv-from-url");
             expect(router.getCurrentParams).toHaveBeenCalled();
@@ -809,7 +811,9 @@ describe("main-page", () => {
             };
             document.body.appendChild(el);
             await el.updateComplete;
-            await new Promise((r) => setTimeout(r, 100));
+            // Allow microtask to complete for async firstUpdated
+            await new Promise((r) => setTimeout(r, 0));
+            await el.updateComplete;
 
             expect(el._convState.activeConversationId).toBe("conv1");
         });
@@ -850,7 +854,9 @@ describe("main-page", () => {
             };
             document.body.appendChild(el);
             await el.updateComplete;
-            await new Promise((r) => setTimeout(r, 100));
+            // Allow microtask to complete for async firstUpdated
+            await new Promise((r) => setTimeout(r, 0));
+            await el.updateComplete;
 
             expect(el._convState.activeConversationId).toBe("conv1");
             // Should navigate to reflect the active conversation in the URL
@@ -978,7 +984,7 @@ describe("main-page", () => {
                 }),
             );
 
-            await new Promise((r) => setTimeout(r, 50));
+            await element.ready;
 
             expect(element._convState.activeConversationId).toBe("conv2");
             expect(navigateSpy).toHaveBeenCalledTimes(0);
@@ -1016,7 +1022,7 @@ describe("main-page", () => {
                 }),
             );
 
-            await new Promise((r) => setTimeout(r, 50));
+            await element.ready;
 
             expect(element._convState.activeConversationId).toBe("conv1");
             expect(fetchCalled).toBe(false);
