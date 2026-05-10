@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { ruleItemTypeSchema } from "../../shared/schemas.js";
 import { db } from "./database.js";
 
 const ConversationSchema = z
@@ -43,8 +44,9 @@ export const MessageItemListSchema = z.array(MessageSchema);
 const RuleItemSchema = z
     .object({
         id: z.string(),
-        type: z.enum(["monster", "spell", "ability"]),
+        type: ruleItemTypeSchema,
         name: z.string(),
+        compendium_source: z.string().nullable().optional(),
         data_json: z.string(),
         created_at: z.string(),
     })
@@ -52,6 +54,7 @@ const RuleItemSchema = z
         id: row.id,
         type: row.type,
         name: row.name,
+        compendiumSource: row.compendium_source ?? undefined,
         data: /** @type {unknown} */ (JSON.parse(row.data_json)),
         createdAt: row.created_at,
     }));
@@ -235,11 +238,11 @@ export const createUserMessage = createMessage;
 /**
  * Gets all rule items, optionally filtered by type.
  * @param {import("bun:sqlite").Database} database - The database instance
- * @param {"monster" | "spell" | "ability"} [type] - Optional type filter
+ * @param {string} [type] - Optional type filter (e.g., "creature", "spell")
  * @returns {z.infer<typeof RuleItemListSchema>}
  */
 export function getRuleItems(database, type) {
-    let query = "SELECT id, type, name, data_json, created_at FROM rule_items";
+    let query = "SELECT id, type, name, compendium_source, data_json, created_at FROM rule_items";
     const params = [];
     if (type) {
         query += " WHERE type = ?";
@@ -260,7 +263,9 @@ export function getRuleItems(database, type) {
 export function getRuleItemById(database, id) {
     /** @type {unknown} */
     const row = database
-        .query("SELECT id, type, name, data_json, created_at FROM rule_items WHERE id = ?")
+        .query(
+            "SELECT id, type, name, compendium_source, data_json, created_at FROM rule_items WHERE id = ?",
+        )
         .get(id);
     if (!row) {
         return null;
@@ -638,4 +643,60 @@ export function hasCredentials(database, userId) {
         .query("SELECT COUNT(*) as count FROM credentials WHERE user_id = ?")
         .get(userId);
     return row.count > 0;
+}
+
+/**
+ * Gets a rule item by its compendium source UUID.
+ * @param {import("bun:sqlite").Database} database - The database instance
+ * @param {string} compendiumSource - The compendium source UUID
+ * @returns {z.infer<typeof RuleItemSchema> | null}
+ */
+export function getRuleItemBySource(database, compendiumSource) {
+    /** @type {unknown} */
+    const row = database
+        .query(
+            "SELECT id, type, name, compendium_source, data_json, created_at FROM rule_items WHERE compendium_source = ?",
+        )
+        .get(compendiumSource);
+    if (!row) {
+        return null;
+    }
+    return RuleItemSchema.parse(row);
+}
+
+/**
+ * Inserts or updates a rule item by compendium_source.
+ * If an item with the same compendium_source exists, it is updated; otherwise a new one is inserted.
+ * @param {import("bun:sqlite").Database} database - The database instance
+ * @param {{ type: string, name: string, compendiumSource: string, dataJson: string }} data - The rule item data
+ * @returns {{ id: string, type: string, name: string, compendiumSource: string, data: unknown, createdAt: string }}
+ */
+export function upsertRuleItem(database, { type, name, compendiumSource, dataJson }) {
+    const existing = database
+        .query("SELECT id FROM rule_items WHERE compendium_source = ?")
+        .get(compendiumSource);
+    if (existing) {
+        database.run(
+            "UPDATE rule_items SET type = ?, name = ?, data_json = ? WHERE compendium_source = ?",
+            [type, name, dataJson, compendiumSource],
+        );
+        const updated = getRuleItemBySource(database, compendiumSource);
+        return /** @type {{ id: string, type: string, name: string, compendiumSource: string, data: unknown, createdAt: string }} */ (
+            updated
+        );
+    }
+    const id = crypto.randomUUID();
+    const now = new Date().toISOString();
+    database.run(
+        "INSERT INTO rule_items (id, type, name, compendium_source, data_json, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        [id, type, name, compendiumSource, dataJson, now],
+    );
+    return {
+        id,
+        type,
+        name,
+        compendiumSource,
+        data: JSON.parse(dataJson),
+        createdAt: now,
+    };
 }

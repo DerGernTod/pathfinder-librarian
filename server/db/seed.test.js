@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "bun:test";
 
 import { createDb } from "./database.js";
+import * as queries from "./queries.js";
 import { clearAllTables, seedForUser, seedRuleItems, SEED_IDS } from "./seed.js";
 
 describe("clearAllTables", () => {
@@ -140,6 +141,53 @@ describe("seedRuleItems", () => {
         expect(items.length).toBe(2);
         expect(items[0].id).toBe(SEED_IDS.RULE_MITFLIT_KING);
         expect(items[1].id).toBe(SEED_IDS.RULE_SAMPLE_SPELL);
+    });
+
+    it("seeds mitflit king with creature type", () => {
+        seedRuleItems(db);
+        const item = queries.getRuleItemById(db, SEED_IDS.RULE_MITFLIT_KING);
+        expect(item).not.toBeNull();
+        if (!item) {
+            return;
+        }
+        expect(item.type).toBe("creature");
+    });
+
+    it("seeds mitflit king with structured CreatureData shape", () => {
+        seedRuleItems(db);
+        const item = queries.getRuleItemById(db, SEED_IDS.RULE_MITFLIT_KING);
+        expect(item).not.toBeNull();
+        if (!item) {
+            return;
+        }
+        const data = /** @type {Record<string, unknown>} */ (item.data);
+        // AC is an object with value, not a flat number
+        const attrs = /** @type {Record<string, unknown>} */ (data.attributes);
+        expect(typeof attrs.ac).toBe("object");
+        const acObj = /** @type {{ value: number }} */ (attrs.ac);
+        expect(acObj.value).toBe(21);
+        // HP is an object with value and max
+        const hpObj = /** @type {{ value: number, max: number }} */ (attrs.hp);
+        expect(hpObj).toEqual({ value: 55, max: 55 });
+        // Abilities use { mod } objects
+        const abilities = /** @type {Record<string, { mod: number }>} */ (data.abilities);
+        expect(abilities.str).toEqual({ mod: 2 });
+        expect(abilities.dex).toEqual({ mod: 4 });
+        // Skills use { value } objects
+        const skills = /** @type {Record<string, { value: number }>} */ (data.skills);
+        expect(skills.Acrobatics).toEqual({ value: 9 });
+        // Melee entries exist
+        const melee = /** @type {Array<Record<string, unknown>>} */ (data.melee);
+        expect(Array.isArray(melee)).toBe(true);
+        expect(melee.length).toBeGreaterThan(0);
+        // Spellcasting entries exist
+        const spellcasting = /** @type {Array<Record<string, unknown>>} */ (data.spellcasting);
+        expect(Array.isArray(spellcasting)).toBe(true);
+        expect(spellcasting.length).toBeGreaterThan(0);
+        // Actions use numeric actionType
+        const actions = /** @type {Array<Record<string, unknown>>} */ (data.actions);
+        expect(Array.isArray(actions)).toBe(true);
+        expect(actions[0].actionType).toBe(1);
     });
 
     it("is idempotent", () => {

@@ -19,6 +19,63 @@ export function migrateDb(database) {
         database.run("ALTER TABLE users ADD COLUMN webauthn_user_id TEXT");
     }
 
+    // Migration: rule_items — add compendium_source column if missing
+    const ruleItemColumns = database
+        .query("PRAGMA table_info(rule_items)")
+        .all()
+        .map((col) => col.name);
+    if (!ruleItemColumns.includes("compendium_source")) {
+        database.run("ALTER TABLE rule_items ADD COLUMN compendium_source TEXT");
+    }
+
+    // Migration: monster → creature type rename
+    database.run("UPDATE rule_items SET type = 'creature' WHERE type = 'monster'");
+
+    // Migration: expand CHECK constraint by recreating table
+    // SQLite cannot ALTER CONSTRAINT, so use create-new / copy-data / drop-old / rename pattern
+    _migrateRuleItemsConstraint(database);
+
     // Clean up expired challenges (older than 5 minutes)
     database.run("DELETE FROM challenges WHERE created_at < datetime('now', '-5 minutes')");
+}
+
+/**
+ * Migrates the rule_items table to expand the CHECK constraint.
+ * Uses the create-new / copy-data / drop-old / rename pattern.
+ * @param {import("bun:sqlite").Database} database
+ */
+function _migrateRuleItemsConstraint(database) {
+    // Check if the table already has the new constraint by inspecting the SQL
+    const tableInfo = database
+        .query("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'rule_items'")
+        .get();
+    if (!tableInfo) {
+        return;
+    }
+    const sql = /** @type {string} */ (tableInfo.sql);
+    // If the constraint already includes 'creature', no migration needed
+    if (sql.includes("'creature'")) {
+        return;
+    }
+
+    database.run("ALTER TABLE rule_items RENAME TO rule_items_old");
+    database.run(`
+        CREATE TABLE rule_items (
+            id                TEXT PRIMARY KEY,
+            type              TEXT NOT NULL CHECK(type IN ('creature', 'spell', 'melee', 'weapon', 'armor', 'equipment', 'action', 'feat', 'spellcastingEntry', 'trait')),
+            name              TEXT NOT NULL,
+            compendium_source TEXT,
+            data_json         TEXT NOT NULL,
+            created_at        TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    `);
+    database.run(`
+        INSERT INTO rule_items (id, type, name, compendium_source, data_json, created_at)
+        SELECT id, type, name, compendium_source, data_json, created_at FROM rule_items_old
+    `);
+    database.run("DROP TABLE rule_items_old");
+    database.run("CREATE INDEX IF NOT EXISTS idx_rule_items_type ON rule_items(type, name)");
+    database.run(
+        "CREATE INDEX IF NOT EXISTS idx_rule_items_source ON rule_items(compendium_source)",
+    );
 }
