@@ -1,19 +1,20 @@
 /** @typedef {import("../../shared/types.js").Mode} Mode */
 
 import { ContextConsumer } from "@lit/context";
-import { LitElement, css } from "lit-element";
+import { css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
 import { modeContext } from "../stores/mode-store.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
+import { BaseElement } from "./base-element.js";
 
 /**
  * @customElement mode-toggle
  * @fires mode-change - Fired when the user changes the mode using the mode toggle.
  */
-class ModeToggle extends LitElement {
+class ModeToggle extends BaseElement {
     static styles = [
         tokens,
         baseStyles,

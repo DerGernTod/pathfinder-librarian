@@ -1,16 +1,17 @@
-import { LitElement, css } from "lit-element";
+import { css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
+import { BaseElement } from "./base-element.js";
 
 /**
  * @customElement new-chat-button
  * @property {boolean} collapsed - Whether the sidebar is currently collapsed, which affects the button's appearance.
  * @fires new-chat - Fired when the user clicks the button to start a new chat.
  */
-class NewChatButton extends LitElement {
+class NewChatButton extends BaseElement {
     static properties = {
         collapsed: { type: Boolean },
     };

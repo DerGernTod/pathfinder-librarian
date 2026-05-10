@@ -4,7 +4,7 @@ import "./session-list.js";
 import "./sidebar-profile.js";
 import "./conversation-menu.js";
 import { ContextConsumer } from "@lit/context";
-import { LitElement, css } from "lit-element";
+import { css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
@@ -13,12 +13,13 @@ import { modeContext } from "../stores/mode-store.js";
 import { uiContext } from "../stores/ui-store.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
+import { BaseElement } from "./base-element.js";
 
 /**
  * @customElement chat-sidebar
  * @property {import("../../shared/types.js").AuthUser | null} user - The authenticated user object.
  */
-class ChatSidebar extends LitElement {
+class ChatSidebar extends BaseElement {
     static styles = [
         tokens,
         baseStyles,
@@ -205,31 +206,7 @@ class ChatSidebar extends LitElement {
     handleToggle(e) {
         e.stopPropagation();
         const newExpanded = !this._uiState.sidebarExpanded;
-        this.dispatchEvent(
-            new CustomEvent("toggle-sidebar", {
-                detail: { expanded: newExpanded },
-                bubbles: true,
-                composed: true,
-            }),
-        );
-    }
-
-    handleLogout() {
-        this.dispatchEvent(
-            new CustomEvent("logout", {
-                bubbles: true,
-                composed: true,
-            }),
-        );
-    }
-
-    handleOpenSettings() {
-        this.dispatchEvent(
-            new CustomEvent("open-settings", {
-                bubbles: true,
-                composed: true,
-            }),
-        );
+        this.redispatch(e, "toggle-sidebar", { expanded: newExpanded });
     }
 }
 

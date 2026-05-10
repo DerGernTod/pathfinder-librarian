@@ -1,9 +1,10 @@
-import { LitElement, css } from "lit-element";
+import { css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
+import { BaseElement } from "./base-element.js";
 
 /** @typedef {import("../../shared/types.js").UserMessage} UserMessageType */
 
@@ -11,7 +12,7 @@ import { tokens } from "../styles/tokens.js";
  * @customElement user-message
  * @property {UserMessageType} message - The user message to display, containing the content and mode (GM or Player) for styling.
  */
-class UserMessage extends LitElement {
+class UserMessage extends BaseElement {
     static styles = [
         tokens,
         baseStyles,

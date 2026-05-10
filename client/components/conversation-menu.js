@@ -2,19 +2,20 @@ import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/menu/menu
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/menu-item/menu-item.js?deps=lit@3.3.2";
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/dropdown/dropdown.js?deps=lit@3.3.2";
 import { ContextConsumer } from "@lit/context";
-import { LitElement, css } from "lit-element";
+import { css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
 import { conversationContext } from "../stores/conversation-store.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
+import { BaseElement } from "./base-element.js";
 
 /**
  * @customElement conversation-menu
  * @fires select-conversation - Fired when the user selects a conversation from the menu, with the conversation ID in the event detail.
  */
-class ConversationMenu extends LitElement {
+class ConversationMenu extends BaseElement {
     static styles = [
         tokens,
         baseStyles,

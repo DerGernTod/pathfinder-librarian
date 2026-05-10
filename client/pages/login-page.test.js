@@ -96,8 +96,10 @@ describe("login-page", () => {
 
         quickLoginButton.click();
 
-        // Wait for event to be dispatched
+        // Wait for async handler to complete
+        await el.updateComplete;
         await new Promise((r) => setTimeout(r, 0));
+        await el.updateComplete;
 
         expect(dispatchedEvent).toBeTruthy();
         expect(dispatchedEvent?.user).toEqual(mockUser);

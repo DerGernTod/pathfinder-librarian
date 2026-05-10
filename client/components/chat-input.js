@@ -1,6 +1,6 @@
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/textarea/textarea.js?deps=lit@3.3.2";
 import { ContextConsumer } from "@lit/context";
-import { LitElement, css } from "lit-element";
+import { css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
@@ -8,6 +8,7 @@ import { messagesContext } from "../stores/messages-store.js";
 import { modeContext } from "../stores/mode-store.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
+import { BaseElement } from "./base-element.js";
 
 /**
  * @template T
@@ -19,7 +20,7 @@ import { tokens } from "../styles/tokens.js";
  * @property {string} value - The current value of the chat input.
  * @fires send-message - Fired when the user submits a message, with the message text in the event detail.
  */
-class ChatInput extends LitElement {
+class ChatInput extends BaseElement {
     static styles = [
         tokens,
         baseStyles,

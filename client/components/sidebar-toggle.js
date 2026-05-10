@@ -1,16 +1,17 @@
-import { LitElement, css } from "lit-element";
+import { css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
+import { BaseElement } from "./base-element.js";
 
 /**
  * @customElement sidebar-toggle
  * @property {boolean} expanded - Whether the sidebar is currently expanded or collapsed.
  * @fires toggle-sidebar - Fired when the user clicks the toggle button to expand or collapse the sidebar.
  */
-class SidebarToggle extends LitElement {
+class SidebarToggle extends BaseElement {
     static styles = [
         tokens,
         baseStyles,

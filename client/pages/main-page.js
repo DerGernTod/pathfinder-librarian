@@ -3,10 +3,11 @@ import "../components/chat-view.js";
 import "../components/landing-view.js";
 import "../components/settings-dialog.js";
 import { ContextProvider } from "@lit/context";
-import { LitElement, css } from "lit-element";
+import { css } from "lit-element";
 import { html, nothing } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
+import { BaseElement } from "../components/base-element.js";
 import { conversationContext, createConversationStore } from "../stores/conversation-store.js";
 import { messagesContext, createMessagesStore } from "../stores/messages-store.js";
 import { modeContext, createModeStore } from "../stores/mode-store.js";
@@ -22,7 +23,7 @@ import { client } from "../utils/rpc-client.js";
 /** @typedef {import("../../shared/types.js").Mode} Mode */
 /** @typedef {import("../../shared/types.js").AuthUser} AuthUser */
 
-class MainPage extends LitElement {
+class MainPage extends BaseElement {
     static styles = [
         tokens,
         baseStyles,
@@ -300,6 +301,8 @@ class MainPage extends LitElement {
     }
 
     async firstUpdated() {
+        super.firstUpdated();
+        await this.ready;
         try {
             // Set mode from user
             if (this.user) {
@@ -353,6 +356,8 @@ class MainPage extends LitElement {
             } else {
                 this._viewState = "landing";
             }
+            // Flush update before returning from firstUpdated
+            await this.updateComplete;
         } catch {
             this._viewState = "landing";
         }
@@ -362,7 +367,12 @@ class MainPage extends LitElement {
         return html`
             <div class="app" data-mode=${this._modeState.mode}>
                 ${this._uiState.breakpoint === "phone" && this._uiState.sidebarExpanded
-                    ? html`<div class="sidebar-backdrop" @click=${this.handleCloseSidebar}></div>`
+                    ? html`<div
+                          class="sidebar-backdrop"
+                          @click=${() => {
+                              this._updateUIState({ ...this._uiState, sidebarExpanded: false });
+                          }}
+                      ></div>`
                     : nothing}
                 <chat-sidebar
                     .user=${this.user}

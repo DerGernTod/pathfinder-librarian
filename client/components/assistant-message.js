@@ -1,11 +1,12 @@
 import "./stat-block.js";
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/card/card.js?deps=lit@3.3.2";
-import { LitElement, css } from "lit-element";
+import { css } from "lit-element";
 import { html, nothing } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
+import { BaseElement } from "./base-element.js";
 
 /** @typedef {import("../../shared/types.js").AssistantMessage} AssistantMessageType */
 /** @typedef {import("../../shared/types.js").MessageBlock} MessageBlock */
@@ -15,7 +16,7 @@ import { tokens } from "../styles/tokens.js";
  * @customElement assistant-message
  * @property {AssistantMessageType} message - The assistant message to display.
  */
-class AssistantMessage extends LitElement {
+class AssistantMessage extends BaseElement {
     static styles = [
         tokens,
         baseStyles,

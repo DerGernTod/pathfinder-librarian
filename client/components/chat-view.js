@@ -1,12 +1,13 @@
 import "./chat-header.js";
 import "./chat-input.js";
 import "./message-list.js";
-import { LitElement, css } from "lit-element";
+import { css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
+import { BaseElement } from "./base-element.js";
 
 /**
  * @customElement chat-view
@@ -14,7 +15,7 @@ import { tokens } from "../styles/tokens.js";
  * @fires send-message - Bubbled from chat-input.
  * @fires stop-message - Bubbled from chat-input.
  */
-class ChatView extends LitElement {
+class ChatView extends BaseElement {
     static styles = [
         tokens,
         baseStyles,
