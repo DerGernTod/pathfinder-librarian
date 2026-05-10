@@ -6,7 +6,7 @@
 
 /** @typedef {{ id: string, name: string, initials: string, subtitle: string, mode: Mode }} User */
 
-/** @typedef {{ id: string, type: "monster" | "spell" | "ability", name: string, data: any, createdAt: string }} RuleItem */
+/** @typedef {{ id: string, type: "creature" | "spell" | "melee" | "weapon" | "armor" | "equipment" | "action" | "feat" | "spellcastingEntry" | "trait", name: string, compendiumSource?: string, data: unknown, createdAt: string }} RuleItem */
 
 /** @typedef {{ id: string, userId: string, token: string, createdAt: string, expiresAt: string }} Session */
 
@@ -18,37 +18,56 @@
 
 /** @typedef {{ type: "callout", title: string, text?: string, segments?: Segment[] }} CalloutBlock */
 
-/** @typedef {{ name: string, modifier: number }} AbilityScore */
+/** @typedef {{ mod: number }} AbilityMod */
+/** @typedef {{ value: number, details?: string }} AcValue */
+/** @typedef {{ value: number, max: number, details?: string }} HpValue */
+/** @typedef {{ value: number }} SaveValue */
+/** @typedef {{ value: number, ability?: string }} SkillValue */
 
-/** @typedef {{ name: string, bonus: number }} SkillEntry */
+/** @typedef {{ name: string, attack: string, damage: string, damageType?: string, compendiumSource?: string, traits?: string[] }} MeleeEntry */
 
-/** @typedef {{ name: string, actionType?: "single" | "two" | "three" | "reaction" | "free", description: string }} CreatureAction */
+/** @typedef {{ name: string, compendiumSource?: string, rank?: number, usage?: string, heightened?: boolean }} SpellSlotEntry */
 
-/** @typedef {{ name: string, dc?: number, attack?: number, description: string, tradition?: string, rank?: number }} SpellEntry */
+/** @typedef {{ name: string, tradition?: string, type?: string, dc?: number, attackModifier?: number, slots?: Record<string, SpellSlotEntry[]>, cantrips?: SpellSlotEntry[] }} SpellcastingEntry */
 
-/** @typedef {{ name: string, description: string }} AbilityEntry */
+/** @typedef {{ name: string, actionType?: number | "reaction" | "free", traits?: string[], description: string, compendiumSource?: string, deathNote?: boolean }} ActionEntry */
 
-/** @typedef {{
+/**
+ * @typedef {{
  *   name: string,
- *   type: string,
+ *   type?: string,
  *   level: number,
+ *   rarity?: string,
  *   traits: string[],
- *   perception: string,
- *   languages: string,
- *   attributes: { ac: number, hp: number, fortitude: string, reflex: string, will: string },
- *   skills: Record<string, string>,
- *   str: number,
- *   dex: number,
- *   con: number,
- *   int: number,
- *   wis: number,
- *   cha: number,
- *   actions?: CreatureAction[],
- *   spells?: SpellEntry[],
- *   abilities?: AbilityEntry[]
- * }} MonsterStatBlock */
+ *   perception?: number,
+ *   languages?: { value: string[], details?: string },
+ *   attributes?: {
+ *     ac?: AcValue,
+ *     hp?: HpValue,
+ *     fortitude?: SaveValue,
+ *     reflex?: SaveValue,
+ *     will?: SaveValue,
+ *     speed?: string,
+ *   },
+ *   abilities?: {
+ *     str?: AbilityMod,
+ *     dex?: AbilityMod,
+ *     con?: AbilityMod,
+ *     int?: AbilityMod,
+ *     wis?: AbilityMod,
+ *     cha?: AbilityMod,
+ *   },
+ *   skills?: Record<string, SkillValue>,
+ *   melee?: MeleeEntry[],
+ *   spellcasting?: SpellcastingEntry[],
+ *   actions?: ActionEntry[],
+ *   description?: string,
+ *   compendiumSource?: string,
+ *   itemRefs?: string[],
+ * }} CreatureData
+ */
 
-/** @typedef {{ type: "stat-block", title: string, data: MonsterStatBlock }} StatBlockMessageBlock */
+/** @typedef {{ type: "stat-block", title: string, data: CreatureData }} StatBlockMessageBlock */
 
 /** @typedef {{ type: "list", items: Array<ListItem> }} ListBlock */
 

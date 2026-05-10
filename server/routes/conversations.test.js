@@ -285,11 +285,11 @@ describe("rule-items routes", () => {
         });
 
         it("filters by type", async () => {
-            const res = await app.request("/api/rule-items?type=monster");
+            const res = await app.request("/api/rule-items?type=creature");
             expect(res.status).toBe(200);
             const { data } = await res.json();
             expect(data).toHaveLength(1);
-            expect(data[0].type).toBe("monster");
+            expect(data[0].type).toBe("creature");
         });
     });
 

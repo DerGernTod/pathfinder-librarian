@@ -160,17 +160,23 @@ describe("queries", () => {
         });
 
         it("returns filtered rule items by type", () => {
-            const monsters = queries.getRuleItems(db, "monster");
-            expect(monsters).toHaveLength(1);
-            expect(monsters[0].type).toBe("monster");
+            const creatures = queries.getRuleItems(db, "creature");
+            expect(creatures).toHaveLength(1);
+            expect(creatures[0].type).toBe("creature");
 
             const spells = queries.getRuleItems(db, "spell");
             expect(spells).toHaveLength(1);
             expect(spells[0].type).toBe("spell");
         });
 
+        it("returns items with compendiumSource field", () => {
+            const items = queries.getRuleItems(db);
+            expect(items[0]).toHaveProperty("compendiumSource");
+            expect(items[1]).toHaveProperty("compendiumSource");
+        });
+
         it("returns empty array for non-existent type", () => {
-            const items = queries.getRuleItems(db, "ability");
+            const items = queries.getRuleItems(db, "weapon");
             expect(items).toEqual([]);
         });
     });
@@ -187,6 +193,75 @@ describe("queries", () => {
 
         it("returns null for non-existent rule item", () => {
             const item = queries.getRuleItemById(db, "00000000-0000-0000-0000-000000000000");
+            expect(item).toBeNull();
+        });
+    });
+
+    describe("upsertRuleItem", () => {
+        it("inserts new item with compendium_source", () => {
+            const result = queries.upsertRuleItem(db, {
+                type: "creature",
+                name: "Test Dragon",
+                compendiumSource: "Compendium.pf2e.bestiary.Actor.abc123",
+                dataJson: JSON.stringify({ name: "Test Dragon", level: 5, traits: ["Dragon"] }),
+            });
+            expect(result).toHaveProperty("id");
+            expect(result.type).toBe("creature");
+            expect(result.name).toBe("Test Dragon");
+            expect(result.compendiumSource).toBe("Compendium.pf2e.bestiary.Actor.abc123");
+            expect(result.data).toEqual({ name: "Test Dragon", level: 5, traits: ["Dragon"] });
+        });
+
+        it("updates existing item when compendium_source matches", () => {
+            const source = "Compendium.pf2e.bestiary.Actor.def456";
+            queries.upsertRuleItem(db, {
+                type: "creature",
+                name: "Original Name",
+                compendiumSource: source,
+                dataJson: JSON.stringify({ name: "Original Name", level: 3, traits: [] }),
+            });
+            const updated = queries.upsertRuleItem(db, {
+                type: "creature",
+                name: "Updated Name",
+                compendiumSource: source,
+                dataJson: JSON.stringify({ name: "Updated Name", level: 4, traits: ["Beast"] }),
+            });
+            expect(updated.name).toBe("Updated Name");
+            // Should be same item (updated), not a new one
+            const bySource = queries.getRuleItemBySource(db, source);
+            expect(bySource).not.toBeNull();
+            if (!bySource) {
+                return;
+            }
+            expect(bySource.name).toBe("Updated Name");
+            // Verify no duplicate was created
+            const allItems = db
+                .query("SELECT COUNT(*) as count FROM rule_items WHERE compendium_source = ?")
+                .get(source);
+            expect(allItems.count).toBe(1);
+        });
+    });
+
+    describe("getRuleItemBySource", () => {
+        it("returns item by compendium UUID", () => {
+            const source = "Compendium.pf2e.bestiary.Actor.xyz789";
+            queries.upsertRuleItem(db, {
+                type: "creature",
+                name: "Lookup Creature",
+                compendiumSource: source,
+                dataJson: JSON.stringify({ name: "Lookup Creature", level: 1, traits: [] }),
+            });
+            const item = queries.getRuleItemBySource(db, source);
+            expect(item).not.toBeNull();
+            if (!item) {
+                return;
+            }
+            expect(item.name).toBe("Lookup Creature");
+            expect(item.compendiumSource).toBe(source);
+        });
+
+        it("returns null for unknown source", () => {
+            const item = queries.getRuleItemBySource(db, "nonexistent-source");
             expect(item).toBeNull();
         });
     });

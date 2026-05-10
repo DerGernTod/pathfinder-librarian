@@ -28,11 +28,12 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 
 CREATE TABLE IF NOT EXISTS rule_items (
-    id         TEXT PRIMARY KEY,
-    type       TEXT NOT NULL CHECK(type IN ('monster', 'spell', 'ability')),
-    name       TEXT NOT NULL,
-    data_json  TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    id                TEXT PRIMARY KEY,
+    type              TEXT NOT NULL CHECK(type IN ('creature', 'spell', 'melee', 'weapon', 'armor', 'equipment', 'action', 'feat', 'spellcastingEntry', 'trait')),
+    name              TEXT NOT NULL,
+    compendium_source TEXT,
+    data_json         TEXT NOT NULL,
+    created_at        TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS credentials (
@@ -66,6 +67,7 @@ CREATE TABLE IF NOT EXISTS challenges (
 const CREATE_INDEXES_SQL = `
 CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_rule_items_type       ON rule_items(type, name);
+CREATE INDEX IF NOT EXISTS idx_rule_items_source     ON rule_items(compendium_source);
 CREATE INDEX IF NOT EXISTS idx_sessions_token       ON sessions(token);
 CREATE INDEX IF NOT EXISTS idx_sessions_user        ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_credentials_user     ON credentials(user_id);

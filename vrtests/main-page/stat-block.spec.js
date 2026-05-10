@@ -39,43 +39,50 @@ test.describe("stat block visual regression", () => {
                 name: "Orc Warrior",
                 type: "Humanoid",
                 level: 1,
+                rarity: "common",
                 traits: ["Orc", "Humanoid"],
-                perception: "+7",
-                languages: "Common, Orcish",
-                attributes: { ac: 15, hp: 23, fortitude: "+9", reflex: "+8", will: "+6" },
-                skills: { Athletics: "+12", Intimidation: "+8" },
-                str: 18,
-                dex: 14,
-                con: 14,
-                int: 8,
-                wis: 8,
-                cha: 10,
-                actions: [
+                perception: 7,
+                languages: { value: ["Common", "Orcish"] },
+                attributes: {
+                    ac: { value: 15 },
+                    hp: { value: 23, max: 23 },
+                    fortitude: { value: 9 },
+                    reflex: { value: 8 },
+                    will: { value: 6 },
+                    speed: "20 feet",
+                },
+                abilities: {
+                    str: { mod: 4 },
+                    dex: { mod: 2 },
+                    con: { mod: 2 },
+                    int: { mod: -1 },
+                    wis: { mod: -1 },
+                    cha: { mod: 0 },
+                },
+                skills: { Athletics: { value: 12 }, Intimidation: { value: 8 } },
+                melee: [
                     {
-                        name: "Greataxe Strike",
-                        actionType: "single",
-                        description: "+9, 1d12+4 slashing",
+                        name: "Greataxe",
+                        attack: "+9",
+                        damage: "1d12+4 slashing",
+                        damageType: "slashing",
+                        traits: ["sweep"],
                     },
+                ],
+                actions: [
                     {
                         name: "Ferocity",
                         actionType: "reaction",
-                        description:
-                            "When reduced to 0 HP, make a Strike before going unconscious.",
+                        description: "When reduced to 0 HP, make a Strike.",
                     },
                 ],
-                spells: [
+                spellcasting: [
                     {
-                        name: "Darkness",
+                        name: "Orc Spells",
                         tradition: "divine",
-                        rank: 2,
+                        type: "innate",
                         dc: 14,
-                        description: "20-ft burst of magical darkness.",
-                    },
-                ],
-                abilities: [
-                    {
-                        name: "Pack Hunter",
-                        description: "Deals extra 1d4 damage to flanked creatures.",
+                        slots: { "2nd": [{ name: "Darkness", rank: 2 }] },
                     },
                 ],
             },
@@ -89,30 +96,24 @@ test.describe("stat block visual regression", () => {
                 type: "Humanoid",
                 level: 0,
                 traits: ["Goblin"],
-                perception: "+4",
-                languages: "Common, Goblin",
-                attributes: { ac: 12, hp: 6, fortitude: "+3", reflex: "+5", will: "+2" },
-                skills: { Stealth: "+5", Acrobatics: "+5" },
-                str: 10,
-                dex: 14,
-                con: 10,
-                int: 8,
-                wis: 8,
-                cha: 10,
-                actions: [
-                    { name: "Shortsword", actionType: "single", description: "+5, 1d6 piercing" },
-                    {
-                        name: "Shortbow",
-                        actionType: "single",
-                        description: "+5, 1d6 piercing, range 60 ft.",
-                    },
-                ],
-                abilities: [
-                    {
-                        name: "Sneak",
-                        description: "Deals extra 1d6 damage to flat-footed targets.",
-                    },
-                ],
+                perception: 4,
+                languages: { value: ["Common", "Goblin"] },
+                attributes: {
+                    ac: { value: 12 },
+                    hp: { value: 6, max: 6 },
+                    fortitude: { value: 3 },
+                    reflex: { value: 5 },
+                    will: { value: 2 },
+                },
+                abilities: {
+                    str: { mod: 0 },
+                    dex: { mod: 2 },
+                    con: { mod: 0 },
+                    int: { mod: -1 },
+                    wis: { mod: -1 },
+                    cha: { mod: 0 },
+                },
+                skills: { Stealth: { value: 5 }, Acrobatics: { value: 5 } },
             },
         };
 
@@ -261,7 +262,7 @@ test.describe("stat block visual regression", () => {
     });
 
     test("stat block desktop layout", async ({ page }) => {
-        await page.setViewportSize({ width: 1920, height: 1080 });
+        await page.setViewportSize({ width: 1280, height: 800 });
         await page.goto("/");
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
