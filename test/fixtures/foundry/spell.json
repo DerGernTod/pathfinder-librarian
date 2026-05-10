@@ -1,0 +1,17 @@
+{
+    "_id": "spell001",
+    "name": "Fireball",
+    "type": "spell",
+    "system": {
+        "level": { "value": 3 },
+        "traditions": { "value": ["arcane", "primal"] },
+        "cast": { "value": "two actions" },
+        "range": { "value": "120 feet" },
+        "area": { "value": 20, "type": "burst" },
+        "savingThrow": { "value": "reflex" },
+        "description": {
+            "value": "<p>A burst of fire <strong>explodes</strong> at a point you designate within range.</p>"
+        },
+        "traits": { "value": ["fire"] }
+    }
+}

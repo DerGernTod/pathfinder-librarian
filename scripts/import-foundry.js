@@ -1,0 +1,292 @@
+import { readdirSync, readFileSync, statSync } from "fs";
+import { join } from "path";
+
+import { createDb } from "../server/db/database.js";
+import { batchUpsertRuleItems } from "../server/db/queries.js";
+import { mapCreature, mapEquipment, mapFeat, mapSpell } from "./lib/foundry-mappers.js";
+
+/**
+ * Spawns a process using Bun if available, otherwise throws.
+ * @param {string[]} args
+ * @returns {Promise<number>} exit code
+ */
+async function spawnProcess(args) {
+    // Bun global is available at runtime
+    // eslint-disable-next-line no-undef
+    const proc = Bun.spawn(args);
+    return proc.exited;
+}
+
+/**
+ * @typedef {{ type: string, name: string, compendiumSource: string, dataJson: string }} ImportableItem
+ */
+
+/**
+ * Parses CLI arguments into an options object.
+ * @param {string[]} argv
+ * @returns {{ source?: string, pack?: string[], types?: string[], limit?: number, db: string, dryRun: boolean, verbose: boolean }}
+ */
+export function parseArgs(argv) {
+    /** @type {Record<string, string | undefined>} */
+    const opts = {
+        source: undefined,
+        pack: undefined,
+        types: undefined,
+        limit: undefined,
+        db: "data/dev.sqlite",
+    };
+    let dryRun = false;
+    let verbose = false;
+
+    for (let i = 2; i < argv.length; i++) {
+        const arg = argv[i];
+        if (arg === "--source" && argv[i + 1]) {
+            opts.source = argv[++i];
+        } else if (arg === "--pack" && argv[i + 1]) {
+            opts.pack = argv[++i];
+        } else if (arg === "--types" && argv[i + 1]) {
+            opts.types = argv[++i];
+        } else if (arg === "--limit" && argv[i + 1]) {
+            opts.limit = argv[++i];
+        } else if (arg === "--db" && argv[i + 1]) {
+            opts.db = argv[++i];
+        } else if (arg === "--dry-run") {
+            dryRun = true;
+        } else if (arg === "--verbose") {
+            verbose = true;
+        }
+    }
+
+    return {
+        source: opts.source,
+        pack: opts.pack ? opts.pack.split(",") : undefined,
+        types: opts.types ? opts.types.split(",") : undefined,
+        limit: opts.limit ? parseInt(opts.limit, 10) : undefined,
+        db: opts.db ?? "data/dev.sqlite",
+        dryRun,
+        verbose,
+    };
+}
+
+/**
+ * Ensures the pf2e repository is available.
+ * If --source is provided, uses that path.
+ * Otherwise clones the repo to temp/foundry-vtt-pf2e/.
+ * @param {string | undefined} sourcePath
+ * @returns {Promise<string>} - Path to the packs directory
+ */
+export async function ensureRepo(sourcePath) {
+    if (sourcePath) {
+        return join(sourcePath, "packs", "pf2e");
+    }
+
+    const targetDir = "temp/foundry-vtt-pf2e";
+    const packsDir = join(targetDir, "packs", "pf2e");
+
+    try {
+        statSync(packsDir);
+        return packsDir;
+    } catch {
+        // Directory doesn't exist, need to clone
+    }
+
+    console.log("Cloning pf2e repository (shallow, v14-dev branch)...");
+    const exitCode = await spawnProcess([
+        "git",
+        "clone",
+        "--depth",
+        "1",
+        "--branch",
+        "v14-dev",
+        "https://github.com/foundryvtt/pf2e.git",
+        targetDir,
+    ]);
+    if (exitCode !== 0) {
+        throw new Error(`git clone failed with exit code ${exitCode}`);
+    }
+
+    return packsDir;
+}
+
+/**
+ * Discovers JSON files in the packs directory, grouped by pack directory.
+ * @param {string} packsDir
+ * @returns {Map<string, string[]>} - Map of pack directory name to file paths
+ */
+export function discoverFiles(packsDir) {
+    /** @type {Map<string, string[]>} */
+    const packs = new Map();
+
+    function walkDir(/** @type {string} */ dir, /** @type {string} */ packName) {
+        const entries = readdirSync(dir, { withFileTypes: true });
+        for (const entry of entries) {
+            const fullPath = join(dir, entry.name);
+            if (entry.isDirectory()) {
+                walkDir(fullPath, packName || entry.name);
+            } else if (
+                entry.isFile() &&
+                entry.name.endsWith(".json") &&
+                entry.name !== "_folders.json"
+            ) {
+                if (!packs.has(packName)) {
+                    packs.set(packName, []);
+                }
+                const arr = packs.get(packName);
+                if (arr) {
+                    arr.push(fullPath);
+                }
+            }
+        }
+    }
+
+    walkDir(packsDir, "");
+    return packs;
+}
+
+/**
+ * Processes a single Foundry JSON file and returns importable items.
+ * @param {string} filePath
+ * @param {string} packName
+ * @param {{ types?: string[], verbose: boolean }} options
+ * @returns {{ items: ImportableItem[], skipped: boolean, error: string | null }}
+ */
+export function processFile(filePath, packName, options) {
+    try {
+        const content = readFileSync(filePath, "utf-8");
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const raw = JSON.parse(content);
+
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        if (!raw._id || !raw.type) {
+            return { items: [], skipped: true, error: null };
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        const type = raw.type;
+
+        /** @type {ImportableItem[]} */
+        let items = [];
+
+        if (type === "npc" && (!options.types || options.types.includes("creature"))) {
+            items = mapCreature(raw, packName);
+        } else if (type === "spell" && (!options.types || options.types.includes("spell"))) {
+            items = [mapSpell(raw, packName)];
+        } else if (
+            type === "equipment" &&
+            (!options.types || options.types.includes("equipment"))
+        ) {
+            items = [mapEquipment(raw, packName)];
+        } else if (type === "feat" && (!options.types || options.types.includes("feat"))) {
+            items = [mapFeat(raw, packName)];
+        } else if (type === "action" && (!options.types || options.types.includes("action"))) {
+            // Standalone actions — use mapFeat-like logic but as action type
+            items = [mapFeat(raw, packName)];
+            // Override type to action
+            items = items.map((item) => ({
+                ...item,
+                type: "action",
+                dataJson: item.dataJson, // Keep data as-is
+            }));
+        } else {
+            return { items: [], skipped: true, error: null };
+        }
+
+        if (items.length === 0) {
+            return { items: [], skipped: true, error: null };
+        }
+
+        return { items, skipped: false, error: null };
+    } catch (error) {
+        return {
+            items: [],
+            skipped: true,
+            error: error instanceof Error ? error.message : String(error),
+        };
+    }
+}
+
+/**
+ * Main import function. Processes Foundry JSON files and inserts into DB.
+ * @param {{ source?: string, pack?: string[], types?: string[], limit?: number, db: string, dryRun: boolean, verbose: boolean }} options
+ * @returns {Promise<{ inserted: number, updated: number, skipped: number, errors: number }>}
+ */
+export async function runImport(options) {
+    const packsDir = await ensureRepo(options.source);
+    const packs = discoverFiles(packsDir);
+
+    /** @type {ImportableItem[]} */
+    const allItems = [];
+    let skipped = 0;
+    let errors = 0;
+
+    for (const [packName, files] of packs) {
+        // Filter by --pack option
+        if (options.pack && !options.pack.includes(packName)) {
+            continue;
+        }
+
+        if (options.verbose) {
+            console.log(`Processing pack: ${packName} (${files.length} files)`);
+        }
+
+        let fileCount = 0;
+        for (const filePath of files) {
+            if (options.limit && fileCount >= options.limit) {
+                break;
+            }
+
+            const result = processFile(filePath, packName, options);
+
+            if (result.error) {
+                errors++;
+                if (options.verbose) {
+                    console.error(`Error processing ${filePath}: ${result.error}`);
+                }
+            } else if (result.skipped) {
+                skipped++;
+            } else {
+                allItems.push(...result.items);
+            }
+            fileCount++;
+        }
+    }
+
+    if (options.verbose) {
+        console.log(`Parsed ${allItems.length} items, skipped ${skipped}, errors ${errors}`);
+    }
+
+    if (options.dryRun) {
+        console.log(`[DRY RUN] Would import ${allItems.length} items.`);
+        return { inserted: allItems.length, updated: 0, skipped, errors };
+    }
+
+    const database = createDb(options.db);
+    const result = batchUpsertRuleItems(database, allItems);
+
+    if (options.verbose) {
+        console.log(`Inserted: ${result.inserted}, Updated: ${result.updated}`);
+    }
+
+    return {
+        inserted: result.inserted,
+        updated: result.updated,
+        skipped,
+        errors,
+    };
+}
+
+// Only run main when executed directly
+const isMain = process.argv[1] && process.argv[1].includes("import-foundry.js");
+if (isMain) {
+    const options = parseArgs(process.argv);
+    runImport(options)
+        .then((result) => {
+            console.log(
+                `Import complete: ${result.inserted} inserted, ${result.updated} updated, ${result.skipped} skipped, ${result.errors} errors`,
+            );
+        })
+        .catch((error) => {
+            console.error("Import failed:", error);
+            process.exit(1);
+        });
+}

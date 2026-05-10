@@ -266,6 +266,93 @@ describe("queries", () => {
         });
     });
 
+    describe("batchUpsertRuleItems", () => {
+        it("inserts multiple new items", () => {
+            const result = queries.batchUpsertRuleItems(db, [
+                {
+                    type: "creature",
+                    name: "Batch Creature 1",
+                    compendiumSource: "Compendium.pf2e.test.Item.batch1",
+                    dataJson: JSON.stringify({ name: "Batch Creature 1", level: 1, traits: [] }),
+                },
+                {
+                    type: "spell",
+                    name: "Batch Spell 1",
+                    compendiumSource: "Compendium.pf2e.test.Item.batch2",
+                    dataJson: JSON.stringify({ name: "Batch Spell 1", level: 2 }),
+                },
+            ]);
+
+            expect(result.inserted).toBe(2);
+            expect(result.updated).toBe(0);
+
+            const item1 = queries.getRuleItemBySource(db, "Compendium.pf2e.test.Item.batch1");
+            expect(item1).not.toBeNull();
+            expect(item1?.name).toBe("Batch Creature 1");
+        });
+
+        it("updates existing items and inserts new ones", () => {
+            // Pre-insert one item
+            queries.upsertRuleItem(db, {
+                type: "creature",
+                name: "Original",
+                compendiumSource: "Compendium.pf2e.test.Item.existing",
+                dataJson: JSON.stringify({ name: "Original", level: 1, traits: [] }),
+            });
+
+            const result = queries.batchUpsertRuleItems(db, [
+                {
+                    type: "creature",
+                    name: "Updated",
+                    compendiumSource: "Compendium.pf2e.test.Item.existing",
+                    dataJson: JSON.stringify({ name: "Updated", level: 2, traits: ["Beast"] }),
+                },
+                {
+                    type: "spell",
+                    name: "New Spell",
+                    compendiumSource: "Compendium.pf2e.test.Item.new",
+                    dataJson: JSON.stringify({ name: "New Spell", level: 3 }),
+                },
+            ]);
+
+            expect(result.inserted).toBe(1);
+            expect(result.updated).toBe(1);
+
+            const updated = queries.getRuleItemBySource(db, "Compendium.pf2e.test.Item.existing");
+            expect(updated?.name).toBe("Updated");
+        });
+
+        it("rolls back on error", () => {
+            // Try to insert with invalid type (will fail CHECK constraint)
+            expect(() => {
+                queries.batchUpsertRuleItems(db, [
+                    {
+                        type: "creature",
+                        name: "Valid",
+                        compendiumSource: "Compendium.pf2e.test.Item.valid",
+                        dataJson: JSON.stringify({ name: "Valid" }),
+                    },
+                    {
+                        type: "invalid-type",
+                        name: "Invalid",
+                        compendiumSource: "Compendium.pf2e.test.Item.invalid",
+                        dataJson: JSON.stringify({ name: "Invalid" }),
+                    },
+                ]);
+            }).toThrow();
+
+            // The valid item should not have been inserted (rolled back)
+            const item = queries.getRuleItemBySource(db, "Compendium.pf2e.test.Item.valid");
+            expect(item).toBeNull();
+        });
+
+        it("handles empty array", () => {
+            const result = queries.batchUpsertRuleItems(db, []);
+            expect(result.inserted).toBe(0);
+            expect(result.updated).toBe(0);
+        });
+    });
+
     describe("getUsers", () => {
         it("returns all users", () => {
             const users = queries.getUsers(db);

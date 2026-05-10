@@ -1,0 +1,13 @@
+{
+    "_id": "equip001",
+    "name": "Longsword",
+    "type": "equipment",
+    "system": {
+        "level": { "value": 0 },
+        "price": { "value": { "gp": 1 } },
+        "traits": { "value": ["versatile-p"] },
+        "description": {
+            "value": "<p>A standard longsword.</p>"
+        }
+    }
+}

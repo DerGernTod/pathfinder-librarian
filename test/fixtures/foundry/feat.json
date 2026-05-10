@@ -1,0 +1,15 @@
+{
+    "_id": "feat001",
+    "name": "Power Attack",
+    "type": "feat",
+    "system": {
+        "level": { "value": 1 },
+        "actionType": { "value": "action" },
+        "actions": { "value": 2 },
+        "traits": { "value": ["fighter", "flourish"] },
+        "prerequisites": { "value": "" },
+        "description": {
+            "value": "<p>You unleash a particularly powerful attack.</p>"
+        }
+    }
+}

@@ -700,3 +700,52 @@ export function upsertRuleItem(database, { type, name, compendiumSource, dataJso
         createdAt: now,
     };
 }
+
+/**
+ * Batch inserts or updates rule items by compendium_source.
+ * Uses a SQLite transaction for performance.
+ * @param {import("bun:sqlite").Database} database - The database instance
+ * @param {Array<{ type: string, name: string, compendiumSource: string, dataJson: string }>} items
+ * @returns {{ inserted: number, updated: number }}
+ */
+export function batchUpsertRuleItems(database, items) {
+    let inserted = 0;
+    let updated = 0;
+
+    database.run("BEGIN TRANSACTION");
+    try {
+        const selectStmt = database.prepare(
+            "SELECT id FROM rule_items WHERE compendium_source = ?",
+        );
+        const insertStmt = database.prepare(
+            "INSERT INTO rule_items (id, type, name, compendium_source, data_json, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        );
+        const updateStmt = database.prepare(
+            "UPDATE rule_items SET type = ?, name = ?, data_json = ? WHERE compendium_source = ?",
+        );
+
+        for (const item of items) {
+            const existing = selectStmt.get(item.compendiumSource);
+            if (existing) {
+                updateStmt.run(item.type, item.name, item.dataJson, item.compendiumSource);
+                updated++;
+            } else {
+                insertStmt.run(
+                    crypto.randomUUID(),
+                    item.type,
+                    item.name,
+                    item.compendiumSource,
+                    item.dataJson,
+                    new Date().toISOString(),
+                );
+                inserted++;
+            }
+        }
+        database.run("COMMIT");
+    } catch (error) {
+        database.run("ROLLBACK");
+        throw error;
+    }
+
+    return { inserted, updated };
+}
