@@ -28,12 +28,14 @@ export function migrateDb(database) {
         database.run("ALTER TABLE rule_items ADD COLUMN compendium_source TEXT");
     }
 
-    // Migration: monster → creature type rename
-    database.run("UPDATE rule_items SET type = 'creature' WHERE type = 'monster'");
+    // (Moved below)
 
     // Migration: expand CHECK constraint by recreating table
     // SQLite cannot ALTER CONSTRAINT, so use create-new / copy-data / drop-old / rename pattern
     _migrateRuleItemsConstraint(database);
+
+    // Migration: monster → creature type rename
+    database.run("UPDATE rule_items SET type = 'creature' WHERE type = 'monster'");
 
     // Clean up expired challenges (older than 5 minutes)
     database.run("DELETE FROM challenges WHERE created_at < datetime('now', '-5 minutes')");
@@ -71,7 +73,7 @@ function _migrateRuleItemsConstraint(database) {
     `);
     database.run(`
         INSERT INTO rule_items (id, type, name, compendium_source, data_json, created_at)
-        SELECT id, type, name, compendium_source, data_json, created_at FROM rule_items_old
+        SELECT id, CASE WHEN type = 'monster' THEN 'creature' ELSE type END, name, compendium_source, data_json, created_at FROM rule_items_old
     `);
     database.run("DROP TABLE rule_items_old");
     database.run("CREATE INDEX IF NOT EXISTS idx_rule_items_type ON rule_items(type, name)");

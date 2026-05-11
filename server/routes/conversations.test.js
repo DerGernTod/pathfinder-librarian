@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 
 import { Hono } from "hono";
 
@@ -49,6 +49,12 @@ describe("conversations routes", () => {
             expiresAt,
         });
         sessionToken = session.token;
+    });
+
+    afterEach(() => {
+        if (db) {
+            db.close();
+        }
     });
 
     describe("GET /api/conversations", () => {
@@ -275,6 +281,12 @@ describe("rule-items routes", () => {
             .route("/api/rule-items", ruleItemsRouter);
     });
 
+    afterEach(() => {
+        if (db) {
+            db.close();
+        }
+    });
+
     describe("GET /api/rule-items", () => {
         it("returns all rule items", async () => {
             const res = await app.request("/api/rule-items");
@@ -350,6 +362,12 @@ describe("users routes", () => {
             expiresAt,
         });
         sessionToken = session.token;
+    });
+
+    afterEach(() => {
+        if (db) {
+            db.close();
+        }
     });
 
     describe("GET /api/users", () => {

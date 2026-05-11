@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { join } from "path";
 
 import { createDb } from "../server/db/database.js";
@@ -137,6 +137,12 @@ describe("import-foundry", () => {
 
         beforeEach(() => {
             db = createDb(":memory:");
+        });
+
+        afterEach(() => {
+            if (db) {
+                db.close();
+            }
         });
 
         it("imports fixture files and inserts rule items", () => {

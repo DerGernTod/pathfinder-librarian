@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 
 import { createDb } from "./database.js";
 import { seedIfNeeded, resetAndReseedDb, SEED_IDS } from "./seed.js";
@@ -10,6 +10,12 @@ describe("database", () => {
     beforeEach(() => {
         db = createDb(":memory:");
         seedIfNeeded(db);
+    });
+
+    afterEach(() => {
+        if (db) {
+            db.close();
+        }
     });
 
     it("creates all tables", () => {

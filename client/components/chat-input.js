@@ -121,15 +121,16 @@ class ChatInput extends BaseElement {
         this._modeState = { mode: "gm" };
         /** @type {import("../stores/messages-store.js").MessagesState} */
         this._msgState = { messages: [], responding: false };
-        document.addEventListener("select-conversation", () => {
+        this._handleSelectConversation = () => {
             this.clearValue();
             const textarea = this.shadowRoot?.querySelector("sl-textarea");
             textarea?.focus();
-        });
+        };
     }
 
     connectedCallback() {
         super.connectedCallback();
+        document.addEventListener("select-conversation", this._handleSelectConversation);
         new ContextConsumer(this, {
             context: modeContext,
             callback: /** @param {import("../stores/mode-store.js").ModeState} v */ (v) => {
@@ -144,6 +145,11 @@ class ChatInput extends BaseElement {
             },
             subscribe: true,
         });
+    }
+
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        document.removeEventListener("select-conversation", this._handleSelectConversation);
     }
 
     render() {

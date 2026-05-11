@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 
 import { createDb } from "./database.js";
 import * as queries from "./queries.js";
@@ -11,6 +11,12 @@ describe("queries", () => {
     beforeEach(() => {
         db = createDb(":memory:");
         seedIfNeeded(db);
+    });
+
+    afterEach(() => {
+        if (db) {
+            db.close();
+        }
     });
 
     describe("getAllConversations", () => {

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 
 import { createDb } from "../server/db/database.js";
 import { seedRuleItems } from "../server/db/seed.js";
@@ -114,6 +114,15 @@ describe("create-vector-db", () => {
             db = createDb(":memory:");
             seedRuleItems(db);
             vdb = createVectorDb(":memory:");
+        });
+
+        afterEach(() => {
+            if (db) {
+                db.close();
+            }
+            if (vdb) {
+                vdb.close();
+            }
         });
 
         it("generates chunks from fixture DB with dry run", async () => {

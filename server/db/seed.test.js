@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 
 import { createDb } from "./database.js";
 import * as queries from "./queries.js";
@@ -10,6 +10,12 @@ describe("clearAllTables", () => {
 
     beforeEach(() => {
         db = createDb(":memory:");
+    });
+
+    afterEach(() => {
+        if (db) {
+            db.close();
+        }
     });
 
     it("empties all tables", () => {
@@ -52,6 +58,12 @@ describe("seedForUser", () => {
             "INSERT INTO users (id, name, initials, subtitle, mode, email, is_test_user, webauthn_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             [testUserId, "Test GM", "TG", "Game Master", "gm", "test-gm@local.test", 1, testUserId],
         );
+    });
+
+    afterEach(() => {
+        if (db) {
+            db.close();
+        }
     });
 
     it("creates 2 conversations for the user", () => {
@@ -133,6 +145,12 @@ describe("seedRuleItems", () => {
 
     beforeEach(() => {
         db = createDb(":memory:");
+    });
+
+    afterEach(() => {
+        if (db) {
+            db.close();
+        }
     });
 
     it("seeds 2 rule items", () => {
