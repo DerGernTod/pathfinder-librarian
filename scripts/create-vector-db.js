@@ -1,6 +1,8 @@
 import { Database } from "bun:sqlite";
 import { mkdirSync } from "fs";
 
+import { z } from "zod";
+
 import { createDb } from "../server/db/database.js";
 import { getRuleItems } from "../server/db/queries.js";
 import { createEmbeddings } from "./lib/google-ai-client.js";
@@ -57,57 +59,80 @@ CREATE INDEX IF NOT EXISTS idx_vector_chunks_rule_item ON vector_chunks(rule_ite
 CREATE INDEX IF NOT EXISTS idx_vector_chunks_type ON vector_chunks(rule_item_type);
 `;
 
+const VECTOR_HELP = `
+Usage: bun scripts/create-vector-db.js [options]
+
+Read rule items from the database, generate text chunks, embed them via the
+Google AI API, and store the resulting vectors in a SQLite database.
+
+Requires a Google AI API key. Set GOOGLE_AI_API_KEY in your environment or
+pass --api-key. Use --limit and --dry-run to test without incurring costs.
+
+Options:
+  --api-key <key>     Google AI API key (or set GOOGLE_AI_API_KEY)
+  --types <types>     Comma-separated entity types to process (creature,spell,etc.)
+  --limit <n>         Only process the first N rule items
+  --batch-size <n>    Embeddings per API call [default: 20]
+  --db <path>         Source SQLite database [default: data/dev.sqlite]
+  --vector-db <path>  Output vector database [default: data/vectors.sqlite]
+  --model <name>      Embedding model name [default: text-embedding-004]
+  --dry-run           Generate chunks without calling the embedding API
+  --help              Show this help message
+`;
+
+const vectorArgsSchema = z.object({
+    apiKey: z.string().optional(),
+    types: z
+        .string()
+        .transform((v) => v.split(","))
+        .optional(),
+    limit: z.coerce.number().int().positive().optional(),
+    batchSize: z.coerce.number().int().positive().default(20),
+    db: z.string().default("data/dev.sqlite"),
+    vectorDb: z.string().default("data/vectors.sqlite"),
+    model: z.string().default("text-embedding-004"),
+    dryRun: z.boolean().default(false),
+});
+
+/** @typedef {z.infer<typeof vectorArgsSchema>} VectorArgs */
+
 /**
  * Parses CLI arguments for the vector DB creation script.
  * @param {string[]} argv
- * @returns {{ apiKey?: string, types?: string[], limit?: number, batchSize: number, db: string, vectorDb: string, model: string, dryRun: boolean }}
+ * @returns {VectorArgs}
  */
 export function parseVectorArgs(argv) {
-    /** @type {Record<string, string | undefined>} */
-    const opts = {
-        "api-key": undefined,
-        types: undefined,
-        limit: undefined,
-        "batch-size": undefined,
-        db: undefined,
-        "vector-db": undefined,
-        model: undefined,
-    };
+    if (argv.length <= 2 || argv.includes("--help") || argv.includes("-h")) {
+        console.log(VECTOR_HELP);
+        process.exit(0);
+    }
 
-    let dryRun = false;
-
+    /** @type {Record<string, string | boolean | undefined>} */
+    const raw = {};
     for (let i = 2; i < argv.length; i++) {
         const arg = argv[i];
         if (arg === "--api-key" && argv[i + 1]) {
-            opts["api-key"] = argv[++i];
+            raw.apiKey = argv[++i];
         } else if (arg === "--types" && argv[i + 1]) {
-            opts.types = argv[++i];
+            raw.types = argv[++i];
         } else if (arg === "--limit" && argv[i + 1]) {
-            opts.limit = argv[++i];
+            raw.limit = argv[++i];
         } else if (arg === "--batch-size" && argv[i + 1]) {
-            opts["batch-size"] = argv[++i];
+            raw.batchSize = argv[++i];
         } else if (arg === "--db" && argv[i + 1]) {
-            opts.db = argv[++i];
+            raw.db = argv[++i];
         } else if (arg === "--vector-db" && argv[i + 1]) {
-            opts["vector-db"] = argv[++i];
+            raw.vectorDb = argv[++i];
         } else if (arg === "--model" && argv[i + 1]) {
-            opts.model = argv[++i];
+            raw.model = argv[++i];
         } else if (arg === "--dry-run") {
-            dryRun = true;
+            raw.dryRun = true;
         }
     }
 
-    const apiKey = opts["api-key"] ?? process.env.GOOGLE_AI_API_KEY;
-    return {
-        apiKey,
-        types: opts.types ? opts.types.split(",") : undefined,
-        limit: opts.limit ? parseInt(opts.limit, 10) : undefined,
-        batchSize: opts["batch-size"] ? parseInt(opts["batch-size"], 10) : 20,
-        db: opts.db ?? "data/dev.sqlite",
-        vectorDb: opts["vector-db"] ?? "data/vectors.sqlite",
-        model: opts.model ?? "text-embedding-004",
-        dryRun,
-    };
+    const parsed = vectorArgsSchema.parse(raw);
+    parsed.apiKey = parsed.apiKey ?? process.env.GOOGLE_AI_API_KEY;
+    return parsed;
 }
 
 /**

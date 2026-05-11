@@ -1,6 +1,8 @@
 import { readdirSync, readFileSync, statSync } from "fs";
 import { join } from "path";
 
+import { z } from "zod";
+
 import { createDb } from "../server/db/database.js";
 import { batchUpsertRuleItems } from "../server/db/queries.js";
 import { mapCreature, mapEquipment, mapFeat, mapSpell } from "./lib/foundry-mappers.js";
@@ -21,51 +23,75 @@ async function spawnProcess(args) {
  * @typedef {{ type: string, name: string, compendiumSource: string, dataJson: string }} ImportableItem
  */
 
+const IMPORT_HELP = `
+Usage: bun scripts/import-foundry.js [options]
+
+Import Pathfinder 2e data from the Foundry VTT pf2e repository into the
+rule_items database. By default, clones the pf2e repo (shallow) and imports
+all packs.
+
+Options:
+  --source <path>     Use a local pf2e repo instead of cloning
+  --pack <names>      Comma-separated pack names to import (e.g. "bestiary-1,spells")
+  --types <types>     Comma-separated entity types (creature,spell,equipment,feat,action)
+  --limit <n>         Only process the first N matching files
+  --db <path>         Target SQLite database [default: data/dev.sqlite]
+  --dry-run           Parse and map files without writing to the database
+  --verbose           Print per-pack and per-file progress
+  --help              Show this help message
+`;
+
+const importArgsSchema = z.object({
+    source: z.string().optional(),
+    pack: z
+        .string()
+        .transform((v) => v.split(","))
+        .optional(),
+    types: z
+        .string()
+        .transform((v) => v.split(","))
+        .optional(),
+    limit: z.coerce.number().int().positive().optional(),
+    db: z.string().default("data/dev.sqlite"),
+    dryRun: z.boolean().default(false),
+    verbose: z.boolean().default(false),
+});
+
+/** @typedef {z.infer<typeof importArgsSchema>} ImportArgs */
+
 /**
- * Parses CLI arguments into an options object.
+ * Parses CLI arguments into a validated options object.
  * @param {string[]} argv
- * @returns {{ source?: string, pack?: string[], types?: string[], limit?: number, db: string, dryRun: boolean, verbose: boolean }}
+ * @returns {ImportArgs}
  */
 export function parseArgs(argv) {
-    /** @type {Record<string, string | undefined>} */
-    const opts = {
-        source: undefined,
-        pack: undefined,
-        types: undefined,
-        limit: undefined,
-        db: "data/dev.sqlite",
-    };
-    let dryRun = false;
-    let verbose = false;
+    if (argv.length <= 2 || argv.includes("--help") || argv.includes("-h")) {
+        console.log(IMPORT_HELP);
+        process.exit(0);
+    }
 
+    /** @type {Record<string, string | boolean | undefined>} */
+    const raw = {};
     for (let i = 2; i < argv.length; i++) {
         const arg = argv[i];
         if (arg === "--source" && argv[i + 1]) {
-            opts.source = argv[++i];
+            raw.source = argv[++i];
         } else if (arg === "--pack" && argv[i + 1]) {
-            opts.pack = argv[++i];
+            raw.pack = argv[++i];
         } else if (arg === "--types" && argv[i + 1]) {
-            opts.types = argv[++i];
+            raw.types = argv[++i];
         } else if (arg === "--limit" && argv[i + 1]) {
-            opts.limit = argv[++i];
+            raw.limit = argv[++i];
         } else if (arg === "--db" && argv[i + 1]) {
-            opts.db = argv[++i];
+            raw.db = argv[++i];
         } else if (arg === "--dry-run") {
-            dryRun = true;
+            raw.dryRun = true;
         } else if (arg === "--verbose") {
-            verbose = true;
+            raw.verbose = true;
         }
     }
 
-    return {
-        source: opts.source,
-        pack: opts.pack ? opts.pack.split(",") : undefined,
-        types: opts.types ? opts.types.split(",") : undefined,
-        limit: opts.limit ? parseInt(opts.limit, 10) : undefined,
-        db: opts.db ?? "data/dev.sqlite",
-        dryRun,
-        verbose,
-    };
+    return importArgsSchema.parse(raw);
 }
 
 /**

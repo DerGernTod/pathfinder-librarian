@@ -71,7 +71,7 @@ describe("create-vector-db", () => {
         });
 
         it("uses defaults for missing args", () => {
-            const opts = parseVectorArgs(["bun", "script.js"]);
+            const opts = parseVectorArgs(["bun", "script.js", "--dry-run"]);
 
             expect(opts.apiKey).toBeUndefined();
             expect(opts.types).toBeUndefined();
@@ -80,7 +80,28 @@ describe("create-vector-db", () => {
             expect(opts.db).toBe("data/dev.sqlite");
             expect(opts.vectorDb).toBe("data/vectors.sqlite");
             expect(opts.model).toBe("text-embedding-004");
-            expect(opts.dryRun).toBe(false);
+            expect(opts.dryRun).toBe(true);
+        });
+
+        it("exits with help when called with --help", () => {
+            /** @type {string[]} */
+            const logs = [];
+            const originalLog = console.log;
+            console.log = (...args) => logs.push(String(args[0]));
+            const originalExit = process.exit;
+            process.exit = (/** @type {number} */ code) => {
+                throw { code, logs };
+            };
+            try {
+                parseVectorArgs(["bun", "script.js", "--help"]);
+            } catch (/** @type {unknown} */ e) {
+                const err = /** @type {{ code: number, logs: string[] }} */ (e);
+                expect(err.code).toBe(0);
+                expect(err.logs[0]).toContain("Usage:");
+            } finally {
+                process.exit = originalExit;
+                console.log = originalLog;
+            }
         });
     });
 

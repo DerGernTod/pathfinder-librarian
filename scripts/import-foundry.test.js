@@ -38,7 +38,7 @@ describe("import-foundry", () => {
         });
 
         it("uses defaults for missing args", () => {
-            const opts = parseArgs(["bun", "script.js"]);
+            const opts = parseArgs(["bun", "script.js", "--verbose"]);
 
             expect(opts.source).toBeUndefined();
             expect(opts.pack).toBeUndefined();
@@ -46,7 +46,28 @@ describe("import-foundry", () => {
             expect(opts.limit).toBeUndefined();
             expect(opts.db).toBe("data/dev.sqlite");
             expect(opts.dryRun).toBe(false);
-            expect(opts.verbose).toBe(false);
+            expect(opts.verbose).toBe(true);
+        });
+
+        it("exits with help when called with --help", () => {
+            const originalExit = process.exit;
+            /** @type {string[]} */
+            const logs = [];
+            const originalLog = console.log;
+            console.log = (...args) => logs.push(String(args[0]));
+            process.exit = (/** @type {number} */ code) => {
+                throw { code, logs };
+            };
+            try {
+                parseArgs(["bun", "script.js", "--help"]);
+            } catch (/** @type {unknown} */ e) {
+                const err = /** @type {{ code: number, logs: string[] }} */ (e);
+                expect(err.code).toBe(0);
+                expect(err.logs[0]).toContain("Usage:");
+            } finally {
+                process.exit = originalExit;
+                console.log = originalLog;
+            }
         });
     });
 
