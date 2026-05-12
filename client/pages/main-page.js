@@ -104,7 +104,7 @@ class MainPage extends BaseElement {
 
     constructor() {
         super();
-        /** @type {AuthUser | null} */
+        /** @type {(import("../../shared/types.js").AuthUser & { mode: string; }) | null} */
         this.user = null;
         /** @type {boolean} */
         this._landingSubmitting = false;
