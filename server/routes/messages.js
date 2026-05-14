@@ -4,8 +4,7 @@ import { Hono } from "hono";
 import { createMessageSchema } from "../../shared/schemas.js";
 import * as queries from "../db/queries.js";
 import { getDb, getUserId, getVectorDb } from "../utils/context.js";
-import { buildSystemPrompt, streamLlmResponse } from "../utils/llm-client.js";
-import { streamMockResponse } from "../utils/mock-response.js";
+import { RetryableError, getLlmResponse } from "../utils/llm-client.js";
 import { queryRagContext } from "../utils/rag-query.js";
 import { paramSchema } from "./conversations-schema.js";
 
@@ -13,8 +12,65 @@ const validateId = zValidator("param", paramSchema);
 
 let firstMessageCounter = 0;
 
-// Gate logic: use mock when no API key or MOCK_GOOGLE_AI=1
-const useMock = () => process.env.MOCK_GOOGLE_AI === "1" || !process.env.GOOGLE_AI_API_KEY;
+/**
+ * Resolves a stat-block with ruleItemId to one with full creature data.
+ * @param {import("bun:sqlite").Database} database
+ * @param {{ type: "stat-block", title: string, ruleItemId: string }} block
+ * @returns {import("../../shared/types.js").MessageBlock}
+ */
+function resolveStatBlock(database, block) {
+    const ruleItem = queries.getRuleItemById(database, block.ruleItemId);
+    if (!ruleItem) {
+        return { type: "paragraph", text: `Creature not found: ${block.title}` };
+    }
+
+    /** @type {import("../../shared/types.js").CreatureData} */
+    const data = /** @type {import("../../shared/types.js").CreatureData} */ (ruleItem.data);
+
+    // Merge child items (melee, spellcasting, actions) into creature data
+    const children = queries.getChildItems(database, block.ruleItemId);
+    if (children.length > 0) {
+        /** @type {import("../../shared/types.js").MeleeEntry[]} */
+        const melee = [];
+        /** @type {import("../../shared/types.js").SpellcastingEntry[]} */
+        const spellcasting = [];
+        /** @type {import("../../shared/types.js").ActionEntry[]} */
+        const actions = [];
+        for (const child of children) {
+            if (child.type === "melee") {
+                melee.push(
+                    /** @type {import("../../shared/types.js").MeleeEntry} */ (
+                        /** @type {unknown} */ (child.data)
+                    ),
+                );
+            } else if (child.type === "spellcastingEntry") {
+                spellcasting.push(
+                    /** @type {import("../../shared/types.js").SpellcastingEntry} */ (
+                        /** @type {unknown} */ (child.data)
+                    ),
+                );
+            } else if (child.type === "action") {
+                actions.push(
+                    /** @type {import("../../shared/types.js").ActionEntry} */ (
+                        /** @type {unknown} */ (child.data)
+                    ),
+                );
+            }
+        }
+        if (melee.length > 0) {
+            data.melee = melee;
+        }
+        if (spellcasting.length > 0) {
+            data.spellcasting = spellcasting;
+        }
+        if (actions.length > 0) {
+            data.actions = actions;
+        }
+    }
+
+    const { ruleItemId: _id, ...blockWithoutId } = block;
+    return { ...blockWithoutId, data };
+}
 
 export const messagesRouter = new Hono()
     .get("/", validateId, async (c) => {
@@ -78,28 +134,91 @@ export const messagesRouter = new Hono()
 
                     const blocks = [];
                     try {
-                        /** @type {AsyncGenerator<import("../../shared/types.js").MessageBlock, void, unknown>} */
-                        let blockGenerator;
-                        if (useMock()) {
-                            blockGenerator = streamMockResponse();
-                        } else {
-                            // TODO: Pass conversation history (last N messages) for multi-turn context
-                            const vectorDb = getVectorDb(c);
-                            const ragContext = await queryRagContext(data.content, {
-                                vectorDb,
-                                topN: 5,
-                                threshold: 0.3,
-                            });
-                            const systemPrompt = buildSystemPrompt(ragContext, data.mode);
-                            blockGenerator = streamLlmResponse(systemPrompt, data.content);
+                        // Retrieve RAG context from vector DB
+                        const vectorDb = getVectorDb(c);
+                        const ragContext = await queryRagContext(data.content, {
+                            db,
+                            vectorDb,
+                            topN: 5,
+                            threshold: 0.3,
+                        });
+
+                        // Get LLM response with automatic retry on 503
+                        const MAX_RETRIES = 3;
+                        const RETRY_DELAY_MS = 30000;
+                        /** @type {import("../../shared/types.js").MessageBlock[] | undefined} */
+                        let llmBlocks;
+                        for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+                            try {
+                                llmBlocks = await getLlmResponse(
+                                    data.content,
+                                    ragContext.contextText,
+                                    data.mode,
+                                );
+                                break;
+                            } catch (error) {
+                                if (!(error instanceof RetryableError)) {
+                                    throw error;
+                                }
+                                if (attempt < MAX_RETRIES - 1) {
+                                    try {
+                                        controller.enqueue(
+                                            JSON.stringify({
+                                                type: "retryScheduled",
+                                                data: {
+                                                    delay: 30,
+                                                    attempt: attempt + 1,
+                                                    maxAttempts: MAX_RETRIES,
+                                                },
+                                            }) + "\n",
+                                        );
+                                    } catch {
+                                        break;
+                                    }
+                                    await new Promise((resolve) =>
+                                        setTimeout(resolve, RETRY_DELAY_MS),
+                                    );
+                                } else {
+                                    try {
+                                        controller.enqueue(
+                                            JSON.stringify({
+                                                type: "retryFailed",
+                                                data: {
+                                                    message:
+                                                        "The AI service is temporarily unavailable after multiple attempts. Please try again later.",
+                                                },
+                                            }) + "\n",
+                                        );
+                                    } catch {
+                                        // Client disconnected
+                                    }
+                                }
+                            }
                         }
-                        for await (const block of blockGenerator) {
-                            blocks.push(block);
-                            controller.enqueue(
-                                JSON.stringify({ type: "assistantChunk", data: block }) + "\n",
-                            );
+                        if (llmBlocks) {
+                            for (const block of llmBlocks) {
+                                // Resolve stat-block references to full creature data
+                                const resolved =
+                                    block.type === "stat-block" && block.ruleItemId
+                                        ? resolveStatBlock(
+                                              db,
+                                              /** @type {{ type: "stat-block", title: string, ruleItemId: string }} */ (
+                                                  block
+                                              ),
+                                          )
+                                        : block;
+                                blocks.push(resolved);
+                                controller.enqueue(
+                                    JSON.stringify({
+                                        type: "assistantChunk",
+                                        data: resolved,
+                                    }) + "\n",
+                                );
+                                await new Promise((resolve) => setTimeout(resolve, 100));
+                            }
                         }
                     } catch (error) {
+                        // oxlint-disable-next-line no-console
                         console.error("Error streaming assistant response:", error);
                     } finally {
                         // Save assistant message to DB

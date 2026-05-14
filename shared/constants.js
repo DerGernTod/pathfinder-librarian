@@ -5,11 +5,15 @@
 /** RAG pipeline configuration defaults */
 export const RAG_CONFIG = {
     EMBEDDING_MODEL: "gemini-embedding-001",
-    LLM_MODEL: "gemini-3.1-flash-lite",
+    LLM_MODEL: "gemini-2.5-flash",
     TOP_N: 5,
     SIMILARITY_THRESHOLD: 0.3,
     VECTOR_DB_PATH: "data/vectors.sqlite",
 };
+
+/** Gemini API configuration */
+export const GEMINI_MODEL = "gemini-2.5-flash";
+export const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
 /** Deterministic UUIDs for seed data — stable across restarts, usable in tests */
 export const SEED_IDS = {

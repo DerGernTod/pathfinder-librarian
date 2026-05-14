@@ -1,291 +1,235 @@
-import { RAG_CONFIG } from "../../shared/constants.js";
-import { streamMockResponse } from "./mock-response.js";
+import { GEMINI_API_BASE, GEMINI_MODEL } from "../../shared/constants.js";
+import { messageBlocksArraySchema } from "../../shared/schemas.js";
+import { getMockResponse } from "./mock-response.js";
+
+export class RetryableError extends Error {
+    /** @param {string} message */
+    constructor(message) {
+        super(message);
+        this.name = "RetryableError";
+    }
+}
 
 /**
  * @typedef {import("../../shared/types.js").MessageBlock} MessageBlock
- * @typedef {import("../../shared/types.js").RagContext} RagContext
- * @typedef {import("../../shared/types.js").Mode} Mode
  */
 
+/** Segment schema shared across block types */
+const segmentItems = {
+    type: "array",
+    items: {
+        type: "object",
+        properties: {
+            text: { type: "string" },
+            highlight: { type: "boolean" },
+        },
+        required: ["text"],
+    },
+};
+
 /**
- * Builds the system prompt for the LLM with role, mode guidance, and RAG context.
- * @param {RagContext} ragContext - Retrieved context from RAG pipeline.
- * @param {Mode} mode - Player or GM mode.
+ * Builds the Gemini response schema matching the MessageBlock union.
+ * @returns {Record<string, unknown>}
+ */
+export function buildGeminiResponseSchema() {
+    const paragraphBlock = {
+        type: "object",
+        properties: {
+            type: { type: "string", enum: ["paragraph"] },
+            text: { type: "string" },
+            segments: segmentItems,
+            italic: { type: "boolean" },
+        },
+        required: ["type"],
+    };
+
+    const calloutBlock = {
+        type: "object",
+        properties: {
+            type: { type: "string", enum: ["callout"] },
+            title: { type: "string" },
+            text: { type: "string" },
+            segments: segmentItems,
+        },
+        required: ["type", "title"],
+    };
+
+    const listBlock = {
+        type: "object",
+        properties: {
+            type: { type: "string", enum: ["list"] },
+            items: {
+                type: "array",
+                items: {
+                    type: "object",
+                    properties: {
+                        title: { type: "string" },
+                        text: { type: "string" },
+                        segments: segmentItems,
+                    },
+                    required: ["title"],
+                },
+            },
+        },
+        required: ["type", "items"],
+    };
+
+    const statBlockMessage = {
+        type: "object",
+        properties: {
+            type: { type: "string", enum: ["stat-block"] },
+            title: { type: "string" },
+            ruleItemId: { type: "string" },
+        },
+        required: ["type", "title", "ruleItemId"],
+    };
+
+    return {
+        type: "array",
+        items: {
+            anyOf: [paragraphBlock, calloutBlock, listBlock, statBlockMessage],
+        },
+    };
+}
+
+/**
+ * Builds a system prompt for the Gemini API call.
+ * @param {string} ragContext - RAG-retrieved text chunks (empty string if none)
+ * @param {string} mode - "player" or "gm" — adjusts prompt tone and focus
  * @returns {string}
  */
 export function buildSystemPrompt(ragContext, mode) {
-    const modeGuidance =
+    const roleGuidance =
         mode === "gm"
-            ? "You are assisting a Game Master. Focus on rules interpretation, NPC stat blocks, encounter building, and GM tips. Be comprehensive and provide page references when possible."
-            : "You are assisting a player. Focus on helping them understand their character's abilities, rules for their actions, and gameplay tips. Keep answers concise and actionable.";
+            ? "You are advising a Game Master. Focus on encounter building, rules arbitration, NPC management, and running engaging games."
+            : "You are advising a player. Focus on character options, combat tactics, spell selection, and understanding rules.";
 
-    /** @type {string[]} */
-    const parts = [
-        `You are a Pathfinder 2e rules assistant. ${modeGuidance}`,
-        "",
-        "Always cite the specific rule or source when possible. If you're unsure about a rule, say so rather than guessing.",
-        "Format your responses clearly using paragraphs, callouts for key rules, and lists for multiple items.",
-    ];
+    const ragSection = ragContext.length > 0 ? `\n\n## Reference Data\n${ragContext}` : "";
 
-    if (ragContext.contextText) {
-        parts.push("", ragContext.contextText);
-    }
+    return `You are a Pathfinder 2e RPG assistant. ${roleGuidance}
 
-    return parts.join("\n");
+## Output Format
+You MUST respond with a JSON array of message blocks. Do NOT include any text outside the JSON array. Do NOT wrap the output in markdown code fences.
+
+## Block Types
+
+### paragraph
+Freeform text for narrative, explanations, or answers. Use the "text" field for plain text, or "segments" array for structured text with highlighted portions. Use "italic: true" for in-character dialogue or flavor text.
+- Example: { "type": "paragraph", "text": "Some explanatory text here." }
+- Example with segments: { "type": "paragraph", "segments": [{ "text": "You deal ", "highlight": false }, { "text": "2d6 fire damage", "highlight": true }] }
+
+### callout
+Important rules, key mechanics, or highlighted information. "title" is the heading. Use "segments" or "text" for the body. Use "highlight: true" on critical values.
+- Example: { "type": "callout", "title": "Key Rule", "segments": [{ "text": "When you critically hit, ", "highlight": false }, { "text": "double the damage dice", "highlight": true }] }
+
+### list
+Enumerations, options, features, or bullet-point information. Each item has a "title" (bold label) and optional "text" or "segments" for details.
+- Example: { "type": "list", "items": [{ "title": "Stride", "text": "Move up to your Speed" }, { "title": "Strike", "text": "Make a melee or ranged attack" }] }
+
+### stat-block
+Creature stat block. Use when the reference data contains a creature. Instead of copying the stats, reference the creature by its ruleItemId.
+- Example: { "type": "stat-block", "title": "Goblin Warrior", "ruleItemId": "abc-123" }
+- The ruleItemId is shown in the reference data header as [ID: ...]
+
+## Guidelines
+- Treat the reference data as your own knowledge. NEVER say "based on the provided data", "the information suggests", "according to the context", or similar meta-phrases
+- Speak directly and confidently as a Pathfinder 2e expert
+- When the reference data contains a creature, emit a "stat-block" using its ruleItemId — never try to reconstruct creature stats manually
+- Use "segments" with "highlight: true" sparingly — only for critical numbers, DCs, and key terms
+- For creative or explanatory text, use the plain "text" field in paragraphs
+- Use descriptions and lore from the reference data to make your response engaging and flavorful
+- Each response should typically have 2-5 blocks
+- Respond directly and concisely as a helpful RPG assistant${ragSection}`;
 }
 
 /**
- * @typedef {{ candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }} GeminiSseChunk
+ * Calls the Gemini API with JSON mode to get a structured response.
+ * @param {string} userMessage - The user's chat message
+ * @param {string} ragContext - RAG-retrieved context (empty string if none)
+ * @param {string} mode - "player" or "gm"
+ * @returns {Promise<MessageBlock[]>}
  */
-
-/**
- * Parses Gemini SSE streaming response text into accumulated text.
- * @param {string} sseText
- * @returns {string}
- */
-function parseGeminiSseChunk(sseText) {
-    try {
-        const parsed = /** @type {GeminiSseChunk} */ (JSON.parse(sseText));
-        const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-        return text;
-    } catch {
-        return "";
-    }
-}
-
-/**
- * Splits LLM response text into MessageBlock objects.
- * Simple heuristic: split on double-newlines for paragraphs,
- * detect **Title:** patterns for callouts, detect - Item: patterns for lists.
- * @param {string} text
- * @returns {MessageBlock[]}
- */
-function splitIntoBlocks(text) {
-    if (!text.trim()) {
-        return [];
+export async function callGeminiJson(userMessage, ragContext, mode) {
+    const apiKey = process.env.GOOGLE_AI_API_KEY;
+    if (!apiKey) {
+        throw new Error("GOOGLE_AI_API_KEY environment variable is not set");
     }
 
-    const lines = text.split("\n");
-    /** @type {MessageBlock[]} */
-    const blocks = [];
-    /** @type {string[]} */
-    let currentParagraph = [];
+    const url = `${GEMINI_API_BASE}/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
 
-    /**
-     * @param {string} line
-     * @returns {{ title: string, text: string } | null}
-     */
-    function tryParseCallout(line) {
-        const match = line.match(/^\*\*(.+?)\*\*:?\s*(.*)/);
-        if (match) {
-            return { title: match[1], text: match[2] };
-        }
-        return null;
-    }
-
-    for (const line of lines) {
-        // Empty line = paragraph break
-        if (line.trim() === "") {
-            if (currentParagraph.length > 0) {
-                const text = currentParagraph.join(" ").trim();
-                if (text) {
-                    blocks.push({ type: "paragraph", text });
-                }
-                currentParagraph = [];
-            }
-            continue;
-        }
-
-        // Check for callout pattern: **Title:** rest of line
-        const callout = tryParseCallout(line);
-        if (callout) {
-            // Flush current paragraph first
-            if (currentParagraph.length > 0) {
-                const text = currentParagraph.join(" ").trim();
-                if (text) {
-                    blocks.push({ type: "paragraph", text });
-                }
-                currentParagraph = [];
-            }
-            blocks.push({ type: "callout", title: callout.title, text: callout.text });
-            continue;
-        }
-
-        // Check for list pattern: - Item or * Item
-        if (/^[-*]\s+/.test(line.trim())) {
-            // Flush current paragraph first
-            if (currentParagraph.length > 0) {
-                const text = currentParagraph.join(" ").trim();
-                if (text) {
-                    blocks.push({ type: "paragraph", text });
-                }
-                currentParagraph = [];
-            }
-
-            // Try to find or create a list block
-            const itemText = line.trim().replace(/^[-*]\s+/, "");
-            const lastBlock = blocks[blocks.length - 1];
-            if (lastBlock && lastBlock.type === "list") {
-                lastBlock.items.push({ title: itemText });
-            } else {
-                blocks.push({ type: "list", items: [{ title: itemText }] });
-            }
-            continue;
-        }
-
-        // Regular text — accumulate into current paragraph
-        currentParagraph.push(line.trim());
-    }
-
-    // Flush remaining paragraph
-    if (currentParagraph.length > 0) {
-        const text = currentParagraph.join(" ").trim();
-        if (text) {
-            blocks.push({ type: "paragraph", text });
-        }
-    }
-
-    return blocks;
-}
-/**
- * Fetches the raw stream from the Gemini API.
- *
- * @param {string} model
- * @param {string} apiKey
- * @param {string} systemPrompt
- * @param {string} userMessage
- * @returns {Promise<ReadableStream<Uint8Array>>}
- */
-async function getGeminiStream(model, apiKey, systemPrompt, userMessage) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+    const requestBody = {
+        contents: [{ role: "user", parts: [{ text: userMessage }] }],
+        systemInstruction: {
+            parts: [{ text: buildSystemPrompt(ragContext, mode) }],
+        },
+        generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: buildGeminiResponseSchema(),
+        },
+    };
 
     const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            contents: [{ role: "user", parts: [{ text: userMessage }] }],
-            systemInstruction: { parts: [{ text: systemPrompt }] },
-            generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
-        }),
+        body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`Gemini API Error (${response.status}): ${errorText}`);
-    }
-
-    if (!response.body) {
-        throw new Error("Gemini API response body is empty.");
-    }
-
-    return response.body;
-}
-/**
- * Parses a single line of SSE data.
- *
- * @param {string} line
- * @returns {string | null}
- */
-function processSseLine(line) {
-    const trimmed = line.trim();
-    if (!trimmed || !trimmed.startsWith("data: ")) {
-        return null;
-    }
-
-    const data = trimmed.slice(6);
-    if (data === "[DONE]") {
-        return null;
-    }
-
-    try {
-        return parseGeminiSseChunk(data);
-    } catch (e) {
-        throw new Error(`SSE Parse Error: ${e instanceof Error ? e.message : String(e)}`);
-    }
-}
-
-/**
- * Transforms a ReadableStream into a generator of text chunks.
- *
- * @param {ReadableStream<Uint8Array>} stream
- * @returns {AsyncGenerator<string, void, unknown>}
- */
-async function* parseSseStream(stream) {
-    const reader = stream.getReader();
-    const decoder = new TextDecoder();
-    let sseBuffer = "";
-
-    try {
-        while (true) {
-            const { done, value } = await reader.read();
-            sseBuffer += decoder.decode(value, { stream: !done });
-
-            const lines = sseBuffer.split(/\r?\n/);
-            sseBuffer = lines.pop() ?? "";
-
-            for (const line of lines) {
-                const text = processSseLine(line);
-                if (text) {
-                    yield text;
-                }
-            }
-
-            if (done) {
-                break;
-            }
+        if (response.status === 503) {
+            throw new RetryableError(`Service temporarily unavailable: ${errorText}`);
         }
-    } finally {
-        reader.releaseLock();
+        if (response.status === 429) {
+            throw new Error(`Gemini API rate limit exceeded: ${errorText}`);
+        }
+        throw new Error(`Gemini API error: ${response.status} ${errorText}`);
     }
+
+    const responseData =
+        /** @type {{ candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }} */ (
+            await response.json()
+        );
+    /** @type {string} */
+    const rawText = responseData.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+
+    /** @type {unknown} */
+    let parsed;
+    try {
+        parsed = JSON.parse(rawText);
+    } catch {
+        return [{ type: "paragraph", text: rawText }];
+    }
+
+    let blocks;
+    try {
+        blocks = messageBlocksArraySchema.parse(parsed);
+    } catch {
+        return [{ type: "paragraph", text: rawText }];
+    }
+
+    if (blocks.length === 0) {
+        return [{ type: "paragraph", text: "I couldn't generate a response. Please try again." }];
+    }
+
+    return blocks;
 }
 
 /**
- * Streams an LLM response and yields MessageBlock objects.
- *
- * @param {string} systemPrompt
- * @param {string} userMessage
- * @param {{ model?: string, apiKey?: string }} [options]
- * @returns {AsyncGenerator<MessageBlock, void, unknown>}
+ * Gets an LLM response, falling back to mock on any error.
+ * @param {string} userMessage - The user's chat message
+ * @param {string} ragContext - RAG-retrieved context (empty string if none)
+ * @param {string} mode - "player" or "gm"
+ * @returns {Promise<MessageBlock[]>}
  */
-export async function* streamLlmResponse(systemPrompt, userMessage, options = {}) {
-    const apiKey = options.apiKey ?? process.env.GOOGLE_AI_API_KEY ?? "";
-    const model = options.model ?? RAG_CONFIG.LLM_MODEL;
-
-    if (!apiKey || process.env.MOCK_GOOGLE_AI === "1") {
-        yield* streamMockResponse();
-        return;
-    }
-
-    let accumulatedText = "";
-    let yieldedBlocksCount = 0;
-
+export async function getLlmResponse(userMessage, ragContext, mode) {
     try {
-        const stream = await getGeminiStream(model, apiKey, systemPrompt, userMessage);
-
-        for await (const textChunk of parseSseStream(stream)) {
-            accumulatedText += textChunk;
-
-            /** @type {MessageBlock[]} */
-            const currentBlocks = splitIntoBlocks(accumulatedText);
-
-            // Yield only fully completed blocks to prevent rendering partial JSON/markdown
-            while (yieldedBlocksCount < currentBlocks.length - 1) {
-                yield currentBlocks[yieldedBlocksCount++];
-            }
-        }
-
-        // Final yield for the remaining blocks
-        /** @type {MessageBlock[]} */
-        const finalBlocks = splitIntoBlocks(accumulatedText);
-        while (yieldedBlocksCount < finalBlocks.length) {
-            yield finalBlocks[yieldedBlocksCount++];
-        }
+        return await callGeminiJson(userMessage, ragContext, mode);
     } catch (error) {
-        yield* [
-            {
-                type: "paragraph",
-                text: `Sorry, I'm having trouble generating a response right now. Please try again later. (Error details: ${error instanceof Error ? error.message : String(error)})`,
-            },
-        ];
+        if (error instanceof RetryableError) {
+            throw error;
+        }
+        // oxlint-disable-next-line no-console
+        console.warn("LLM client error, falling back to mock:", error);
+        return getMockResponse();
     }
 }
