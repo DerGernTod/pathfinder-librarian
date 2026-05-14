@@ -339,26 +339,19 @@ describe("llm-client", () => {
             expect(para.required).toEqual(["type"]);
             expect(callout.required).toEqual(["type", "title"]);
             expect(list.required).toEqual(["type", "items"]);
-            expect(statBlock.required).toEqual(["type", "title", "data"]);
+            expect(statBlock.required).toEqual(["type", "title", "ruleItemId"]);
         });
 
-        it("includes creature data schema in stat-block", () => {
+        it("stat-block uses ruleItemId instead of nested creature data", () => {
             const schema = buildGeminiResponseSchema();
             const items = /** @type {{ anyOf: Record<string, unknown>[] }} */ (
                 /** @type {unknown} */ (schema.items)
             );
             const statBlock = items.anyOf[3];
-            const dataProps = /** @type {Record<string, unknown>} */ (
-                /** @type {Record<string, unknown>} */ (
-                    /** @type {Record<string, unknown>} */ (statBlock.properties).data
-                ).properties
-            );
+            const props = /** @type {Record<string, unknown>} */ (statBlock.properties);
 
-            expect(dataProps.name).toBeDefined();
-            expect(dataProps.level).toBeDefined();
-            expect(dataProps.traits).toBeDefined();
-            expect(dataProps.attributes).toBeDefined();
-            expect(dataProps.abilities).toBeDefined();
+            expect(props.ruleItemId).toBeDefined();
+            expect(props.data).toBeUndefined();
         });
     });
 });

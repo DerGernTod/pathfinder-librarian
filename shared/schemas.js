@@ -191,7 +191,7 @@ const listBlockSchema = z.object({
 const statBlockMessageSchema = z.object({
     type: z.literal("stat-block"),
     title: z.string(),
-    data: creatureDataSchema,
+    ruleItemId: z.string(),
 });
 
 const messageBlockSchema = z.union([

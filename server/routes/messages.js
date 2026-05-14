@@ -12,6 +12,66 @@ const validateId = zValidator("param", paramSchema);
 
 let firstMessageCounter = 0;
 
+/**
+ * Resolves a stat-block with ruleItemId to one with full creature data.
+ * @param {import("bun:sqlite").Database} database
+ * @param {{ type: "stat-block", title: string, ruleItemId: string }} block
+ * @returns {import("../../shared/types.js").MessageBlock}
+ */
+function resolveStatBlock(database, block) {
+    const ruleItem = queries.getRuleItemById(database, block.ruleItemId);
+    if (!ruleItem) {
+        return { type: "paragraph", text: `Creature not found: ${block.title}` };
+    }
+
+    /** @type {import("../../shared/types.js").CreatureData} */
+    const data = /** @type {import("../../shared/types.js").CreatureData} */ (ruleItem.data);
+
+    // Merge child items (melee, spellcasting, actions) into creature data
+    const children = queries.getChildItems(database, block.ruleItemId);
+    if (children.length > 0) {
+        /** @type {import("../../shared/types.js").MeleeEntry[]} */
+        const melee = [];
+        /** @type {import("../../shared/types.js").SpellcastingEntry[]} */
+        const spellcasting = [];
+        /** @type {import("../../shared/types.js").ActionEntry[]} */
+        const actions = [];
+        for (const child of children) {
+            if (child.type === "melee") {
+                melee.push(
+                    /** @type {import("../../shared/types.js").MeleeEntry} */ (
+                        /** @type {unknown} */ (child.data)
+                    ),
+                );
+            } else if (child.type === "spellcastingEntry") {
+                spellcasting.push(
+                    /** @type {import("../../shared/types.js").SpellcastingEntry} */ (
+                        /** @type {unknown} */ (child.data)
+                    ),
+                );
+            } else if (child.type === "action") {
+                actions.push(
+                    /** @type {import("../../shared/types.js").ActionEntry} */ (
+                        /** @type {unknown} */ (child.data)
+                    ),
+                );
+            }
+        }
+        if (melee.length > 0) {
+            data.melee = melee;
+        }
+        if (spellcasting.length > 0) {
+            data.spellcasting = spellcasting;
+        }
+        if (actions.length > 0) {
+            data.actions = actions;
+        }
+    }
+
+    const { ruleItemId: _id, ...blockWithoutId } = block;
+    return { ...blockWithoutId, data };
+}
+
 export const messagesRouter = new Hono()
     .get("/", validateId, async (c) => {
         const db = getDb(c);
@@ -137,11 +197,21 @@ export const messagesRouter = new Hono()
                         }
                         if (llmBlocks) {
                             for (const block of llmBlocks) {
-                                blocks.push(block);
+                                // Resolve stat-block references to full creature data
+                                const resolved =
+                                    block.type === "stat-block" && block.ruleItemId
+                                        ? resolveStatBlock(
+                                              db,
+                                              /** @type {{ type: "stat-block", title: string, ruleItemId: string }} */ (
+                                                  block
+                                              ),
+                                          )
+                                        : block;
+                                blocks.push(resolved);
                                 controller.enqueue(
                                     JSON.stringify({
                                         type: "assistantChunk",
-                                        data: block,
+                                        data: resolved,
                                     }) + "\n",
                                 );
                                 await new Promise((resolve) => setTimeout(resolve, 100));

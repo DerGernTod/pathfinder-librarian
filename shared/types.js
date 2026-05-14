@@ -67,7 +67,7 @@
  * }} CreatureData
  */
 
-/** @typedef {{ type: "stat-block", title: string, data: CreatureData }} StatBlockMessageBlock */
+/** @typedef {{ type: "stat-block", title: string, data?: CreatureData, ruleItemId?: string }} StatBlockMessageBlock */
 
 /** @typedef {{ type: "list", items: Array<ListItem> }} ListBlock */
 

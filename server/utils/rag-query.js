@@ -1,6 +1,6 @@
 import { createEmbeddings } from "../../scripts/lib/google-ai-client.js";
 import { RAG_CONFIG } from "../../shared/constants.js";
-import { getChildItems, getParentItem, getRuleItemById } from "../db/queries.js";
+import { getParentItem, getRuleItemById } from "../db/queries.js";
 import { cosineSimilarity, getAllChunkEmbeddings } from "./vector-store.js";
 
 /**
@@ -113,7 +113,9 @@ export async function queryRagContext(userPrompt, options = {}) {
         const contextParts = topResults.map((entry) => {
             const { chunk } = entry;
             /** @type {string[]} */
-            const parts = [`--- ${chunk.ruleItemName} (${chunk.ruleItemType}) ---`];
+            const parts = [
+                `--- ${chunk.ruleItemName} (${chunk.ruleItemType}) [ID: ${chunk.ruleItemId}] ---`,
+            ];
             parts.push(chunk.text);
 
             if (mainDb) {
@@ -122,45 +124,23 @@ export async function queryRagContext(userPrompt, options = {}) {
                     /** @type {{ description?: string }} */
                     const data = /** @type {{ description?: string }} */ (ruleItem.data);
 
-                    // Include description for richer context
                     if (data.description) {
                         parts.push(`\nDescription: ${data.description}`);
                     }
 
-                    // For root items (creatures, etc.), include full structured data
-                    // so the LLM can emit stat-blocks with accurate numbers
-                    if (!ruleItem.parentId) {
-                        parts.push(`\nStructured Data:\n${JSON.stringify(ruleItem.data, null, 2)}`);
-                    }
-
-                    // For child items (melee, actions, spellcasting), include parent context
+                    // For child items, include parent context
                     if (ruleItem.parentId) {
                         const parent = getParentItem(mainDb, chunk.ruleItemId);
                         if (parent) {
+                            parts.push(
+                                `\nParent: ${parent.name} (${parent.type}) [ID: ${parent.id}]`,
+                            );
                             /** @type {{ description?: string }} */
                             const parentData = /** @type {{ description?: string }} */ (
                                 parent.data
                             );
-                            parts.push(`\nParent: ${parent.name} (${parent.type})`);
                             if (parentData.description) {
                                 parts.push(`Parent Description: ${parentData.description}`);
-                            }
-                            // Include parent's structured data for stat-block context
-                            parts.push(
-                                `\nParent Structured Data:\n${JSON.stringify(parent.data, null, 2)}`,
-                            );
-
-                            // Also include sibling items
-                            const siblings = getChildItems(mainDb, parent.id);
-                            const siblingData = siblings.map((s) => ({
-                                name: s.name,
-                                type: s.type,
-                                data: s.data,
-                            }));
-                            if (siblingData.length > 0) {
-                                parts.push(
-                                    `\nSibling Items:\n${JSON.stringify(siblingData, null, 2)}`,
-                                );
                             }
                         }
                     }

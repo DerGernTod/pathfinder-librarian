@@ -14,204 +14,6 @@ export class RetryableError extends Error {
  * @typedef {import("../../shared/types.js").MessageBlock} MessageBlock
  */
 
-/**
- * Builds the Gemini-format response schema for CreatureData sub-tree.
- * @returns {Record<string, unknown>}
- */
-function buildCreatureDataGeminiSchema() {
-    return {
-        type: "object",
-        properties: {
-            name: { type: "string" },
-            type: { type: "string" },
-            level: { type: "number" },
-            rarity: { type: "string" },
-            traits: { type: "array", items: { type: "string" } },
-            perception: { type: "number" },
-            languages: {
-                type: "object",
-                properties: {
-                    value: { type: "array", items: { type: "string" } },
-                    details: { type: "string" },
-                },
-                required: ["value"],
-            },
-            attributes: {
-                type: "object",
-                properties: {
-                    ac: {
-                        type: "object",
-                        properties: {
-                            value: { type: "number" },
-                            details: { type: "string" },
-                        },
-                        required: ["value"],
-                    },
-                    hp: {
-                        type: "object",
-                        properties: {
-                            value: { type: "number" },
-                            max: { type: "number" },
-                            details: { type: "string" },
-                        },
-                        required: ["value", "max"],
-                    },
-                    fortitude: {
-                        type: "object",
-                        properties: { value: { type: "number" } },
-                        required: ["value"],
-                    },
-                    reflex: {
-                        type: "object",
-                        properties: { value: { type: "number" } },
-                        required: ["value"],
-                    },
-                    will: {
-                        type: "object",
-                        properties: { value: { type: "number" } },
-                        required: ["value"],
-                    },
-                    speed: { type: "string" },
-                },
-            },
-            abilities: {
-                type: "object",
-                properties: {
-                    str: {
-                        type: "object",
-                        properties: { mod: { type: "number" } },
-                        required: ["mod"],
-                    },
-                    dex: {
-                        type: "object",
-                        properties: { mod: { type: "number" } },
-                        required: ["mod"],
-                    },
-                    con: {
-                        type: "object",
-                        properties: { mod: { type: "number" } },
-                        required: ["mod"],
-                    },
-                    int: {
-                        type: "object",
-                        properties: { mod: { type: "number" } },
-                        required: ["mod"],
-                    },
-                    wis: {
-                        type: "object",
-                        properties: { mod: { type: "number" } },
-                        required: ["mod"],
-                    },
-                    cha: {
-                        type: "object",
-                        properties: { mod: { type: "number" } },
-                        required: ["mod"],
-                    },
-                },
-            },
-            skills: {
-                type: "object",
-                properties: {
-                    Athletics: {
-                        type: "object",
-                        properties: {
-                            value: { type: "number" },
-                            ability: { type: "string" },
-                        },
-                        required: ["value"],
-                    },
-                },
-            },
-            melee: {
-                type: "array",
-                items: {
-                    type: "object",
-                    properties: {
-                        name: { type: "string" },
-                        attack: { type: "string" },
-                        damage: { type: "string" },
-                        damageType: { type: "string" },
-                        compendiumSource: { type: "string" },
-                        traits: { type: "array", items: { type: "string" } },
-                    },
-                    required: ["name", "attack", "damage"],
-                },
-            },
-            spellcasting: {
-                type: "array",
-                items: {
-                    type: "object",
-                    properties: {
-                        name: { type: "string" },
-                        tradition: { type: "string" },
-                        type: { type: "string" },
-                        dc: { type: "number" },
-                        attackModifier: { type: "number" },
-                        slots: {
-                            type: "object",
-                            properties: {
-                                "1st": {
-                                    type: "array",
-                                    items: {
-                                        type: "object",
-                                        properties: {
-                                            name: { type: "string" },
-                                            compendiumSource: { type: "string" },
-                                            rank: { type: "number" },
-                                            usage: { type: "string" },
-                                            heightened: { type: "boolean" },
-                                        },
-                                        required: ["name"],
-                                    },
-                                },
-                            },
-                        },
-                        cantrips: {
-                            type: "array",
-                            items: {
-                                type: "object",
-                                properties: {
-                                    name: { type: "string" },
-                                    compendiumSource: { type: "string" },
-                                    rank: { type: "number" },
-                                    usage: { type: "string" },
-                                    heightened: { type: "boolean" },
-                                },
-                                required: ["name"],
-                            },
-                        },
-                    },
-                    required: ["name"],
-                },
-            },
-            actions: {
-                type: "array",
-                items: {
-                    type: "object",
-                    properties: {
-                        name: { type: "string" },
-                        actionType: {
-                            anyOf: [
-                                { type: "number" },
-                                { type: "string", enum: ["reaction", "free"] },
-                            ],
-                        },
-                        traits: { type: "array", items: { type: "string" } },
-                        description: { type: "string" },
-                        compendiumSource: { type: "string" },
-                        deathNote: { type: "boolean" },
-                    },
-                    required: ["name", "description"],
-                },
-            },
-            description: { type: "string" },
-            compendiumSource: { type: "string" },
-            itemRefs: { type: "array", items: { type: "string" } },
-        },
-        required: ["name", "level", "traits", "attributes", "abilities"],
-    };
-}
-
 /** Segment schema shared across block types */
 const segmentItems = {
     type: "array",
@@ -277,9 +79,9 @@ export function buildGeminiResponseSchema() {
         properties: {
             type: { type: "string", enum: ["stat-block"] },
             title: { type: "string" },
-            data: buildCreatureDataGeminiSchema(),
+            ruleItemId: { type: "string" },
         },
-        required: ["type", "title", "data"],
+        required: ["type", "title", "ruleItemId"],
     };
 
     return {
@@ -325,13 +127,14 @@ Enumerations, options, features, or bullet-point information. Each item has a "t
 - Example: { "type": "list", "items": [{ "title": "Stride", "text": "Move up to your Speed" }, { "title": "Strike", "text": "Make a melee or ranged attack" }] }
 
 ### stat-block
-Complete creature stat block. ONLY use when full creature data is available from the reference data. Must include a "data" object with name, level, traits, and other creature fields.
-- Example: { "type": "stat-block", "title": "Goblin Warrior", "data": { "name": "Goblin Warrior", "level": -1, "traits": ["goblin", "humanoid"], ... } }
+Creature stat block. Use when the reference data contains a creature. Instead of copying the stats, reference the creature by its ruleItemId.
+- Example: { "type": "stat-block", "title": "Goblin Warrior", "ruleItemId": "abc-123" }
+- The ruleItemId is shown in the reference data header as [ID: ...]
 
 ## Guidelines
 - Treat the reference data as your own knowledge. NEVER say "based on the provided data", "the information suggests", "according to the context", or similar meta-phrases
 - Speak directly and confidently as a Pathfinder 2e expert
-- When the reference data contains a creature with stat information, emit a "stat-block" block with all available fields
+- When the reference data contains a creature, emit a "stat-block" using its ruleItemId — never try to reconstruct creature stats manually
 - Use "segments" with "highlight: true" sparingly — only for critical numbers, DCs, and key terms
 - For creative or explanatory text, use the plain "text" field in paragraphs
 - Use descriptions and lore from the reference data to make your response engaging and flavorful
