@@ -12,6 +12,7 @@ import { authRouter } from "./routes/auth.js";
 import { conversationsRouter } from "./routes/conversations.js";
 import { ruleItemsRouter } from "./routes/rule-items.js";
 import { usersRouter } from "./routes/users.js";
+import { setForcedMockIndexForUser } from "./utils/mock-response.js";
 import { openVectorDb } from "./utils/vector-store.js";
 
 /** @typedef {import("../shared/hono-env.js").AppEnv} AppEnv */
@@ -92,6 +93,19 @@ if (process.env.NODE_ENV !== "production") {
         }
 
         return c.json({ result: "success", data: user }, 200);
+    });
+
+    // Pin (or release) the mock response index so Playwright tests can force a
+    // deterministic assistant response. Pass { index: null } to restore random
+    // selection. Has no effect when a real LLM API key is configured.
+    app.post("/api/test/set-mock-response", async (c) => {
+        const body = /** @type {{ userId?: unknown, index?: unknown }} */ (await c.req.json());
+        const userId = typeof body.userId === "string" ? body.userId : null;
+        const index = typeof body.index === "number" ? body.index : null;
+        if (userId) {
+            setForcedMockIndexForUser(userId, index);
+        }
+        return c.json({ ok: true });
     });
 }
 

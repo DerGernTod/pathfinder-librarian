@@ -3,10 +3,11 @@ import { createContext } from "@lit/context";
 import { client } from "../utils/rpc-client.js";
 
 /**
+ * @typedef {{ delay: number, attempt: number, maxAttempts: number }} RetryInfo
  * @typedef {{
  *   messages: import("../../shared/types.js").Message[],
  *   responding: boolean,
- *   retryInfo?: { delay: number, attempt: number, maxAttempts: number } | null
+ *   retryInfo?: RetryInfo | null
  * }} MessagesState
  */
 

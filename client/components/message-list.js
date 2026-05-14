@@ -80,36 +80,51 @@ class MessageList extends BaseElement {
         });
     }
 
+    renderResponding() {
+        if (!this._msgState.responding) {
+            return nothing;
+        }
+        if (this._msgState.retryInfo) {
+            return renderRetry(this._msgState.retryInfo);
+        }
+        return renderThinking();
+    }
+
     render() {
         return html`
             <div class="messages">
+                ${this.renderResponding()}
                 ${this._msgState.messages
                     .toReversed()
                     .map((msg) => html` <chat-message .message=${msg}></chat-message> `)}
-                ${this._msgState.responding
-                    ? this._msgState.retryInfo
-                        ? html`
-                              <div class="loading">
-                                  <sl-spinner style="font-size: 1rem;"></sl-spinner>
-                                  <span class="loading-text"
-                                      >Service busy. Retrying in ${this._msgState.retryInfo.delay}s
-                                      (attempt
-                                      ${this._msgState.retryInfo.attempt}/${this._msgState.retryInfo
-                                          .maxAttempts})...
-                                      Press Stop to cancel.</span
-                                  >
-                              </div>
-                          `
-                        : html`
-                              <div class="loading">
-                                  <sl-spinner style="font-size: 1rem;"></sl-spinner>
-                                  <span class="loading-text">Thinking...</span>
-                              </div>
-                          `
-                    : nothing}
             </div>
         `;
     }
+}
+
+function renderThinking() {
+    return html`
+        <div class="loading">
+            <sl-spinner style="font-size: 1rem;"></sl-spinner>
+            <span class="loading-text">Thinking...</span>
+        </div>
+    `;
+}
+
+/**
+ *
+ * @param {import("../stores/messages-store.js").RetryInfo} retryInfo
+ */
+function renderRetry(retryInfo) {
+    return html`
+        <div class="loading">
+            <sl-spinner style="font-size: 1rem;"></sl-spinner>
+            <span class="loading-text">
+                Service busy. Retrying in ${retryInfo.delay}s (attempt
+                ${retryInfo.attempt}/${retryInfo.maxAttempts})... Press Stop to cancel.
+            </span>
+        </div>
+    `;
 }
 
 const element = customElement("message-list")(MessageList);
