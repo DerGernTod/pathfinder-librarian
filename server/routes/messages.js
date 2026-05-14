@@ -4,17 +4,13 @@ import { Hono } from "hono";
 import { createMessageSchema } from "../../shared/schemas.js";
 import * as queries from "../db/queries.js";
 import { getDb, getUserId, getVectorDb } from "../utils/context.js";
-import { buildSystemPrompt, streamLlmResponse } from "../utils/llm-client.js";
-import { streamMockResponse } from "../utils/mock-response.js";
+import { getLlmResponse } from "../utils/llm-client.js";
 import { queryRagContext } from "../utils/rag-query.js";
 import { paramSchema } from "./conversations-schema.js";
 
 const validateId = zValidator("param", paramSchema);
 
 let firstMessageCounter = 0;
-
-// Gate logic: use mock when no API key or MOCK_GOOGLE_AI=1
-const useMock = () => process.env.MOCK_GOOGLE_AI === "1" || !process.env.GOOGLE_AI_API_KEY;
 
 export const messagesRouter = new Hono()
     .get("/", validateId, async (c) => {
@@ -78,28 +74,29 @@ export const messagesRouter = new Hono()
 
                     const blocks = [];
                     try {
-                        /** @type {AsyncGenerator<import("../../shared/types.js").MessageBlock, void, unknown>} */
-                        let blockGenerator;
-                        if (useMock()) {
-                            blockGenerator = streamMockResponse();
-                        } else {
-                            // TODO: Pass conversation history (last N messages) for multi-turn context
-                            const vectorDb = getVectorDb(c);
-                            const ragContext = await queryRagContext(data.content, {
-                                vectorDb,
-                                topN: 5,
-                                threshold: 0.3,
-                            });
-                            const systemPrompt = buildSystemPrompt(ragContext, data.mode);
-                            blockGenerator = streamLlmResponse(systemPrompt, data.content);
-                        }
-                        for await (const block of blockGenerator) {
+                        // Retrieve RAG context from vector DB
+                        const vectorDb = getVectorDb(c);
+                        const ragContext = await queryRagContext(data.content, {
+                            vectorDb,
+                            topN: 5,
+                            threshold: 0.3,
+                        });
+
+                        // Get LLM response with RAG context (JSON mode, falls back to mock)
+                        const llmBlocks = await getLlmResponse(
+                            data.content,
+                            ragContext.contextText,
+                            data.mode,
+                        );
+                        for (const block of llmBlocks) {
                             blocks.push(block);
                             controller.enqueue(
                                 JSON.stringify({ type: "assistantChunk", data: block }) + "\n",
                             );
+                            await new Promise((resolve) => setTimeout(resolve, 100));
                         }
                     } catch (error) {
+                        // oxlint-disable-next-line no-console
                         console.error("Error streaming assistant response:", error);
                     } finally {
                         // Save assistant message to DB
