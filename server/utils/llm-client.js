@@ -2,6 +2,14 @@ import { GEMINI_API_BASE, GEMINI_MODEL } from "../../shared/constants.js";
 import { messageBlocksArraySchema } from "../../shared/schemas.js";
 import { getMockResponse } from "./mock-response.js";
 
+export class RetryableError extends Error {
+    /** @param {string} message */
+    constructor(message) {
+        super(message);
+        this.name = "RetryableError";
+    }
+}
+
 /**
  * @typedef {import("../../shared/types.js").MessageBlock} MessageBlock
  */
@@ -366,6 +374,9 @@ export async function callGeminiJson(userMessage, ragContext, mode) {
 
     if (!response.ok) {
         const errorText = await response.text();
+        if (response.status === 503) {
+            throw new RetryableError(`Service temporarily unavailable: ${errorText}`);
+        }
         if (response.status === 429) {
             throw new Error(`Gemini API rate limit exceeded: ${errorText}`);
         }
@@ -412,6 +423,9 @@ export async function getLlmResponse(userMessage, ragContext, mode) {
     try {
         return await callGeminiJson(userMessage, ragContext, mode);
     } catch (error) {
+        if (error instanceof RetryableError) {
+            throw error;
+        }
         // oxlint-disable-next-line no-console
         console.warn("LLM client error, falling back to mock:", error);
         return getMockResponse();

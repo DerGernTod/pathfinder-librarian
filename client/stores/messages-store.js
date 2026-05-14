@@ -5,7 +5,8 @@ import { client } from "../utils/rpc-client.js";
 /**
  * @typedef {{
  *   messages: import("../../shared/types.js").Message[],
- *   responding: boolean
+ *   responding: boolean,
+ *   retryInfo?: { delay: number, attempt: number, maxAttempts: number } | null
  * }} MessagesState
  */
 
@@ -14,7 +15,9 @@ import { client } from "../utils/rpc-client.js";
  * @typedef {{ type: "userMessage", data: import("../../shared/types.js").Message }} SSEUserMessageEvent
  * @typedef {{ type: "assistantChunk", data: import("../../shared/types.js").MessageBlock }} SSEChunkEvent
  * @typedef {{ type: "assistantComplete", data: import("../../shared/types.js").AssistantMessage }} SSECompleteEvent
- * @typedef {SSEConversationEvent | SSEUserMessageEvent | SSEChunkEvent | SSECompleteEvent} SSEEvent
+ * @typedef {{ type: "retryScheduled", data: { delay: number, attempt: number, maxAttempts: number } }} SSERetryScheduledEvent
+ * @typedef {{ type: "retryFailed", data: { message: string } }} SSERetryFailedEvent
+ * @typedef {SSEConversationEvent | SSEUserMessageEvent | SSEChunkEvent | SSECompleteEvent | SSERetryScheduledEvent | SSERetryFailedEvent} SSEEvent
  */
 
 /** @type {ReturnType<typeof import("@lit/context").createContext<MessagesState>>} */

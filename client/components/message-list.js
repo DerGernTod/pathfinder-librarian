@@ -87,12 +87,25 @@ class MessageList extends BaseElement {
                     .toReversed()
                     .map((msg) => html` <chat-message .message=${msg}></chat-message> `)}
                 ${this._msgState.responding
-                    ? html`
-                          <div class="loading">
-                              <sl-spinner style="font-size: 1rem;"></sl-spinner>
-                              <span class="loading-text">Thinking...</span>
-                          </div>
-                      `
+                    ? this._msgState.retryInfo
+                        ? html`
+                              <div class="loading">
+                                  <sl-spinner style="font-size: 1rem;"></sl-spinner>
+                                  <span class="loading-text"
+                                      >Service busy. Retrying in ${this._msgState.retryInfo.delay}s
+                                      (attempt
+                                      ${this._msgState.retryInfo.attempt}/${this._msgState.retryInfo
+                                          .maxAttempts})...
+                                      Press Stop to cancel.</span
+                                  >
+                              </div>
+                          `
+                        : html`
+                              <div class="loading">
+                                  <sl-spinner style="font-size: 1rem;"></sl-spinner>
+                                  <span class="loading-text">Thinking...</span>
+                              </div>
+                          `
                     : nothing}
             </div>
         `;

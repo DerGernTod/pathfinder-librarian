@@ -4,7 +4,7 @@ import { Hono } from "hono";
 import { createMessageSchema } from "../../shared/schemas.js";
 import * as queries from "../db/queries.js";
 import { getDb, getUserId, getVectorDb } from "../utils/context.js";
-import { getLlmResponse } from "../utils/llm-client.js";
+import { RetryableError, getLlmResponse } from "../utils/llm-client.js";
 import { queryRagContext } from "../utils/rag-query.js";
 import { paramSchema } from "./conversations-schema.js";
 
@@ -82,18 +82,69 @@ export const messagesRouter = new Hono()
                             threshold: 0.3,
                         });
 
-                        // Get LLM response with RAG context (JSON mode, falls back to mock)
-                        const llmBlocks = await getLlmResponse(
-                            data.content,
-                            ragContext.contextText,
-                            data.mode,
-                        );
-                        for (const block of llmBlocks) {
-                            blocks.push(block);
-                            controller.enqueue(
-                                JSON.stringify({ type: "assistantChunk", data: block }) + "\n",
-                            );
-                            await new Promise((resolve) => setTimeout(resolve, 100));
+                        // Get LLM response with automatic retry on 503
+                        const MAX_RETRIES = 3;
+                        const RETRY_DELAY_MS = 30000;
+                        /** @type {import("../../shared/types.js").MessageBlock[] | undefined} */
+                        let llmBlocks;
+                        for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+                            try {
+                                llmBlocks = await getLlmResponse(
+                                    data.content,
+                                    ragContext.contextText,
+                                    data.mode,
+                                );
+                                break;
+                            } catch (error) {
+                                if (!(error instanceof RetryableError)) {
+                                    throw error;
+                                }
+                                if (attempt < MAX_RETRIES - 1) {
+                                    try {
+                                        controller.enqueue(
+                                            JSON.stringify({
+                                                type: "retryScheduled",
+                                                data: {
+                                                    delay: 30,
+                                                    attempt: attempt + 1,
+                                                    maxAttempts: MAX_RETRIES,
+                                                },
+                                            }) + "\n",
+                                        );
+                                    } catch {
+                                        break;
+                                    }
+                                    await new Promise((resolve) =>
+                                        setTimeout(resolve, RETRY_DELAY_MS),
+                                    );
+                                } else {
+                                    try {
+                                        controller.enqueue(
+                                            JSON.stringify({
+                                                type: "retryFailed",
+                                                data: {
+                                                    message:
+                                                        "The AI service is temporarily unavailable after multiple attempts. Please try again later.",
+                                                },
+                                            }) + "\n",
+                                        );
+                                    } catch {
+                                        // Client disconnected
+                                    }
+                                }
+                            }
+                        }
+                        if (llmBlocks) {
+                            for (const block of llmBlocks) {
+                                blocks.push(block);
+                                controller.enqueue(
+                                    JSON.stringify({
+                                        type: "assistantChunk",
+                                        data: block,
+                                    }) + "\n",
+                                );
+                                await new Promise((resolve) => setTimeout(resolve, 100));
+                            }
                         }
                     } catch (error) {
                         // oxlint-disable-next-line no-console

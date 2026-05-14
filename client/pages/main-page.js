@@ -621,6 +621,10 @@ class MainPage extends BaseElement {
                         messages = [...messages.slice(0, -1), assistantMessage];
                     }
                     this._updateMsgState({ messages, responding: true });
+                } else if (event.type === "retryScheduled") {
+                    this._updateMsgState({ messages, responding: true, retryInfo: event.data });
+                } else if (event.type === "retryFailed") {
+                    this._updateMsgState({ messages, responding: true, retryInfo: null });
                 }
             }
         } catch (err) {
@@ -628,7 +632,11 @@ class MainPage extends BaseElement {
                 // Ignore error
             }
         } finally {
-            this._updateMsgState({ messages: this._msgState.messages, responding: false });
+            this._updateMsgState({
+                messages: this._msgState.messages,
+                responding: false,
+                retryInfo: null,
+            });
             this._currentAssistantController = null;
         }
     }
@@ -724,6 +732,10 @@ class MainPage extends BaseElement {
                         messages = [...messages.slice(0, -1), assistantMessage];
                     }
                     this._updateMsgState({ messages, responding: true });
+                } else if (event.type === "retryScheduled") {
+                    this._updateMsgState({ messages, responding: true, retryInfo: event.data });
+                } else if (event.type === "retryFailed") {
+                    this._updateMsgState({ messages, responding: true, retryInfo: null });
                 }
             }
         } catch (err) {
@@ -731,7 +743,11 @@ class MainPage extends BaseElement {
                 // Ignore error
             }
         } finally {
-            this._updateMsgState({ messages: this._msgState.messages, responding: false });
+            this._updateMsgState({
+                messages: this._msgState.messages,
+                responding: false,
+                retryInfo: null,
+            });
             this._currentAssistantController = null;
         }
     }
@@ -937,6 +953,14 @@ class MainPage extends BaseElement {
                             messages = [...messages.slice(0, -1), assistantMessage];
                         }
                         this._updateMsgState({ messages, responding: true });
+                    } else if (event.type === "retryScheduled") {
+                        this._updateMsgState({
+                            messages,
+                            responding: true,
+                            retryInfo: event.data,
+                        });
+                    } else if (event.type === "retryFailed") {
+                        this._updateMsgState({ messages, responding: true, retryInfo: null });
                     }
                 }
             } catch (err) {
@@ -944,7 +968,11 @@ class MainPage extends BaseElement {
                     // Ignore error
                 }
             } finally {
-                this._updateMsgState({ messages: this._msgState.messages, responding: false });
+                this._updateMsgState({
+                    messages: this._msgState.messages,
+                    responding: false,
+                    retryInfo: null,
+                });
                 this._currentAssistantController = null;
             }
         } catch {

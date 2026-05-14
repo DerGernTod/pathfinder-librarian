@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, mock } from "bun:test";
 
 import { GEMINI_API_BASE, GEMINI_MODEL } from "../../shared/constants.js";
 import {
+    RetryableError,
     buildGeminiResponseSchema,
     buildSystemPrompt,
     callGeminiJson,
@@ -123,6 +124,27 @@ describe("llm-client", () => {
             );
         });
 
+        it("throws RetryableError on 503", async () => {
+            process.env.GOOGLE_AI_API_KEY = "test-key";
+            mockFetch(() =>
+                Promise.resolve({
+                    ok: false,
+                    status: 503,
+                    text: () => Promise.resolve("Service unavailable"),
+                }),
+            );
+
+            try {
+                await callGeminiJson("test", "", "player");
+                expect.unreachable("Should have thrown");
+            } catch (error) {
+                expect(error).toBeInstanceOf(RetryableError);
+                expect(/** @type {Error} */ (error).message).toContain(
+                    "Service temporarily unavailable",
+                );
+            }
+        });
+
         it("falls back to paragraph block on malformed JSON in response", async () => {
             process.env.GOOGLE_AI_API_KEY = "test-key";
             mockFetch(() => Promise.resolve(geminiResponse("not valid json {")));
@@ -219,6 +241,24 @@ describe("llm-client", () => {
 
             expect(Array.isArray(result)).toBe(true);
             expect(result.length).toBeGreaterThan(0);
+        });
+
+        it("propagates RetryableError instead of falling back to mock", async () => {
+            process.env.GOOGLE_AI_API_KEY = "test-key";
+            mockFetch(() =>
+                Promise.resolve({
+                    ok: false,
+                    status: 503,
+                    text: () => Promise.resolve("Overloaded"),
+                }),
+            );
+
+            try {
+                await getLlmResponse("test", "", "player");
+                expect.unreachable("Should have thrown");
+            } catch (error) {
+                expect(error).toBeInstanceOf(RetryableError);
+            }
         });
 
         it("returns real response on success", async () => {
