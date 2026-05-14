@@ -288,10 +288,13 @@ function createFeatChunk(rawData) {
  * Creates text chunks from a rule item for vector embedding.
  * Creatures get multiple chunks (stat block summary, each action/melee/spell section).
  * Spells, equipment, feats get a single chunk each.
- * @param {{ id: string, type: string, name: string, compendiumSource?: string, data: unknown }} ruleItem
+ * Child item types (melee, action, spellcastingEntry, weapon, armor) get rich chunks
+ * with parent context when a parent is provided.
+ * @param {{ id: string, type: string, name: string, compendiumSource?: string, parentId?: string, data: unknown }} ruleItem
+ * @param {{ name?: string, type?: string }} [parent]
  * @returns {VectorChunk[]}
  */
-export function createChunksFromRuleItem(ruleItem) {
+export function createChunksFromRuleItem(ruleItem, parent) {
     /** @type {string[]} */
     const texts = [];
 
@@ -321,8 +324,61 @@ export function createChunksFromRuleItem(ruleItem) {
         texts.push(createEquipmentChunk(data));
     } else if (ruleItem.type === "feat") {
         texts.push(createFeatChunk(data));
+    } else if (ruleItem.type === "melee") {
+        const meleeData =
+            /** @type {{ name?: string, attack?: string, damage?: string, damageType?: string, traits?: string[] }} */ (
+                data
+            );
+        const prefix = parent ? `${parent.name}'s ` : "";
+        const parts = [`Melee: ${prefix}${meleeData.name ?? ruleItem.name}`];
+        if (meleeData.attack) {
+            parts.push(`Attack ${meleeData.attack}`);
+        }
+        if (meleeData.damage) {
+            parts.push(`Damage ${meleeData.damage}`);
+        }
+        if (meleeData.traits?.length) {
+            parts.push(`Traits: ${meleeData.traits.join(", ")}`);
+        }
+        texts.push(parts.join(". "));
+    } else if (ruleItem.type === "action") {
+        const actionData =
+            /** @type {{ name?: string, actionType?: number | "reaction" | "free", traits?: string[], description?: string }} */ (
+                data
+            );
+        const prefix = parent ? `${parent.name}'s ` : "";
+        const parts = [
+            `Action: ${prefix}${actionData.name ?? ruleItem.name} (${formatActionType(actionData.actionType)})`,
+        ];
+        if (actionData.traits?.length) {
+            parts.push(`Traits: ${actionData.traits.join(", ")}`);
+        }
+        if (actionData.description) {
+            parts.push(actionData.description);
+        }
+        texts.push(parts.join(". "));
+    } else if (ruleItem.type === "spellcastingEntry") {
+        const scData =
+            /** @type {{ name?: string, tradition?: string, type?: string, dc?: number, attackModifier?: number }} */ (
+                data
+            );
+        const prefix = parent ? `${parent.name}'s ` : "";
+        texts.push(
+            createSpellcastingChunk({
+                ...scData,
+                name: `${prefix}${scData.name ?? ruleItem.name}`,
+            }),
+        );
+    } else if (ruleItem.type === "weapon") {
+        const weaponData = /** @type {{ name?: string }} */ (data);
+        const prefix = parent ? `${parent.name}'s ` : "";
+        texts.push(`Weapon: ${prefix}${weaponData.name ?? ruleItem.name}`);
+    } else if (ruleItem.type === "armor") {
+        const armorData = /** @type {{ name?: string }} */ (data);
+        const prefix = parent ? `${parent.name}'s ` : "";
+        texts.push(`Armor: ${prefix}${armorData.name ?? ruleItem.name}`);
     } else {
-        // Generic chunk for other types
+        // Generic fallback for unknown types
         texts.push(`${ruleItem.type}: ${ruleItem.name}`);
     }
 

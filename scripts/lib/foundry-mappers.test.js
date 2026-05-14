@@ -200,6 +200,19 @@ describe("foundry-mappers", () => {
             expect(Array.isArray(data.itemRefs)).toBe(true);
             expect(data.itemRefs.length).toBeGreaterThan(0);
         });
+
+        it("embedded items have parentId set to creature's compendium source", () => {
+            const raw = loadFixture("creature-simple.json");
+            const result = mapCreature(raw, "pathfinder-bestiary");
+
+            const creatureSource = result[0].compendiumSource;
+            const embeddedItems = result.slice(1);
+
+            expect(embeddedItems.length).toBeGreaterThan(0);
+            for (const item of embeddedItems) {
+                expect(item.parentId).toBe(creatureSource);
+            }
+        });
     });
 
     describe("extractEmbeddedItems", () => {
@@ -216,6 +229,17 @@ describe("foundry-mappers", () => {
             expect(meleeData.attack).toContain("+8");
             expect(meleeData.damage).toBe("1d6+4 piercing");
             expect(meleeData.traits).toEqual(["finesse"]);
+        });
+
+        it("sets parentId on each embedded item", () => {
+            const raw = loadFixture("creature-simple.json");
+            const creatureSource = buildCompendiumSource("pathfinder-bestiary", raw._id);
+            const { embeddedItems } = extractEmbeddedItems(raw.items, creatureSource);
+
+            expect(embeddedItems.length).toBeGreaterThan(0);
+            for (const item of embeddedItems) {
+                expect(item.parentId).toBe(creatureSource);
+            }
         });
 
         it("extracts action items with mapped actionType", () => {

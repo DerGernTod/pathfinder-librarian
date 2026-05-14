@@ -142,6 +142,131 @@ describe("vector-chunker", () => {
                 expect(chunks[i].chunkIndex).toBe(i);
             }
         });
+
+        it("creates rich chunk for melee child type with parent context", () => {
+            const ruleItem = {
+                id: "melee-1",
+                type: "melee",
+                name: "proboscis",
+                compendiumSource: "Compendium.pf2e.bestiary.Item.melee001",
+                parentId: "parent-1",
+                data: {
+                    name: "proboscis",
+                    attack: "+8",
+                    damage: "1d6+4 piercing",
+                    damageType: "piercing",
+                    traits: ["finesse"],
+                },
+            };
+            const parent = { name: "Bloodseeker", type: "creature" };
+            const chunks = createChunksFromRuleItem(ruleItem, parent);
+
+            expect(chunks).toHaveLength(1);
+            expect(chunks[0].text).toContain("Bloodseeker's proboscis");
+            expect(chunks[0].text).toContain("Attack +8");
+            expect(chunks[0].text).toContain("Damage 1d6+4 piercing");
+            expect(chunks[0].text).toContain("Traits: finesse");
+        });
+
+        it("creates melee chunk without parent context when no parent", () => {
+            const ruleItem = {
+                id: "melee-1",
+                type: "melee",
+                name: "proboscis",
+                compendiumSource: undefined,
+                data: {
+                    name: "proboscis",
+                    attack: "+8",
+                    damage: "1d6+4 piercing",
+                    traits: ["finesse"],
+                },
+            };
+            const chunks = createChunksFromRuleItem(ruleItem);
+
+            expect(chunks).toHaveLength(1);
+            expect(chunks[0].text).toContain("Melee: proboscis");
+            expect(chunks[0].text).not.toContain("'s ");
+        });
+
+        it("creates rich chunk for action child type with parent context", () => {
+            const ruleItem = {
+                id: "action-1",
+                type: "action",
+                name: "Sneak",
+                compendiumSource: undefined,
+                parentId: "parent-1",
+                data: {
+                    name: "Sneak",
+                    actionType: 1,
+                    traits: ["move"],
+                    description: "Move stealthily.",
+                },
+            };
+            const parent = { name: "Goblin", type: "creature" };
+            const chunks = createChunksFromRuleItem(ruleItem, parent);
+
+            expect(chunks).toHaveLength(1);
+            expect(chunks[0].text).toContain("Goblin's Sneak");
+            expect(chunks[0].text).toContain("1-Action");
+            expect(chunks[0].text).toContain("Traits: move");
+            expect(chunks[0].text).toContain("Move stealthily.");
+        });
+
+        it("creates rich chunk for spellcastingEntry child type with parent context", () => {
+            const ruleItem = {
+                id: "sc-1",
+                type: "spellcastingEntry",
+                name: "Innate Spells",
+                compendiumSource: undefined,
+                parentId: "parent-1",
+                data: {
+                    name: "Innate Spells",
+                    tradition: "occult",
+                    dc: 17,
+                    attackModifier: 7,
+                },
+            };
+            const parent = { name: "Cultist", type: "creature" };
+            const chunks = createChunksFromRuleItem(ruleItem, parent);
+
+            expect(chunks).toHaveLength(1);
+            expect(chunks[0].text).toContain("Cultist's Innate Spells");
+            expect(chunks[0].text).toContain("Tradition: occult");
+            expect(chunks[0].text).toContain("DC 17");
+            expect(chunks[0].text).toContain("Attack +7");
+        });
+
+        it("creates named chunk for weapon child type with parent context", () => {
+            const ruleItem = {
+                id: "weapon-1",
+                type: "weapon",
+                name: "Longsword",
+                compendiumSource: undefined,
+                parentId: "parent-1",
+                data: { name: "Longsword" },
+            };
+            const parent = { name: "Knight", type: "creature" };
+            const chunks = createChunksFromRuleItem(ruleItem, parent);
+
+            expect(chunks).toHaveLength(1);
+            expect(chunks[0].text).toBe("Weapon: Knight's Longsword");
+        });
+
+        it("creates named chunk for armor child type with parent context", () => {
+            const ruleItem = {
+                id: "armor-1",
+                type: "armor",
+                name: "Chain Mail",
+                compendiumSource: undefined,
+                parentId: "parent-1",
+                data: { name: "Chain Mail" },
+            };
+            const parent = { name: "Knight", type: "creature" };
+            const chunks = createChunksFromRuleItem(ruleItem, parent);
+
+            expect(chunks).toHaveLength(1);
+            expect(chunks[0].text).toBe("Armor: Knight's Chain Mail");
+        });
     });
 
     describe("createCreatureSummaryChunk", () => {

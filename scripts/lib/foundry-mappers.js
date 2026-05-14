@@ -1,5 +1,5 @@
 /**
- * @typedef {{ type: string, name: string, compendiumSource: string, dataJson: string, itemRefs?: string[] }} ImportableRuleItem
+ * @typedef {{ type: string, name: string, compendiumSource: string, dataJson: string, parentId?: string, itemRefs?: string[] }} ImportableRuleItem
  */
 
 /**
@@ -126,6 +126,7 @@ export function extractEmbeddedItems(items, creatureSource) {
                 type: "melee",
                 name: typed.name ?? "Unnamed Melee",
                 compendiumSource: itemSource,
+                parentId: creatureSource,
                 dataJson: JSON.stringify({
                     name: typed.name ?? "Unnamed Melee",
                     attack: `+${meleeSys.bonus?.value ?? 0}`,
@@ -147,6 +148,7 @@ export function extractEmbeddedItems(items, creatureSource) {
                 type: "action",
                 name: typed.name ?? "Unnamed Action",
                 compendiumSource: itemSource,
+                parentId: creatureSource,
                 dataJson: JSON.stringify({
                     name: typed.name ?? "Unnamed Action",
                     actionType: mapActionType(
@@ -168,6 +170,7 @@ export function extractEmbeddedItems(items, creatureSource) {
                 type: "spellcastingEntry",
                 name: typed.name ?? "Spellcasting",
                 compendiumSource: itemSource,
+                parentId: creatureSource,
                 dataJson: JSON.stringify({
                     name: typed.name ?? "Spellcasting",
                     tradition: scSys.tradition?.value,
@@ -183,6 +186,7 @@ export function extractEmbeddedItems(items, creatureSource) {
                 type: "weapon",
                 name: typed.name ?? "Unnamed Weapon",
                 compendiumSource: itemSource,
+                parentId: creatureSource,
                 dataJson: JSON.stringify({
                     name: typed.name ?? "Unnamed Weapon",
                     compendiumSource: itemSource,
@@ -194,6 +198,7 @@ export function extractEmbeddedItems(items, creatureSource) {
                 type: "armor",
                 name: typed.name ?? "Unnamed Armor",
                 compendiumSource: itemSource,
+                parentId: creatureSource,
                 dataJson: JSON.stringify({
                     name: typed.name ?? "Unnamed Armor",
                     compendiumSource: itemSource,

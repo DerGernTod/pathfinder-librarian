@@ -552,11 +552,13 @@ export function seedRuleItems(database) {
     }
 
     database.run(
-        "INSERT INTO rule_items (id, type, name, compendium_source, data_json, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO rule_items (id, type, name, compendium_source, parent_id, linked_source, data_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         [
             SEED_IDS.RULE_MITFLIT_KING,
             "creature",
             "Mitflit King",
+            null,
+            null,
             null,
             JSON.stringify({
                 name: "Mitflit King",
@@ -629,12 +631,94 @@ export function seedRuleItems(database) {
         ],
     );
 
+    // Seed child items for Mitflit King
     database.run(
-        "INSERT INTO rule_items (id, type, name, compendium_source, data_json, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO rule_items (id, type, name, compendium_source, parent_id, linked_source, data_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        [
+            SEED_IDS.RULE_MITFLIT_MELEE,
+            "melee",
+            "dagger",
+            null,
+            SEED_IDS.RULE_MITFLIT_KING,
+            null,
+            JSON.stringify({
+                name: "dagger",
+                attack: "+9",
+                damage: "1d4+4 piercing",
+                damageType: "piercing",
+                traits: ["agile", "finesse"],
+            }),
+            "2025-01-01T09:00:00Z",
+        ],
+    );
+
+    database.run(
+        "INSERT INTO rule_items (id, type, name, compendium_source, parent_id, linked_source, data_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        [
+            SEED_IDS.RULE_MITFLIT_ACTION_SNEAK,
+            "action",
+            "Sneak",
+            null,
+            SEED_IDS.RULE_MITFLIT_KING,
+            null,
+            JSON.stringify({
+                name: "Sneak",
+                actionType: 1,
+                traits: ["move"],
+                description:
+                    "The mitflit Strides up to its Speed plus 5 feet and attempts a Stealth check.",
+            }),
+            "2025-01-01T09:00:00Z",
+        ],
+    );
+
+    database.run(
+        "INSERT INTO rule_items (id, type, name, compendium_source, parent_id, linked_source, data_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        [
+            SEED_IDS.RULE_MITFLIT_ACTION_SNARE,
+            "action",
+            "Cowardly Snare",
+            null,
+            SEED_IDS.RULE_MITFLIT_KING,
+            null,
+            JSON.stringify({
+                name: "Cowardly Snare",
+                actionType: "reaction",
+                traits: ["manipulate"],
+                description: "Trigger: A creature moves within 10 feet of the mitflit.",
+            }),
+            "2025-01-01T09:00:00Z",
+        ],
+    );
+
+    database.run(
+        "INSERT INTO rule_items (id, type, name, compendium_source, parent_id, linked_source, data_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        [
+            SEED_IDS.RULE_MITFLIT_SPELLCASTING,
+            "spellcastingEntry",
+            "Mitflit Innate Spells",
+            null,
+            SEED_IDS.RULE_MITFLIT_KING,
+            null,
+            JSON.stringify({
+                name: "Mitflit Innate Spells",
+                tradition: "occult",
+                type: "innate",
+                dc: 17,
+                attackModifier: 7,
+            }),
+            "2025-01-01T09:00:00Z",
+        ],
+    );
+
+    database.run(
+        "INSERT INTO rule_items (id, type, name, compendium_source, parent_id, linked_source, data_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         [
             SEED_IDS.RULE_SAMPLE_SPELL,
             "spell",
             "Fireball",
+            null,
+            null,
             null,
             JSON.stringify({
                 name: "Fireball",

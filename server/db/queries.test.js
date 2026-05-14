@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 
 import { createDb } from "./database.js";
 import * as queries from "./queries.js";
-import { seedIfNeeded } from "./seed.js";
+import { seedIfNeeded, SEED_IDS } from "./seed.js";
 
 describe("queries", () => {
     /** @type {import("bun:sqlite").Database} */
@@ -160,9 +160,17 @@ describe("queries", () => {
     });
 
     describe("getRuleItems", () => {
-        it("returns all rule items when no filter", () => {
+        it("returns root items only by default (excludes children)", () => {
             const items = queries.getRuleItems(db);
             expect(items).toHaveLength(2);
+            for (const item of items) {
+                expect(item.parentId).toBeUndefined();
+            }
+        });
+
+        it("returns all items including children with includeChildren option", () => {
+            const items = queries.getRuleItems(db, undefined, { includeChildren: true });
+            expect(items).toHaveLength(6);
         });
 
         it("returns filtered rule items by type", () => {
@@ -356,6 +364,87 @@ describe("queries", () => {
             const result = queries.batchUpsertRuleItems(db, []);
             expect(result.inserted).toBe(0);
             expect(result.updated).toBe(0);
+        });
+
+        it("inserts items with parentId and linkedSource", () => {
+            // Insert a parent first
+            const parent = queries.upsertRuleItem(db, {
+                type: "creature",
+                name: "Parent Creature",
+                compendiumSource: "Compendium.pf2e.test.Item.parent1",
+                dataJson: JSON.stringify({ name: "Parent Creature", level: 5 }),
+            });
+
+            queries.batchUpsertRuleItems(db, [
+                {
+                    type: "melee",
+                    name: "Child Melee",
+                    compendiumSource: "Compendium.pf2e.test.Item.child1",
+                    dataJson: JSON.stringify({ name: "Child Melee", attack: "+10" }),
+                    parentId: parent.id,
+                    linkedSource: "Compendium.pf2e.other.Item.linked",
+                },
+            ]);
+
+            const child = queries.getRuleItemBySource(db, "Compendium.pf2e.test.Item.child1");
+            expect(child).not.toBeNull();
+            expect(child?.parentId).toBe(parent.id);
+            expect(child?.linkedSource).toBe("Compendium.pf2e.other.Item.linked");
+        });
+    });
+
+    describe("getChildItems", () => {
+        it("returns children for a parent item", () => {
+            const children = queries.getChildItems(db, SEED_IDS.RULE_MITFLIT_KING);
+            expect(children).toHaveLength(4);
+            for (const child of children) {
+                expect(child.parentId).toBe(SEED_IDS.RULE_MITFLIT_KING);
+            }
+        });
+
+        it("returns empty array for item with no children", () => {
+            const children = queries.getChildItems(db, SEED_IDS.RULE_SAMPLE_SPELL);
+            expect(children).toEqual([]);
+        });
+
+        it("returns empty array for non-existent item", () => {
+            const children = queries.getChildItems(db, "00000000-0000-0000-0000-000000000000");
+            expect(children).toEqual([]);
+        });
+    });
+
+    describe("getParentItem", () => {
+        it("returns parent for a child item", () => {
+            const children = queries.getChildItems(db, SEED_IDS.RULE_MITFLIT_KING);
+            const parent = queries.getParentItem(db, children[0].id);
+            expect(parent).not.toBeNull();
+            expect(parent?.id).toBe(SEED_IDS.RULE_MITFLIT_KING);
+            expect(parent?.name).toBe("Mitflit King");
+        });
+
+        it("returns null for root items", () => {
+            const parent = queries.getParentItem(db, SEED_IDS.RULE_MITFLIT_KING);
+            expect(parent).toBeNull();
+        });
+
+        it("returns null for non-existent item", () => {
+            const parent = queries.getParentItem(db, "00000000-0000-0000-0000-000000000000");
+            expect(parent).toBeNull();
+        });
+    });
+
+    describe("cascade delete", () => {
+        it("deletes children when parent is deleted", () => {
+            // Verify children exist
+            const childrenBefore = queries.getChildItems(db, SEED_IDS.RULE_MITFLIT_KING);
+            expect(childrenBefore).toHaveLength(4);
+
+            // Delete parent
+            db.run("DELETE FROM rule_items WHERE id = ?", [SEED_IDS.RULE_MITFLIT_KING]);
+
+            // Children should be gone
+            const childrenAfter = queries.getChildItems(db, SEED_IDS.RULE_MITFLIT_KING);
+            expect(childrenAfter).toHaveLength(0);
         });
     });
 

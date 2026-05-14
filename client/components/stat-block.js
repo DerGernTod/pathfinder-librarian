@@ -275,6 +275,7 @@ class StatBlock extends BaseElement {
     static properties = {
         title: { type: String },
         data: { type: Object },
+        ruleItemId: { type: String },
     };
 
     constructor() {

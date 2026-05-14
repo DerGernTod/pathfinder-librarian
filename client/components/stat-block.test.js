@@ -482,6 +482,37 @@ describe("stat-block", () => {
         });
     });
 
+    describe("ruleItemId property", () => {
+        it("accepts ruleItemId property without error", async () => {
+            /** @type {any} */
+            const el = document.createElement("stat-block");
+            el.title = "Test";
+            el.data = fullCreatureData;
+            el.ruleItemId = "some-uuid-value";
+            document.body.appendChild(el);
+            await el.updateComplete;
+
+            expect(el.ruleItemId).toBe("some-uuid-value");
+        });
+
+        it("renders identically with and without ruleItemId", async () => {
+            const el1 = createStatBlock("Test", fullCreatureData);
+            await el1.updateComplete;
+
+            /** @type {any} */
+            const el2 = document.createElement("stat-block");
+            el2.title = "Test";
+            el2.data = fullCreatureData;
+            el2.ruleItemId = "some-uuid";
+            document.body.appendChild(el2);
+            await el2.updateComplete;
+
+            const h3_1 = el1.shadowRoot.querySelector("h3");
+            const h3_2 = el2.shadowRoot.querySelector("h3");
+            expect(h3_1.textContent).toBe(h3_2.textContent);
+        });
+    });
+
     describe("edge cases", () => {
         it("renders with minimal creature data (no melee/spellcasting/actions)", async () => {
             const minimalData = {

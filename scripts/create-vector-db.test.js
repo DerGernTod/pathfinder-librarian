@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 
 import { createDb } from "../server/db/database.js";
+import { getRuleItems } from "../server/db/queries.js";
 import { seedRuleItems } from "../server/db/seed.js";
 import {
     createVectorDb,
@@ -151,7 +152,7 @@ describe("create-vector-db", () => {
             const { createChunksFromRuleItem } = await import("./lib/vector-chunker.js");
             const { getRuleItems } = await import("../server/db/queries.js");
 
-            const items = getRuleItems(db);
+            const items = getRuleItems(db, undefined, { includeChildren: true });
             const allChunks = [];
             for (const item of items) {
                 allChunks.push(...createChunksFromRuleItem(item));
@@ -159,6 +160,47 @@ describe("create-vector-db", () => {
 
             // Should have generated some chunks from the seeded data
             expect(allChunks.length).toBeGreaterThan(0);
+        });
+
+        it("getRuleItems with includeChildren returns all items", () => {
+            const rootOnly = getRuleItems(db);
+            const all = getRuleItems(db, undefined, { includeChildren: true });
+
+            expect(all.length).toBeGreaterThan(rootOnly.length);
+            expect(all.length).toBe(6);
+            expect(rootOnly.length).toBe(2);
+        });
+
+        it("child chunks include parent context", async () => {
+            const { createChunksFromRuleItem } = await import("./lib/vector-chunker.js");
+
+            // Get all items including children
+            const allItems = getRuleItems(db, undefined, { includeChildren: true });
+
+            // Find child items (non-spellcastingEntry first, as those have simpler format)
+            const meleeChildren = allItems.filter((item) => item.parentId && item.type === "melee");
+
+            for (const child of meleeChildren) {
+                const parent = allItems.find((p) => p.id === child.parentId);
+                const chunks = createChunksFromRuleItem(child, parent);
+
+                // Melee child chunks should contain parent's name
+                for (const chunk of chunks) {
+                    expect(chunk.text).toContain("Mitflit King's");
+                }
+            }
+
+            // Spellcasting entry children should also have parent context
+            const scChildren = allItems.filter(
+                (item) => item.parentId && item.type === "spellcastingEntry",
+            );
+            for (const child of scChildren) {
+                const parent = allItems.find((p) => p.id === child.parentId);
+                const chunks = createChunksFromRuleItem(child, parent);
+                for (const chunk of chunks) {
+                    expect(chunk.text).toContain("Mitflit King's");
+                }
+            }
         });
 
         it("creates vector chunks with mocked API", async () => {
@@ -176,9 +218,8 @@ describe("create-vector-db", () => {
             // Use runVectorCreate but we need to mock the DB creation
             // For this test, we'll manually create chunks and insert
             const { createChunksFromRuleItem } = await import("./lib/vector-chunker.js");
-            const { getRuleItems } = await import("../server/db/queries.js");
 
-            const items = getRuleItems(db);
+            const items = getRuleItems(db, undefined, { includeChildren: true });
             const allChunks = [];
             for (const item of items) {
                 allChunks.push(...createChunksFromRuleItem(item));
@@ -228,9 +269,8 @@ describe("create-vector-db", () => {
 
         it("type filtering works", async () => {
             const { createChunksFromRuleItem } = await import("./lib/vector-chunker.js");
-            const { getRuleItems } = await import("../server/db/queries.js");
 
-            const items = getRuleItems(db);
+            const items = getRuleItems(db, undefined, { includeChildren: true });
             const spellItems = items.filter((i) => i.type === "spell");
 
             const chunks = [];

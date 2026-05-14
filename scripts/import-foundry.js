@@ -4,7 +4,7 @@ import { join } from "path";
 import { z } from "zod";
 
 import { createDb } from "../server/db/database.js";
-import { batchUpsertRuleItems } from "../server/db/queries.js";
+import { batchUpsertRuleItems, getRuleItemBySource } from "../server/db/queries.js";
 import { mapCreature, mapEquipment, mapFeat, mapSpell } from "./lib/foundry-mappers.js";
 
 /**
@@ -20,7 +20,7 @@ async function spawnProcess(args) {
 }
 
 /**
- * @typedef {{ type: string, name: string, compendiumSource: string, dataJson: string }} ImportableItem
+ * @typedef {{ type: string, name: string, compendiumSource: string, dataJson: string, parentId?: string }} ImportableItem
  */
 
 const IMPORT_HELP = `
@@ -287,7 +287,27 @@ export async function runImport(options) {
     }
 
     const database = createDb(options.db);
-    const result = batchUpsertRuleItems(database, allItems);
+
+    // Phase 1: insert root items (no parentId) first
+    const rootItems = allItems.filter((item) => !item.parentId);
+    const rootResult = batchUpsertRuleItems(database, rootItems);
+
+    // Phase 2: resolve parentId from compendium source → DB id, then insert children
+    const childItems = allItems.filter((item) => item.parentId);
+    for (const child of childItems) {
+        const parent = getRuleItemBySource(database, /** @type {string} */ (child.parentId));
+        if (parent) {
+            child.parentId = parent.id;
+        } else {
+            child.parentId = undefined;
+        }
+    }
+    const childResult = batchUpsertRuleItems(database, childItems);
+
+    const result = {
+        inserted: rootResult.inserted + childResult.inserted,
+        updated: rootResult.updated + childResult.updated,
+    };
 
     if (options.verbose) {
         console.log(`Inserted: ${result.inserted}, Updated: ${result.updated}`);

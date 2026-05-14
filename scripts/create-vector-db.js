@@ -4,7 +4,7 @@ import { mkdirSync } from "fs";
 import { z } from "zod";
 
 import { createDb } from "../server/db/database.js";
-import { getRuleItems } from "../server/db/queries.js";
+import { getRuleItemById, getRuleItems } from "../server/db/queries.js";
 import { createEmbeddings } from "./lib/google-ai-client.js";
 import { createChunksFromRuleItem } from "./lib/vector-chunker.js";
 
@@ -158,7 +158,7 @@ export function createVectorDb(dbPath) {
  */
 export async function runVectorCreate(options) {
     const sourceDb = createDb(options.db);
-    const ruleItems = getRuleItems(sourceDb);
+    const ruleItems = getRuleItems(sourceDb, undefined, { includeChildren: true });
 
     // Filter by types
     const filtered = options.types
@@ -176,7 +176,12 @@ export async function runVectorCreate(options) {
     // Generate chunks
     const allChunks = [];
     for (const item of limited) {
-        const chunks = createChunksFromRuleItem(item);
+        /** @type {{ name?: string, type?: string } | undefined} */
+        let parent;
+        if (item.parentId) {
+            parent = getRuleItemById(sourceDb, item.parentId) ?? undefined;
+        }
+        const chunks = createChunksFromRuleItem(item, parent);
         allChunks.push(...chunks);
     }
 

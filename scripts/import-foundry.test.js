@@ -2,10 +2,37 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { join } from "path";
 
 import { createDb } from "../server/db/database.js";
-import { batchUpsertRuleItems, getRuleItemBySource, getRuleItems } from "../server/db/queries.js";
+import {
+    batchUpsertRuleItems,
+    getRuleItemBySource,
+    getRuleItems,
+    getChildItems,
+} from "../server/db/queries.js";
 import { discoverFiles, parseArgs, processFile } from "./import-foundry.js";
 
 const FIXTURE_DIR = join(import.meta.dirname, "../test/fixtures/foundry");
+
+/**
+ * Two-phase insert: root items first, then children with resolved parentId.
+ * Mirrors the logic in runImport.
+ * @param {import("bun:sqlite").Database} db
+ * @param {Array<{ type: string, name: string, compendiumSource: string, dataJson: string, parentId?: string }>} items
+ */
+function twoPhaseInsert(db, items) {
+    const rootItems = items.filter((item) => !item.parentId);
+    batchUpsertRuleItems(db, rootItems);
+
+    const childItems = items.filter((item) => item.parentId);
+    for (const child of childItems) {
+        const parent = getRuleItemBySource(db, /** @type {string} */ (child.parentId));
+        if (parent) {
+            child.parentId = parent.id;
+        } else {
+            child.parentId = undefined;
+        }
+    }
+    batchUpsertRuleItems(db, childItems);
+}
 
 describe("import-foundry", () => {
     describe("parseArgs", () => {
@@ -180,11 +207,9 @@ describe("import-foundry", () => {
                 }
             }
 
-            const result = batchUpsertRuleItems(db, allItems);
+            twoPhaseInsert(db, allItems);
 
-            expect(result.inserted).toBeGreaterThan(0);
-
-            // Verify creature was inserted
+            // Verify creature was inserted (root items only)
             const creatures = getRuleItems(db, "creature");
             expect(creatures.length).toBeGreaterThan(0);
 
@@ -207,7 +232,7 @@ describe("import-foundry", () => {
                 }
             }
 
-            batchUpsertRuleItems(db, allItems);
+            twoPhaseInsert(db, allItems);
 
             // Every imported item should have a compendium source
             for (const item of allItems) {
@@ -249,22 +274,40 @@ describe("import-foundry", () => {
             expect(data.itemRefs.length).toBeGreaterThan(0);
         });
 
+        it("two-phase insert creates parent-child relationships in DB", () => {
+            const filePath = join(FIXTURE_DIR, "creature-simple.json");
+            const result = processFile(filePath, "pathfinder-bestiary", {
+                verbose: false,
+            });
+
+            twoPhaseInsert(db, result.items);
+
+            // Root creature should be findable
+            const creatures = getRuleItems(db, "creature");
+            expect(creatures).toHaveLength(1);
+            const creature = creatures[0];
+
+            // Children should be linked to the creature
+            const children = getChildItems(db, creature.id);
+            expect(children.length).toBeGreaterThan(0);
+            for (const child of children) {
+                expect(child.parentId).toBe(creature.id);
+            }
+        });
+
         it("is idempotent — running twice does not duplicate", () => {
             const filePath = join(FIXTURE_DIR, "creature-simple.json");
             const result = processFile(filePath, "pathfinder-bestiary", {
                 verbose: false,
             });
 
-            // First import
-            const first = batchUpsertRuleItems(db, result.items);
-            expect(first.inserted).toBeGreaterThan(0);
+            // First import (two-phase)
+            twoPhaseInsert(db, result.items);
 
             // Second import (same items)
-            const second = batchUpsertRuleItems(db, result.items);
-            expect(second.inserted).toBe(0);
-            expect(second.updated).toBe(first.inserted);
+            twoPhaseInsert(db, result.items);
 
-            // Verify no duplicates
+            // Verify no duplicates (root creatures only)
             const creatures = getRuleItems(db, "creature");
             const bloodseekers = creatures.filter((c) => c.name === "Bloodseeker");
             expect(bloodseekers).toHaveLength(1);

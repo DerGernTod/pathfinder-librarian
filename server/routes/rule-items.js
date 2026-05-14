@@ -34,6 +34,19 @@ export function createRuleItemsRouter() {
                 );
             }
             return c.json({ result: /** @type {"success"} */ ("success"), data: item });
+        })
+        .get("/:id/children", zValidator("param", z.object({ id: uuidSchema })), async (c) => {
+            const db = getDb(c);
+            const { id } = c.req.valid("param");
+            const item = queries.getRuleItemById(db, id);
+            if (!item) {
+                return c.json(
+                    { result: /** @type {"error"} */ ("error"), message: "Not found" },
+                    404,
+                );
+            }
+            const children = queries.getChildItems(db, id);
+            return c.json({ result: /** @type {"success"} */ ("success"), data: children });
         });
 }
 
