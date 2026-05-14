@@ -98,11 +98,9 @@ export const messagesRouter = new Hono()
                             controller.enqueue(
                                 JSON.stringify({ type: "assistantChunk", data: block }) + "\n",
                             );
-                            // Add additional delay here
-                            await new Promise((resolve) => setTimeout(resolve, 100));
                         }
-                    } catch {
-                        // Streaming interrupted
+                    } catch (error) {
+                        console.error("Error streaming assistant response:", error);
                     } finally {
                         // Save assistant message to DB
                         const assistantMsg = queries.createMessage(db, {

@@ -128,7 +128,8 @@ export async function queryRagContext(userPrompt, options = {}) {
         }));
 
         return { contextText, sources };
-    } catch {
+    } catch (error) {
+        console.error("Error in queryRagContext:", error);
         // Never throw — degrade gracefully
         return { contextText: "", sources: [] };
     }

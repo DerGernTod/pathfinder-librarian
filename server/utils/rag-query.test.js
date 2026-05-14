@@ -50,7 +50,7 @@ describe("rag-query", () => {
             const embedding = await createSingleEmbedding(
                 "test prompt",
                 "fake-key",
-                "text-embedding-004",
+                "gemini-embedding-001",
             );
 
             expect(Array.isArray(embedding)).toBe(true);

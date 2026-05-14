@@ -24,12 +24,12 @@ describe("google-ai-client", () => {
             );
             globalThis.fetch = /** @type {typeof fetch} */ (/** @type {unknown} */ (fetchMock));
 
-            await createEmbeddings("test-api-key", "text-embedding-004", ["hello world"]);
+            await createEmbeddings("test-api-key", "gemini-embedding-001", ["hello world"]);
 
             expect(fetchMock).toHaveBeenCalled();
             const calls = /** @type {string[][]} */ (/** @type {unknown} */ (fetchMock.mock.calls));
             expect(calls[0][0]).toBe(
-                "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:batchEmbedContents?key=test-api-key",
+                "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents?key=test-api-key",
             );
         });
 
@@ -46,7 +46,7 @@ describe("google-ai-client", () => {
             );
             globalThis.fetch = /** @type {typeof fetch} */ (/** @type {unknown} */ (fetchMock));
 
-            await createEmbeddings("key", "text-embedding-004", ["text 1", "text 2"]);
+            await createEmbeddings("key", "gemini-embedding-001", ["text 1", "text 2"]);
 
             const calls = /** @type {[string, RequestInit][]} */ (
                 /** @type {unknown} */ (fetchMock.mock.calls)
@@ -58,11 +58,11 @@ describe("google-ai-client", () => {
             const body = JSON.parse(/** @type {string} */ (opts.body));
             expect(body.requests).toHaveLength(2);
             expect(body.requests[0]).toEqual({
-                model: "models/text-embedding-004",
+                model: "models/gemini-embedding-001",
                 content: { parts: [{ text: "text 1" }] },
             });
             expect(body.requests[1]).toEqual({
-                model: "models/text-embedding-004",
+                model: "models/gemini-embedding-001",
                 content: { parts: [{ text: "text 2" }] },
             });
         });
@@ -78,7 +78,7 @@ describe("google-ai-client", () => {
                 }),
             );
 
-            const result = await createEmbeddings("key", "text-embedding-004", [
+            const result = await createEmbeddings("key", "gemini-embedding-001", [
                 "text 1",
                 "text 2",
             ]);
@@ -98,7 +98,7 @@ describe("google-ai-client", () => {
                 }),
             );
 
-            expect(createEmbeddings("bad-key", "text-embedding-004", ["test"])).rejects.toThrow(
+            expect(createEmbeddings("bad-key", "gemini-embedding-001", ["test"])).rejects.toThrow(
                 "Google AI API error: 400 Bad Request: invalid API key",
             );
         });
@@ -112,7 +112,7 @@ describe("google-ai-client", () => {
                 }),
             );
 
-            expect(createEmbeddings("key", "text-embedding-004", ["test"])).rejects.toThrow(
+            expect(createEmbeddings("key", "gemini-embedding-001", ["test"])).rejects.toThrow(
                 "Google AI API error: 429 Rate limit exceeded",
             );
         });
@@ -127,7 +127,7 @@ describe("google-ai-client", () => {
             );
             globalThis.fetch = /** @type {typeof fetch} */ (/** @type {unknown} */ (fetchMock));
 
-            const result = await createEmbeddings("key", "text-embedding-004", []);
+            const result = await createEmbeddings("key", "gemini-embedding-001", []);
 
             expect(result).toEqual([]);
             // Should not call fetch for empty input

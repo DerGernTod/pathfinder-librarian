@@ -147,13 +147,103 @@ function splitIntoBlocks(text) {
 
     return blocks;
 }
+/**
+ * Fetches the raw stream from the Gemini API.
+ *
+ * @param {string} model
+ * @param {string} apiKey
+ * @param {string} systemPrompt
+ * @param {string} userMessage
+ * @returns {Promise<ReadableStream<Uint8Array>>}
+ */
+async function getGeminiStream(model, apiKey, systemPrompt, userMessage) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+
+    const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: userMessage }] }],
+            systemInstruction: { parts: [{ text: systemPrompt }] },
+            generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
+        }),
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Gemini API Error (${response.status}): ${errorText}`);
+    }
+
+    if (!response.body) {
+        throw new Error("Gemini API response body is empty.");
+    }
+
+    return response.body;
+}
+/**
+ * Parses a single line of SSE data.
+ *
+ * @param {string} line
+ * @returns {string | null}
+ */
+function processSseLine(line) {
+    const trimmed = line.trim();
+    if (!trimmed || !trimmed.startsWith("data: ")) {
+        return null;
+    }
+
+    const data = trimmed.slice(6);
+    if (data === "[DONE]") {
+        return null;
+    }
+
+    try {
+        return parseGeminiSseChunk(data);
+    } catch (e) {
+        throw new Error(`SSE Parse Error: ${e instanceof Error ? e.message : String(e)}`);
+    }
+}
 
 /**
- * Streams an LLM response, either from the Gemini API or the mock response generator.
- * Yields MessageBlock objects as they become available.
+ * Transforms a ReadableStream into a generator of text chunks.
  *
- * @param {string} systemPrompt - The system instruction for the LLM.
- * @param {string} userMessage - The user's message text.
+ * @param {ReadableStream<Uint8Array>} stream
+ * @returns {AsyncGenerator<string, void, unknown>}
+ */
+async function* parseSseStream(stream) {
+    const reader = stream.getReader();
+    const decoder = new TextDecoder();
+    let sseBuffer = "";
+
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            sseBuffer += decoder.decode(value, { stream: !done });
+
+            const lines = sseBuffer.split(/\r?\n/);
+            sseBuffer = lines.pop() ?? "";
+
+            for (const line of lines) {
+                const text = processSseLine(line);
+                if (text) {
+                    yield text;
+                }
+            }
+
+            if (done) {
+                break;
+            }
+        }
+    } finally {
+        reader.releaseLock();
+    }
+}
+
+/**
+ * Streams an LLM response and yields MessageBlock objects.
+ *
+ * @param {string} systemPrompt
+ * @param {string} userMessage
  * @param {{ model?: string, apiKey?: string }} [options]
  * @returns {AsyncGenerator<MessageBlock, void, unknown>}
  */
@@ -161,89 +251,41 @@ export async function* streamLlmResponse(systemPrompt, userMessage, options = {}
     const apiKey = options.apiKey ?? process.env.GOOGLE_AI_API_KEY ?? "";
     const model = options.model ?? RAG_CONFIG.LLM_MODEL;
 
-    // Mock mode: no API key or MOCK_GOOGLE_AI=1
     if (!apiKey || process.env.MOCK_GOOGLE_AI === "1") {
         yield* streamMockResponse();
         return;
     }
 
-    // Real API call
+    let accumulatedText = "";
+    let yieldedBlocksCount = 0;
+
     try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+        const stream = await getGeminiStream(model, apiKey, systemPrompt, userMessage);
 
-        const response = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                contents: [{ role: "user", parts: [{ text: userMessage }] }],
-                systemInstruction: { parts: [{ text: systemPrompt }] },
-                generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
-            }),
-        });
+        for await (const textChunk of parseSseStream(stream)) {
+            accumulatedText += textChunk;
 
-        if (!response.ok || !response.body) {
-            // oxlint-disable-next-line no-console -- diagnostic for LLM fallback
-            console.warn(`LLM API error: ${response.status} ${await response.text()}`);
-            yield* streamMockResponse();
-            return;
-        }
+            /** @type {MessageBlock[]} */
+            const currentBlocks = splitIntoBlocks(accumulatedText);
 
-        // Parse SSE stream
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let accumulatedText = "";
-        let yieldedBlocks = 0;
-        /** @type {string} */
-        let sseBuffer = "";
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) {
-                break;
-            }
-
-            sseBuffer += decoder.decode(value, { stream: true });
-
-            // Parse SSE events (double newline delimited)
-            const events = sseBuffer.split("\n\n");
-            sseBuffer = /** @type {string} */ (events.pop());
-
-            for (const event of events) {
-                for (const line of event.split("\n")) {
-                    if (line.startsWith("data: ")) {
-                        const data = line.slice(6);
-                        if (data === "[DONE]") {
-                            continue;
-                        }
-                        const text = parseGeminiSseChunk(data);
-                        if (text) {
-                            accumulatedText += text;
-                        }
-                    }
-                }
-            }
-
-            // Periodically yield blocks from accumulated text
-            const blocks = splitIntoBlocks(accumulatedText);
-            for (let i = yieldedBlocks; i < blocks.length; i++) {
-                yield blocks[i];
-                yieldedBlocks++;
+            // Yield only fully completed blocks to prevent rendering partial JSON/markdown
+            while (yieldedBlocksCount < currentBlocks.length - 1) {
+                yield currentBlocks[yieldedBlocksCount++];
             }
         }
 
-        // Yield any remaining text as final blocks
+        // Final yield for the remaining blocks
+        /** @type {MessageBlock[]} */
         const finalBlocks = splitIntoBlocks(accumulatedText);
-        for (let i = yieldedBlocks; i < finalBlocks.length; i++) {
-            yield finalBlocks[i];
-        }
-
-        // If no blocks were yielded at all, wrap as single paragraph
-        if (yieldedBlocks === 0 && accumulatedText.trim()) {
-            yield { type: "paragraph", text: accumulatedText.trim() };
+        while (yieldedBlocksCount < finalBlocks.length) {
+            yield finalBlocks[yieldedBlocksCount++];
         }
     } catch (error) {
-        // oxlint-disable-next-line no-console -- diagnostic for LLM fallback
-        console.warn(`LLM API error: ${error instanceof Error ? error.message : String(error)}`);
-        yield* streamMockResponse();
+        yield* [
+            {
+                type: "paragraph",
+                text: `Sorry, I'm having trouble generating a response right now. Please try again later. (Error details: ${error instanceof Error ? error.message : String(error)})`,
+            },
+        ];
     }
 }

@@ -4,8 +4,8 @@
 
 /** RAG pipeline configuration defaults */
 export const RAG_CONFIG = {
-    EMBEDDING_MODEL: "text-embedding-004",
-    LLM_MODEL: "gemini-2.0-flash-lite",
+    EMBEDDING_MODEL: "gemini-embedding-001",
+    LLM_MODEL: "gemini-3.1-flash-lite",
     TOP_N: 5,
     SIMILARITY_THRESHOLD: 0.3,
     VECTOR_DB_PATH: "data/vectors.sqlite",
