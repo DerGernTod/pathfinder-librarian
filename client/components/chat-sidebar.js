@@ -17,7 +17,7 @@ import { BaseElement } from "./base-element.js";
 
 /**
  * @customElement chat-sidebar
- * @property {import("../../shared/types.js").AuthUser | null} user - The authenticated user object.
+ * @property {(import("../../shared/types.js").AuthUser & { mode: string }) | null} user - The authenticated user object.
  */
 class ChatSidebar extends BaseElement {
     static styles = [

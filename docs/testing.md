@@ -65,3 +65,7 @@ When writing tests:
 - Test production code — never implement logic inside a test
 - Never export internals just for testing
 - Use bun's `mock()` function for assertions and stubs
+
+## Playwright VR Tests
+
+When running playwright tests, you don't need to run the server manually: it's automatically launched on playwright startup.

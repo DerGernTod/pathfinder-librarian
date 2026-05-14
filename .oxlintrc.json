@@ -20,6 +20,7 @@
         "typescript/no-unsafe-member-access": "error",
         "typescript/no-unsafe-argument": "error",
         "typescript/no-unsafe-assignment": "error",
+        "typescript/no-base-to-string": "off",
         "eqeqeq": "error",
         "curly": "error",
         "sort-imports": "off",

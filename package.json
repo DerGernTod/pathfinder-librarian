@@ -20,7 +20,9 @@
         "check": "tsgo -p jsconfig.json --noEmit",
         "e2e": "playwright test",
         "e2e-local": "playwright test --project=chromium --retries=0 --ui",
-        "gh:update-snapshots": "gh workflow run \"Update Snapshots\" --ref main"
+        "gh:update-snapshots": "gh workflow run \"Update Snapshots\" --ref main",
+        "vector:dry-run": "bun scripts/create-vector-db.js --dry-run",
+        "import:dry-run": "bun scripts/import-foundry.js --dry-run"
     },
     "dependencies": {
         "@hono/zod-validator": "0.7.6",
