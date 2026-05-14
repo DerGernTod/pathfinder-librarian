@@ -146,6 +146,16 @@ const ensureTestUserSchema = z.object({
     mode: z.enum(["gm", "player"]),
 });
 
+const vectorChunkResultSchema = z.object({
+    id: z.string(),
+    ruleItemId: z.string(),
+    ruleItemName: z.string(),
+    ruleItemType: z.string(),
+    compendiumSource: z.string().nullable().optional(),
+    text: z.string(),
+    score: z.number(),
+});
+
 export {
     uuidSchema,
     conversationIdSchema,
@@ -166,4 +176,5 @@ export {
     createMessageSchema,
     updateUserSchema,
     ensureTestUserSchema,
+    vectorChunkResultSchema,
 };

@@ -2,6 +2,15 @@
  * Constants shared between server and client.
  */
 
+/** RAG pipeline configuration defaults */
+export const RAG_CONFIG = {
+    EMBEDDING_MODEL: "gemini-embedding-001",
+    LLM_MODEL: "gemini-3.1-flash-lite",
+    TOP_N: 5,
+    SIMILARITY_THRESHOLD: 0.3,
+    VECTOR_DB_PATH: "data/vectors.sqlite",
+};
+
 /** Deterministic UUIDs for seed data — stable across restarts, usable in tests */
 export const SEED_IDS = {
     USER_DEFAULT: "00000000-0000-4000-8000-000000000001",

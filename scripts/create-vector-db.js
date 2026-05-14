@@ -75,7 +75,7 @@ Options:
   --batch-size <n>    Embeddings per API call [default: 20]
   --db <path>         Source SQLite database [default: data/dev.sqlite]
   --vector-db <path>  Output vector database [default: data/vectors.sqlite]
-  --model <name>      Embedding model name [default: text-embedding-004]
+  --model <name>      Embedding model name [default: gemini-embedding-001]
   --dry-run           Generate chunks without calling the embedding API
   --help              Show this help message
 `;
@@ -90,7 +90,7 @@ const vectorArgsSchema = z.object({
     batchSize: z.coerce.number().int().positive().default(20),
     db: z.string().default("data/dev.sqlite"),
     vectorDb: z.string().default("data/vectors.sqlite"),
-    model: z.string().default("text-embedding-004"),
+    model: z.string().default("gemini-embedding-001"),
     dryRun: z.boolean().default(false),
 });
 

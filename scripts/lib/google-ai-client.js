@@ -11,7 +11,7 @@ const batchEmbedResponseSchema = z.object({
 /**
  * Creates embeddings for text chunks using Google's Generative AI API.
  * @param {string} apiKey - Google AI API key
- * @param {string} model - Model name (e.g. "text-embedding-004")
+ * @param {string} model - Model name (e.g. "gemini-embedding-001")
  * @param {string[]} texts - Array of text strings to embed
  * @returns {Promise<number[][]>} - Array of embedding vectors
  */

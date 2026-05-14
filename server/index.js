@@ -12,15 +12,29 @@ import { authRouter } from "./routes/auth.js";
 import { conversationsRouter } from "./routes/conversations.js";
 import { ruleItemsRouter } from "./routes/rule-items.js";
 import { usersRouter } from "./routes/users.js";
+import { openVectorDb } from "./utils/vector-store.js";
 
 /** @typedef {import("../shared/hono-env.js").AppEnv} AppEnv */
 
 // Seed database
 seedIfNeeded(db);
 
+// Initialize vector DB
+const vectorDb = openVectorDb();
+if (vectorDb) {
+    const chunkCount = Number(
+        vectorDb.query("SELECT COUNT(*) as count FROM vector_chunks").get().count,
+    );
+    // oxlint-disable-next-line no-console -- startup diagnostic
+    console.log(`Vector DB loaded: ${chunkCount} chunks available`);
+} else {
+    // oxlint-disable-next-line no-console -- startup diagnostic
+    console.log("Vector DB not found at data/vectors.sqlite — RAG context retrieval disabled");
+}
+
 const app = new Hono()
-    // Database middleware (sets db in context for all routes)
-    .use("/api/*", databaseMiddleware())
+    // Database middleware (sets db and vectorDb in context for all routes)
+    .use("/api/*", databaseMiddleware({ vectorDb }))
     // Auth routes (no session required for most)
     .route("/api/auth", authRouter)
     // Session-protected API routes

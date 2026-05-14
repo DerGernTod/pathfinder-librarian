@@ -27,3 +27,11 @@ export function getUserId(c) {
 export function getSessionId(c) {
     return /** @type {string} */ (c.get("sessionId"));
 }
+
+/**
+ * @param {import("hono").Context} c
+ * @returns {import("bun:sqlite").Database | null}
+ */
+export function getVectorDb(c) {
+    return /** @type {import("bun:sqlite").Database | null} */ (c.get("vectorDb"));
+}
