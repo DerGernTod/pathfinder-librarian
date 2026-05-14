@@ -77,6 +77,7 @@ export const messagesRouter = new Hono()
                         // Retrieve RAG context from vector DB
                         const vectorDb = getVectorDb(c);
                         const ragContext = await queryRagContext(data.content, {
+                            db,
                             vectorDb,
                             topN: 5,
                             threshold: 0.3,

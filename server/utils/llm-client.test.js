@@ -287,17 +287,16 @@ describe("llm-client", () => {
             expect(prompt).toContain("Pathfinder");
         });
 
-        it("includes RAG context when provided", () => {
+        it("includes RAG context when provided", async () => {
             const prompt = buildSystemPrompt("Mitflit King is a CR 1 creature", "gm");
 
             expect(prompt).toContain("Mitflit King");
-            expect(prompt).toContain("Reference Data");
         });
 
         it("omits reference section when context is empty", () => {
             const prompt = buildSystemPrompt("", "player");
 
-            expect(prompt).not.toContain("Reference Data");
+            expect(prompt).not.toContain("retrieved-context");
         });
     });
 

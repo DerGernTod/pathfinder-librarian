@@ -1,5 +1,6 @@
 import { createEmbeddings } from "../../scripts/lib/google-ai-client.js";
 import { RAG_CONFIG } from "../../shared/constants.js";
+import { getChildItems, getParentItem, getRuleItemById } from "../db/queries.js";
 import { cosineSimilarity, getAllChunkEmbeddings } from "./vector-store.js";
 
 /**
@@ -53,11 +54,12 @@ export async function createSingleEmbedding(prompt, apiKey, model) {
  * Orchestrates the full RAG pipeline: embed → search → deduplicate → format.
  *
  * @param {string} userPrompt - The user's question.
- * @param {{ vectorDb?: import("bun:sqlite").Database | null, topN?: number, threshold?: number, apiKey?: string, model?: string }} options
+ * @param {{ vectorDb?: import("bun:sqlite").Database | null, db?: import("bun:sqlite").Database | null, topN?: number, threshold?: number, apiKey?: string, model?: string }} options
  * @returns {Promise<RagContext>}
  */
 export async function queryRagContext(userPrompt, options = {}) {
     const vectorDb = options.vectorDb ?? null;
+    const mainDb = options.db ?? null;
     const topN = options.topN ?? RAG_CONFIG.TOP_N;
     const threshold = options.threshold ?? RAG_CONFIG.SIMILARITY_THRESHOLD;
     const apiKey = options.apiKey ?? process.env.GOOGLE_AI_API_KEY ?? "";
@@ -107,17 +109,57 @@ export async function queryRagContext(userPrompt, options = {}) {
             return { contextText: "", sources: [] };
         }
 
-        // Step 4: Build context text
+        // Step 4: Build context text enriched with rule item data
         const contextParts = topResults.map((entry) => {
             const { chunk } = entry;
-            return `--- Source: ${chunk.ruleItemName} (${chunk.ruleItemType}) ---\n${chunk.text}`;
+            /** @type {string[]} */
+            const parts = [`--- ${chunk.ruleItemName} (${chunk.ruleItemType}) ---`];
+            parts.push(chunk.text);
+
+            if (mainDb) {
+                const ruleItem = getRuleItemById(mainDb, chunk.ruleItemId);
+                if (ruleItem) {
+                    /** @type {{ description?: string }} */
+                    const data = /** @type {{ description?: string }} */ (ruleItem.data);
+
+                    // Include description for richer context
+                    if (data.description) {
+                        parts.push(`\nDescription: ${data.description}`);
+                    }
+
+                    // For child items (melee, actions, spellcasting), include parent context
+                    if (ruleItem.parentId) {
+                        const parent = getParentItem(mainDb, chunk.ruleItemId);
+                        if (parent) {
+                            /** @type {{ description?: string }} */
+                            const parentData = /** @type {{ description?: string }} */ (
+                                parent.data
+                            );
+                            parts.push(`\nParent: ${parent.name} (${parent.type})`);
+                            if (parentData.description) {
+                                parts.push(`Parent Description: ${parentData.description}`);
+                            }
+                        }
+                    }
+
+                    // For root items, include child item names for completeness
+                    if (!ruleItem.parentId) {
+                        const children = getChildItems(mainDb, chunk.ruleItemId);
+                        if (children.length > 0) {
+                            const childSummary = children
+                                .map((c) => `${c.name} (${c.type})`)
+                                .join(", ");
+                            parts.push(`\nRelated items: ${childSummary}`);
+                        }
+                    }
+                }
+            }
+
+            return parts.join("\n");
         });
 
         const contextText =
-            `<retrieved-context>\n` +
-            `The following Pathfinder 2e rule data was retrieved as relevant to the user's question:\n\n` +
-            contextParts.join("\n\n") +
-            `\n</retrieved-context>`;
+            `<retrieved-context>\n` + contextParts.join("\n\n") + `\n</retrieved-context>`;
 
         // Step 5: Build sources list
         /** @type {RagSource[]} */
