@@ -48,9 +48,8 @@ test.describe("mock LLM response visual regression", () => {
         await input.fill("How does flanking work?");
         await page.keyboard.press("Enter");
 
-        // Wait for response
-        await page.waitForSelector("assistant-message", { timeout: 5000 });
-        await page.waitForTimeout(500);
+        await page.locator(".loading").waitFor({ state: "visible" });
+        await page.locator(".loading").waitFor({ state: "hidden" });
 
         const chatArea = page.locator("main.main");
         await expect(chatArea).toHaveScreenshot("chat-area-with-response.png");
