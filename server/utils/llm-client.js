@@ -208,7 +208,12 @@ export async function callGeminiJson(userMessage, ragContext, mode) {
     }
 
     if (blocks.length === 0) {
-        return [{ type: "paragraph", text: "I couldn't generate a response. Please try again." }];
+        return [
+            {
+                type: "paragraph",
+                text: "I couldn't generate a response. Please try again.",
+            },
+        ];
     }
 
     return blocks;
@@ -219,9 +224,10 @@ export async function callGeminiJson(userMessage, ragContext, mode) {
  * @param {string} userMessage - The user's chat message
  * @param {string} ragContext - RAG-retrieved context (empty string if none)
  * @param {string} mode - "player" or "gm"
+ * @param {string} [userId]
  * @returns {Promise<MessageBlock[]>}
  */
-export async function getLlmResponse(userMessage, ragContext, mode) {
+export async function getLlmResponse(userMessage, ragContext, mode, userId) {
     try {
         return await callGeminiJson(userMessage, ragContext, mode);
     } catch (error) {
@@ -230,6 +236,6 @@ export async function getLlmResponse(userMessage, ragContext, mode) {
         }
         // oxlint-disable-next-line no-console
         console.warn("LLM client error, falling back to mock:", error);
-        return getMockResponse();
+        return getMockResponse(userId);
     }
 }

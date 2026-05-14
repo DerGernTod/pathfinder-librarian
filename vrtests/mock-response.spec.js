@@ -3,8 +3,19 @@ import { expect, test } from "@playwright/test";
 import { setupTestUser } from "./helpers/test-user.js";
 
 test.describe("mock LLM response visual regression", () => {
+    let pinnedUserId = "";
+
     test.beforeEach(async ({ page, context }, testInfo) => {
-        await setupTestUser(context, testInfo);
+        const { userId } = await setupTestUser(context, testInfo);
+        pinnedUserId = userId;
+
+        // Pin mock response index 0 (saving throws) for this specific user so the
+        // visual regression snapshot is deterministic even when workers run in parallel.
+        await fetch("http://localhost:3000/api/test/set-mock-response", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId, index: 0 }),
+        });
 
         // Intercept conversation message POSTs to simulate network latency so
         // the UI enters the responding state reliably for visual tests.
@@ -26,6 +37,17 @@ test.describe("mock LLM response visual regression", () => {
         await page.goto("/");
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
+    });
+
+    test.afterEach(async () => {
+        if (pinnedUserId) {
+            await fetch("http://localhost:3000/api/test/set-mock-response", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userId: pinnedUserId, index: null }),
+            });
+            pinnedUserId = "";
+        }
     });
 
     test("loading spinner while assistant responds", async ({ page }) => {
@@ -80,7 +102,10 @@ test.describe("mock LLM response visual regression", () => {
         await page.waitForLoadState("networkidle");
 
         // Wait for assistant response to complete
-        await page.waitForSelector("assistant-message", { state: "visible", timeout: 5000 });
+        await page.waitForSelector("assistant-message", {
+            state: "visible",
+            timeout: 5000,
+        });
         // Wait longer for state to update
         await page.waitForTimeout(3000);
 

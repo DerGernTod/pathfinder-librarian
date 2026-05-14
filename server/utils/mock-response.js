@@ -158,7 +158,10 @@ const MOCK_RESPONSES = [
                     text: "DC = Item level + 15 (or 20 for items without a clear Price)",
                     highlight: true,
                 },
-                { text: " | Success: Reduce Price by your proficiency bonus", highlight: false },
+                {
+                    text: " | Success: Reduce Price by your proficiency bonus",
+                    highlight: false,
+                },
             ],
         },
         {
@@ -208,7 +211,10 @@ const MOCK_RESPONSES = [
             type: "callout",
             title: "The Three Action Economy",
             segments: [
-                { text: "Every character gets 3 actions and 1 reaction per turn", highlight: true },
+                {
+                    text: "Every character gets 3 actions and 1 reaction per turn",
+                    highlight: true,
+                },
                 {
                     text: " | Encourage creative use of actions and describe the results dynamically",
                     highlight: false,
@@ -290,20 +296,51 @@ const MOCK_RESPONSES = [
 ];
 
 /**
- * Returns a random mock response.
+ * Per-user forced index map. When an entry is present for a userId,
+ * getMockResponse and streamMockResponse always return that response index
+ * instead of picking at random.
+ * Intended for use by the dev-only /api/test/set-mock-response endpoint so
+ * Playwright tests can pin a deterministic response per worker.
+ * @type {Map<string, number>}
+ */
+const _userForcedIndexes = new Map();
+
+/**
+ * Pins (or releases) the mock response index for a specific user.
+ * Pass null as index to restore random selection for that user.
+ * @param {string} userId
+ * @param {number | null} index
+ */
+export function setForcedMockIndexForUser(userId, index) {
+    if (index === null) {
+        _userForcedIndexes.delete(userId);
+    } else {
+        _userForcedIndexes.set(userId, index);
+    }
+}
+
+/**
+ * Returns a mock response. When userId is provided and a forced index has been
+ * pinned for that user, always returns that response; otherwise picks at random.
+ * @param {string} [userId]
  * @returns {MessageBlock[]}
  */
-export function getMockResponse() {
-    const index = Math.floor(Math.random() * MOCK_RESPONSES.length);
+export function getMockResponse(userId) {
+    const forced = userId !== undefined ? _userForcedIndexes.get(userId) : undefined;
+    const index = forced !== undefined ? forced : Math.floor(Math.random() * MOCK_RESPONSES.length);
     return MOCK_RESPONSES[index];
 }
 
 /**
  * Returns an async generator that yields chunks of a mock response.
+ * When userId is provided and a forced index has been pinned for that user,
+ * always returns that response; otherwise picks at random.
+ * @param {string} [userId]
  * @returns {AsyncGenerator<MessageBlock, void, unknown>}
  */
-export async function* streamMockResponse() {
-    const index = Math.floor(Math.random() * MOCK_RESPONSES.length);
+export async function* streamMockResponse(userId) {
+    const forced = userId !== undefined ? _userForcedIndexes.get(userId) : undefined;
+    const index = forced !== undefined ? forced : Math.floor(Math.random() * MOCK_RESPONSES.length);
     const response = MOCK_RESPONSES[index];
 
     for (const block of response) {
