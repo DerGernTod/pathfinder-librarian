@@ -79,6 +79,10 @@
 
 /** @typedef {{ id: string, ruleItemId: string, ruleItemName: string, ruleItemType: string, compendiumSource: string | undefined, chunkIndex: number, text: string, embedding?: number[] }} VectorChunk */
 
+/** @typedef {{ name: string, type: string, score: number }} RagSource */
+
+/** @typedef {{ contextText: string, sources: Array<RagSource> }} RagContext */
+
 /** @typedef {{ inserted: number, updated: number, skipped: number, errors: number }} ImportResult */
 
 /** @typedef {{ id: string, role: "user", content: string, blocks?: never, mode: Mode, conversationId: string, createdAt: string }} UserMessage */
