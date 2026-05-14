@@ -6,7 +6,7 @@
 
 /** @typedef {{ id: string, name: string, initials: string, subtitle: string, mode: Mode }} User */
 
-/** @typedef {{ id: string, type: "creature" | "spell" | "melee" | "weapon" | "armor" | "equipment" | "action" | "feat" | "spellcastingEntry" | "trait", name: string, compendiumSource?: string, data: unknown, createdAt: string }} RuleItem */
+/** @typedef {{ id: string, type: "creature" | "spell" | "melee" | "weapon" | "armor" | "equipment" | "action" | "feat" | "spellcastingEntry" | "trait", name: string, compendiumSource?: string, parentId?: string, linkedSource?: string, data: unknown, createdAt: string }} RuleItem */
 
 /** @typedef {{ id: string, userId: string, token: string, createdAt: string, expiresAt: string }} Session */
 
@@ -74,6 +74,12 @@
 /** @typedef {{ title: string, text?: string, segments?: Segment[] }} ListItem */
 
 /** @typedef {ParagraphBlock | CalloutBlock | StatBlockMessageBlock | ListBlock} MessageBlock */
+
+/** @typedef {{ id: string, type: string, name: string, compendiumSource: string, dataJson: string, parentId?: string, linkedSource?: string, itemRefs?: string[] }} ImportableRuleItem */
+
+/** @typedef {{ id: string, ruleItemId: string, ruleItemName: string, ruleItemType: string, compendiumSource: string | undefined, chunkIndex: number, text: string, embedding?: number[] }} VectorChunk */
+
+/** @typedef {{ inserted: number, updated: number, skipped: number, errors: number }} ImportResult */
 
 /** @typedef {{ id: string, role: "user", content: string, blocks?: never, mode: Mode, conversationId: string, createdAt: string }} UserMessage */
 

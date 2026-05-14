@@ -185,7 +185,12 @@ class SettingsDialog extends BaseElement {
             changedProperties.get("_uiState")
         );
         const wasOpen = prevUIState?.settingsOpen;
-        if (this._uiState.settingsOpen && !wasOpen && !(this.devices || []).length) {
+        if (
+            changedProperties.has("_uiState") &&
+            this._uiState.settingsOpen &&
+            !wasOpen &&
+            !(this.devices || []).length
+        ) {
             void this.fetchDevices();
         }
     }

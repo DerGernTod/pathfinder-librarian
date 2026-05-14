@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 
 import { createDb } from "./database.js";
 import { seedIfNeeded, resetAndReseedDb, SEED_IDS } from "./seed.js";
@@ -10,6 +10,12 @@ describe("database", () => {
     beforeEach(() => {
         db = createDb(":memory:");
         seedIfNeeded(db);
+    });
+
+    afterEach(() => {
+        if (db) {
+            db.close();
+        }
     });
 
     it("creates all tables", () => {
@@ -73,10 +79,11 @@ describe("database", () => {
     });
 
     it("seeds rule items", () => {
-        const ruleItems = db.query("SELECT * FROM rule_items").all();
-        expect(ruleItems.length).toBe(2);
-        expect(ruleItems[0].id).toBe(SEED_IDS.RULE_MITFLIT_KING);
-        expect(ruleItems[1].id).toBe(SEED_IDS.RULE_SAMPLE_SPELL);
+        const ruleItems = db.query("SELECT * FROM rule_items ORDER BY id").all();
+        expect(ruleItems.length).toBe(6);
+        const ids = ruleItems.map((r) => r.id);
+        expect(ids).toContain(SEED_IDS.RULE_MITFLIT_KING);
+        expect(ids).toContain(SEED_IDS.RULE_SAMPLE_SPELL);
     });
 
     it("seed is idempotent", () => {

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 
 import { createDb } from "./database.js";
 import * as queries from "./queries.js";
@@ -12,6 +12,12 @@ describe("clearAllTables", () => {
         db = createDb(":memory:");
     });
 
+    afterEach(() => {
+        if (db) {
+            db.close();
+        }
+    });
+
     it("empties all tables", () => {
         // Pre-populate with seed data
         seedRuleItems(db);
@@ -20,8 +26,8 @@ describe("clearAllTables", () => {
             [crypto.randomUUID(), "Test", "TE", "Tester", "gm", "test@test.local", 1],
         );
 
-        // Verify data exists
-        expect(db.query("SELECT COUNT(*) as count FROM rule_items").get().count).toBe(2);
+        // Verify data exists (2 root + 4 children)
+        expect(db.query("SELECT COUNT(*) as count FROM rule_items").get().count).toBe(6);
         expect(db.query("SELECT COUNT(*) as count FROM users").get().count).toBe(1);
 
         clearAllTables(db);
@@ -52,6 +58,12 @@ describe("seedForUser", () => {
             "INSERT INTO users (id, name, initials, subtitle, mode, email, is_test_user, webauthn_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             [testUserId, "Test GM", "TG", "Game Master", "gm", "test-gm@local.test", 1, testUserId],
         );
+    });
+
+    afterEach(() => {
+        if (db) {
+            db.close();
+        }
     });
 
     it("creates 2 conversations for the user", () => {
@@ -135,12 +147,19 @@ describe("seedRuleItems", () => {
         db = createDb(":memory:");
     });
 
-    it("seeds 2 rule items", () => {
+    afterEach(() => {
+        if (db) {
+            db.close();
+        }
+    });
+
+    it("seeds 6 rule items (2 root + 4 children)", () => {
         seedRuleItems(db);
-        const items = db.query("SELECT * FROM rule_items").all();
-        expect(items.length).toBe(2);
-        expect(items[0].id).toBe(SEED_IDS.RULE_MITFLIT_KING);
-        expect(items[1].id).toBe(SEED_IDS.RULE_SAMPLE_SPELL);
+        const items = db.query("SELECT * FROM rule_items ORDER BY id").all();
+        expect(items.length).toBe(6);
+        const ids = items.map((r) => r.id);
+        expect(ids).toContain(SEED_IDS.RULE_MITFLIT_KING);
+        expect(ids).toContain(SEED_IDS.RULE_SAMPLE_SPELL);
     });
 
     it("seeds mitflit king with creature type", () => {
@@ -196,6 +215,29 @@ describe("seedRuleItems", () => {
         seedRuleItems(db);
         const count2 = db.query("SELECT COUNT(*) as count FROM rule_items").get().count;
         expect(count2).toBe(count1);
-        expect(count2).toBe(2);
+        expect(count2).toBe(6);
+    });
+
+    it("seeds Mitflit King children with correct parent_id", () => {
+        seedRuleItems(db);
+
+        // Root items only via getRuleItems
+        const rootItems = queries.getRuleItems(db);
+        expect(rootItems).toHaveLength(2);
+
+        // Children of Mitflit King
+        const children = queries.getChildItems(db, SEED_IDS.RULE_MITFLIT_KING);
+        expect(children).toHaveLength(4);
+
+        // Verify child types
+        const childTypes = children.map((c) => c.type);
+        expect(childTypes).toContain("melee");
+        expect(childTypes).toContain("action");
+        expect(childTypes).toContain("spellcastingEntry");
+
+        // Verify all children have correct parent_id
+        for (const child of children) {
+            expect(child.parentId).toBe(SEED_IDS.RULE_MITFLIT_KING);
+        }
     });
 });

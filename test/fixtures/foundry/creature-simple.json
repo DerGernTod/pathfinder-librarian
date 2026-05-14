@@ -1,0 +1,73 @@
+{
+    "_id": "simplecreature001",
+    "name": "Bloodseeker",
+    "type": "npc",
+    "system": {
+        "abilities": {
+            "cha": { "mod": -3 },
+            "con": { "mod": 2 },
+            "dex": { "mod": 4 },
+            "int": { "mod": -5 },
+            "str": { "mod": 0 },
+            "wis": { "mod": 1 }
+        },
+        "attributes": {
+            "ac": { "value": 16 },
+            "hp": { "value": 20, "max": 20 },
+            "speed": { "value": 25, "otherSpeeds": [] },
+            "fortitude": { "value": 6 },
+            "reflex": { "value": 10 },
+            "will": { "value": 3 }
+        },
+        "details": {
+            "level": { "value": 1 },
+            "languages": { "value": [], "details": "" },
+            "publicNotes": "<p>A large <strong>mosquito</strong>-like creature.</p>"
+        },
+        "perception": { "mod": 6 },
+        "skills": {
+            "acrobatics": { "base": 6 },
+            "stealth": { "base": 6 }
+        },
+        "traits": {
+            "value": ["animal"],
+            "rarity": "common"
+        }
+    },
+    "items": [
+        {
+            "_id": "melee001",
+            "name": "proboscis",
+            "type": "melee",
+            "system": {
+                "bonus": { "value": 8 },
+                "damageRolls": {
+                    "damage": { "damage": "1d6+4", "damageType": "piercing" }
+                },
+                "traits": { "value": ["finesse"] }
+            }
+        },
+        {
+            "_id": "action001",
+            "name": "Attach",
+            "type": "action",
+            "system": {
+                "actionType": { "value": "action" },
+                "actions": { "value": 1 },
+                "description": { "value": "<p>The bloodseeker attaches to the target.</p>" },
+                "traits": { "value": [] }
+            }
+        },
+        {
+            "_id": "action002",
+            "name": "Blood Drain",
+            "type": "action",
+            "system": {
+                "actionType": { "value": "passive" },
+                "actions": { "value": 0 },
+                "description": { "value": "<p>Deals damage automatically.</p>" },
+                "traits": { "value": [] }
+            }
+        }
+    ]
+}

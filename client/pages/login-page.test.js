@@ -37,6 +37,7 @@ describe("login-page", () => {
 
     afterEach(() => {
         globalThis.fetch = origFetch;
+        document.body.innerHTML = "";
     });
 
     test("renders name input and buttons", async () => {

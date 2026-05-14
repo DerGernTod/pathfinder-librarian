@@ -19,7 +19,7 @@ export function migrateDb(database) {
         database.run("ALTER TABLE users ADD COLUMN webauthn_user_id TEXT");
     }
 
-    // Migration: rule_items — add compendium_source column if missing
+    // Check columns BEFORE _migrateRuleItemsConstraint (which may recreate the table)
     const ruleItemColumns = database
         .query("PRAGMA table_info(rule_items)")
         .all()
@@ -28,12 +28,28 @@ export function migrateDb(database) {
         database.run("ALTER TABLE rule_items ADD COLUMN compendium_source TEXT");
     }
 
-    // Migration: monster → creature type rename
-    database.run("UPDATE rule_items SET type = 'creature' WHERE type = 'monster'");
+    // (Moved below)
 
     // Migration: expand CHECK constraint by recreating table
     // SQLite cannot ALTER CONSTRAINT, so use create-new / copy-data / drop-old / rename pattern
     _migrateRuleItemsConstraint(database);
+
+    // Migration: add parent_id and linked_source columns for parent-child relationships
+    if (!ruleItemColumns.includes("parent_id")) {
+        database.run(
+            "ALTER TABLE rule_items ADD COLUMN parent_id TEXT REFERENCES rule_items(id) ON DELETE CASCADE",
+        );
+    }
+    if (!ruleItemColumns.includes("linked_source")) {
+        database.run("ALTER TABLE rule_items ADD COLUMN linked_source TEXT");
+    }
+
+    // Create indexes for parent-child and crosslink columns
+    database.run("CREATE INDEX IF NOT EXISTS idx_rule_items_parent ON rule_items(parent_id)");
+    database.run("CREATE INDEX IF NOT EXISTS idx_rule_items_linked ON rule_items(linked_source)");
+
+    // Migration: monster → creature type rename
+    database.run("UPDATE rule_items SET type = 'creature' WHERE type = 'monster'");
 
     // Clean up expired challenges (older than 5 minutes)
     database.run("DELETE FROM challenges WHERE created_at < datetime('now', '-5 minutes')");
@@ -65,13 +81,15 @@ function _migrateRuleItemsConstraint(database) {
             type              TEXT NOT NULL CHECK(type IN ('creature', 'spell', 'melee', 'weapon', 'armor', 'equipment', 'action', 'feat', 'spellcastingEntry', 'trait')),
             name              TEXT NOT NULL,
             compendium_source TEXT,
+            parent_id         TEXT REFERENCES rule_items(id) ON DELETE CASCADE,
+            linked_source     TEXT,
             data_json         TEXT NOT NULL,
             created_at        TEXT NOT NULL DEFAULT (datetime('now'))
         )
     `);
     database.run(`
-        INSERT INTO rule_items (id, type, name, compendium_source, data_json, created_at)
-        SELECT id, type, name, compendium_source, data_json, created_at FROM rule_items_old
+        INSERT INTO rule_items (id, type, name, compendium_source, parent_id, linked_source, data_json, created_at)
+        SELECT id, CASE WHEN type = 'monster' THEN 'creature' ELSE type END, name, compendium_source, parent_id, linked_source, data_json, created_at FROM rule_items_old
     `);
     database.run("DROP TABLE rule_items_old");
     database.run("CREATE INDEX IF NOT EXISTS idx_rule_items_type ON rule_items(type, name)");

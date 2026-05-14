@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS rule_items (
     type              TEXT NOT NULL CHECK(type IN ('creature', 'spell', 'melee', 'weapon', 'armor', 'equipment', 'action', 'feat', 'spellcastingEntry', 'trait')),
     name              TEXT NOT NULL,
     compendium_source TEXT,
+    parent_id         TEXT REFERENCES rule_items(id) ON DELETE CASCADE,
+    linked_source     TEXT,
     data_json         TEXT NOT NULL,
     created_at        TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -68,6 +70,8 @@ const CREATE_INDEXES_SQL = `
 CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_rule_items_type       ON rule_items(type, name);
 CREATE INDEX IF NOT EXISTS idx_rule_items_source     ON rule_items(compendium_source);
+CREATE INDEX IF NOT EXISTS idx_rule_items_parent     ON rule_items(parent_id);
+CREATE INDEX IF NOT EXISTS idx_rule_items_linked     ON rule_items(linked_source);
 CREATE INDEX IF NOT EXISTS idx_sessions_token       ON sessions(token);
 CREATE INDEX IF NOT EXISTS idx_sessions_user        ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_credentials_user     ON credentials(user_id);
@@ -89,10 +93,10 @@ export function createDb(dbPath) {
     db.exec("PRAGMA foreign_keys = ON");
     db.exec("PRAGMA journal_mode=WAL");
     db.exec(CREATE_TABLES_SQL);
-    db.exec(CREATE_INDEXES_SQL);
     // Run migrations to add new columns and clean up expired challenges
     const { migrateDb } = require("./migrate.js");
     migrateDb(db);
+    db.exec(CREATE_INDEXES_SQL);
     return db;
 }
 

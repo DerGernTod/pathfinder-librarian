@@ -1,9 +1,5 @@
 import { mock } from "bun:test";
 
-import { GlobalRegistrator } from "@happy-dom/global-registrator";
-
-GlobalRegistrator.register();
-
 const components = [
     "card/card",
     "details/details",

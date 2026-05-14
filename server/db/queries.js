@@ -47,6 +47,8 @@ const RuleItemSchema = z
         type: ruleItemTypeSchema,
         name: z.string(),
         compendium_source: z.string().nullable().optional(),
+        parent_id: z.string().nullable().optional(),
+        linked_source: z.string().nullable().optional(),
         data_json: z.string(),
         created_at: z.string(),
     })
@@ -55,6 +57,8 @@ const RuleItemSchema = z
         type: row.type,
         name: row.name,
         compendiumSource: row.compendium_source ?? undefined,
+        parentId: row.parent_id ?? undefined,
+        linkedSource: row.linked_source ?? undefined,
         data: /** @type {unknown} */ (JSON.parse(row.data_json)),
         createdAt: row.created_at,
     }));
@@ -237,16 +241,28 @@ export const createUserMessage = createMessage;
 
 /**
  * Gets all rule items, optionally filtered by type.
+ * By default returns only root items (parent_id IS NULL).
+ * Pass { includeChildren: true } to include child items.
  * @param {import("bun:sqlite").Database} database - The database instance
  * @param {string} [type] - Optional type filter (e.g., "creature", "spell")
+ * @param {{ includeChildren?: boolean }} [options] - Options
  * @returns {z.infer<typeof RuleItemListSchema>}
  */
-export function getRuleItems(database, type) {
-    let query = "SELECT id, type, name, compendium_source, data_json, created_at FROM rule_items";
+export function getRuleItems(database, type, options) {
+    const includeChildren = options?.includeChildren ?? false;
+    let query =
+        "SELECT id, type, name, compendium_source, parent_id, linked_source, data_json, created_at FROM rule_items";
     const params = [];
+    const conditions = [];
+    if (!includeChildren) {
+        conditions.push("parent_id IS NULL");
+    }
     if (type) {
-        query += " WHERE type = ?";
+        conditions.push("type = ?");
         params.push(type);
+    }
+    if (conditions.length > 0) {
+        query += " WHERE " + conditions.join(" AND ");
     }
     query += " ORDER BY name";
     /** @type {unknown} */
@@ -264,7 +280,7 @@ export function getRuleItemById(database, id) {
     /** @type {unknown} */
     const row = database
         .query(
-            "SELECT id, type, name, compendium_source, data_json, created_at FROM rule_items WHERE id = ?",
+            "SELECT id, type, name, compendium_source, parent_id, linked_source, data_json, created_at FROM rule_items WHERE id = ?",
         )
         .get(id);
     if (!row) {
@@ -655,7 +671,7 @@ export function getRuleItemBySource(database, compendiumSource) {
     /** @type {unknown} */
     const row = database
         .query(
-            "SELECT id, type, name, compendium_source, data_json, created_at FROM rule_items WHERE compendium_source = ?",
+            "SELECT id, type, name, compendium_source, parent_id, linked_source, data_json, created_at FROM rule_items WHERE compendium_source = ?",
         )
         .get(compendiumSource);
     if (!row) {
@@ -668,35 +684,129 @@ export function getRuleItemBySource(database, compendiumSource) {
  * Inserts or updates a rule item by compendium_source.
  * If an item with the same compendium_source exists, it is updated; otherwise a new one is inserted.
  * @param {import("bun:sqlite").Database} database - The database instance
- * @param {{ type: string, name: string, compendiumSource: string, dataJson: string }} data - The rule item data
- * @returns {{ id: string, type: string, name: string, compendiumSource: string, data: unknown, createdAt: string }}
+ * @param {{ type: string, name: string, compendiumSource: string, dataJson: string, parentId?: string, linkedSource?: string }} data - The rule item data
+ * @returns {{ id: string, type: string, name: string, compendiumSource: string, parentId?: string, linkedSource?: string, data: unknown, createdAt: string }}
  */
-export function upsertRuleItem(database, { type, name, compendiumSource, dataJson }) {
+export function upsertRuleItem(
+    database,
+    { type, name, compendiumSource, dataJson, parentId, linkedSource },
+) {
     const existing = database
         .query("SELECT id FROM rule_items WHERE compendium_source = ?")
         .get(compendiumSource);
     if (existing) {
         database.run(
-            "UPDATE rule_items SET type = ?, name = ?, data_json = ? WHERE compendium_source = ?",
-            [type, name, dataJson, compendiumSource],
+            "UPDATE rule_items SET type = ?, name = ?, data_json = ?, parent_id = ?, linked_source = ? WHERE compendium_source = ?",
+            [type, name, dataJson, parentId ?? null, linkedSource ?? null, compendiumSource],
         );
         const updated = getRuleItemBySource(database, compendiumSource);
-        return /** @type {{ id: string, type: string, name: string, compendiumSource: string, data: unknown, createdAt: string }} */ (
+        return /** @type {{ id: string, type: string, name: string, compendiumSource: string, parentId?: string, linkedSource?: string, data: unknown, createdAt: string }} */ (
             updated
         );
     }
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
     database.run(
-        "INSERT INTO rule_items (id, type, name, compendium_source, data_json, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-        [id, type, name, compendiumSource, dataJson, now],
+        "INSERT INTO rule_items (id, type, name, compendium_source, parent_id, linked_source, data_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        [id, type, name, compendiumSource, parentId ?? null, linkedSource ?? null, dataJson, now],
     );
     return {
         id,
         type,
         name,
         compendiumSource,
+        parentId: parentId ?? undefined,
+        linkedSource: linkedSource ?? undefined,
         data: JSON.parse(dataJson),
         createdAt: now,
     };
+}
+
+/**
+ * Batch inserts or updates rule items by compendium_source.
+ * Uses a SQLite transaction for performance.
+ * @param {import("bun:sqlite").Database} database - The database instance
+ * @param {Array<{ type: string, name: string, compendiumSource: string, dataJson: string, parentId?: string, linkedSource?: string }>} items
+ * @returns {{ inserted: number, updated: number }}
+ */
+export function batchUpsertRuleItems(database, items) {
+    let inserted = 0;
+    let updated = 0;
+
+    database.run("BEGIN TRANSACTION");
+    try {
+        const selectStmt = database.prepare(
+            "SELECT id FROM rule_items WHERE compendium_source = ?",
+        );
+        const insertStmt = database.prepare(
+            "INSERT INTO rule_items (id, type, name, compendium_source, parent_id, linked_source, data_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        );
+        const updateStmt = database.prepare(
+            "UPDATE rule_items SET type = ?, name = ?, data_json = ?, parent_id = ?, linked_source = ? WHERE compendium_source = ?",
+        );
+
+        for (const item of items) {
+            const existing = selectStmt.get(item.compendiumSource);
+            if (existing) {
+                updateStmt.run(
+                    item.type,
+                    item.name,
+                    item.dataJson,
+                    item.parentId ?? null,
+                    item.linkedSource ?? null,
+                    item.compendiumSource,
+                );
+                updated++;
+            } else {
+                insertStmt.run(
+                    crypto.randomUUID(),
+                    item.type,
+                    item.name,
+                    item.compendiumSource,
+                    item.parentId ?? null,
+                    item.linkedSource ?? null,
+                    item.dataJson,
+                    new Date().toISOString(),
+                );
+                inserted++;
+            }
+        }
+        database.run("COMMIT");
+    } catch (error) {
+        database.run("ROLLBACK");
+        throw error;
+    }
+
+    return { inserted, updated };
+}
+
+/**
+ * Gets child items for a given parent rule item.
+ * @param {import("bun:sqlite").Database} database - The database instance
+ * @param {string} parentId - The parent rule item ID
+ * @returns {z.infer<typeof RuleItemListSchema>}
+ */
+export function getChildItems(database, parentId) {
+    /** @type {unknown} */
+    const rows = database
+        .query(
+            "SELECT id, type, name, compendium_source, parent_id, linked_source, data_json, created_at FROM rule_items WHERE parent_id = ? ORDER BY type, name",
+        )
+        .all(parentId);
+    return RuleItemListSchema.parse(rows);
+}
+
+/**
+ * Gets the parent item for a given child rule item.
+ * Returns null if the item has no parent.
+ * @param {import("bun:sqlite").Database} database - The database instance
+ * @param {string} childId - The child rule item ID
+ * @returns {z.infer<typeof RuleItemSchema> | null}
+ */
+export function getParentItem(database, childId) {
+    const child = database.query("SELECT parent_id FROM rule_items WHERE id = ?").get(childId);
+    if (!child || !child.parent_id) {
+        return null;
+    }
+    return getRuleItemById(database, /** @type {string} */ (child.parent_id));
 }

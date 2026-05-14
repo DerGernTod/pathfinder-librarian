@@ -1,0 +1,88 @@
+{
+    "_id": "spellcaster001",
+    "name": "Cultist Acolyte",
+    "type": "npc",
+    "system": {
+        "abilities": {
+            "cha": { "mod": 3 },
+            "con": { "mod": 2 },
+            "dex": { "mod": 1 },
+            "int": { "mod": 4 },
+            "str": { "mod": 0 },
+            "wis": { "mod": 2 }
+        },
+        "attributes": {
+            "ac": { "value": 15 },
+            "hp": { "value": 30, "max": 30 },
+            "speed": { "value": 25, "otherSpeeds": [{ "type": "fly", "value": 20 }] },
+            "fortitude": { "value": 6 },
+            "reflex": { "value": 5 },
+            "will": { "value": 9 }
+        },
+        "details": {
+            "level": { "value": 2 },
+            "languages": { "value": ["Common", "Infernal"], "details": "celestial scripts" },
+            "publicNotes": "<p>A fanatical cult devotee.</p>"
+        },
+        "perception": { "mod": 5 },
+        "skills": {
+            "arcana": { "base": 8 },
+            "deception": { "base": 7 },
+            "religion": { "base": 6 }
+        },
+        "traits": {
+            "value": ["human", "humanoid"],
+            "rarity": "uncommon"
+        }
+    },
+    "items": [
+        {
+            "_id": "melee002",
+            "name": "dagger",
+            "type": "melee",
+            "system": {
+                "bonus": { "value": 5 },
+                "damageRolls": {
+                    "damage": { "damage": "1d4", "damageType": "piercing" }
+                },
+                "traits": { "value": ["agile", "finesse", "versatile-s"] }
+            }
+        },
+        {
+            "_id": "spellding001",
+            "name": "Cultist Divine Spells",
+            "type": "spellcastingEntry",
+            "system": {
+                "tradition": { "value": "divine" },
+                "proficiency": { "value": 1 },
+                "spellcasting": {
+                    "ability": { "value": "cha" }
+                },
+                "dc": { "value": 17 },
+                "attackBonus": { "value": 7 },
+                "slots": {
+                    "slot1": {
+                        "value": 2,
+                        "max": 2,
+                        "prepared": { "value": [] },
+                        "slugs": ["command", "heal"]
+                    }
+                },
+                "cantrips": {
+                    "value": ["divine lance", "shield"]
+                }
+            }
+        },
+        {
+            "_id": "action003",
+            "name": "Dark Prayer",
+            "type": "action",
+            "system": {
+                "actionType": { "value": "action" },
+                "actions": { "value": 2 },
+                "description": { "value": "<p>Channels dark energy to buff allies.</p>" },
+                "traits": { "value": ["concentrate", "divine"] }
+            }
+        }
+    ]
+}
