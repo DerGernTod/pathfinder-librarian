@@ -127,6 +127,12 @@ export async function queryRagContext(userPrompt, options = {}) {
                         parts.push(`\nDescription: ${data.description}`);
                     }
 
+                    // For root items (creatures, etc.), include full structured data
+                    // so the LLM can emit stat-blocks with accurate numbers
+                    if (!ruleItem.parentId) {
+                        parts.push(`\nStructured Data:\n${JSON.stringify(ruleItem.data, null, 2)}`);
+                    }
+
                     // For child items (melee, actions, spellcasting), include parent context
                     if (ruleItem.parentId) {
                         const parent = getParentItem(mainDb, chunk.ruleItemId);
@@ -139,17 +145,23 @@ export async function queryRagContext(userPrompt, options = {}) {
                             if (parentData.description) {
                                 parts.push(`Parent Description: ${parentData.description}`);
                             }
-                        }
-                    }
+                            // Include parent's structured data for stat-block context
+                            parts.push(
+                                `\nParent Structured Data:\n${JSON.stringify(parent.data, null, 2)}`,
+                            );
 
-                    // For root items, include child item names for completeness
-                    if (!ruleItem.parentId) {
-                        const children = getChildItems(mainDb, chunk.ruleItemId);
-                        if (children.length > 0) {
-                            const childSummary = children
-                                .map((c) => `${c.name} (${c.type})`)
-                                .join(", ");
-                            parts.push(`\nRelated items: ${childSummary}`);
+                            // Also include sibling items
+                            const siblings = getChildItems(mainDb, parent.id);
+                            const siblingData = siblings.map((s) => ({
+                                name: s.name,
+                                type: s.type,
+                                data: s.data,
+                            }));
+                            if (siblingData.length > 0) {
+                                parts.push(
+                                    `\nSibling Items:\n${JSON.stringify(siblingData, null, 2)}`,
+                                );
+                            }
                         }
                     }
                 }
