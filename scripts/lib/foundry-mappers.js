@@ -41,12 +41,17 @@ function capitalize(str) {
 /**
  * Determines the Foundry document type from a pack directory name.
  * @param {string} dirName - e.g. "pathfinder-bestiary", "spells", "equipment"
- * @returns {"creature" | "spell" | "equipment" | "feat" | "action" | "mixed"}
+ * @returns {"creature" | "spell" | "equipment" | "feat" | "action" | "effect" | "condition" | "mixed"}
  */
 export function classifyPackDirectory(dirName) {
     // Order matters: more specific patterns first
     if (/^bestiary-ability-glossary/i.test(dirName)) {
         return "action";
+    }
+    // All effect packs: bestiary-effects, campaign-effects, equipment-effects,
+    // feat-effects, other-effects, spell-effects — must precede bestiary check
+    if (/-effects$/i.test(dirName)) {
+        return "effect";
     }
     if (/bestiary|monster-core|npc-gallery/i.test(dirName)) {
         return "creature";
@@ -62,6 +67,9 @@ export function classifyPackDirectory(dirName) {
     }
     if (/^actions/i.test(dirName)) {
         return "action";
+    }
+    if (/^conditions$/i.test(dirName)) {
+        return "condition";
     }
     return "mixed";
 }
@@ -228,18 +236,18 @@ export function mapCreature(rawJson, packName) {
     const abilities = /** @type {Record<string, { mod: number }>} */ (sys.abilities ?? {});
     const attributes = /** @type {Record<string, unknown>} */ (sys.attributes ?? {});
     const ac = /** @type {{ value?: number, details?: string } | undefined } */ (attributes.ac);
-    const hp = /** @type {{ value?: number, max?: number, details?: string } | undefined } */ (
-        attributes.hp
-    );
+    const hp =
+        /** @type {{ value?: number, max?: number, details?: string } | undefined } */ (
+            attributes.hp
+        );
     const speed =
         /** @type {{ value?: number, otherSpeeds?: Array<{ type: string, value: number }> } | undefined } */ (
             attributes.speed
         );
     const details = /** @type {Record<string, unknown>} */ (sys.details ?? {});
     const levelObj = /** @type {{ value?: number } | undefined } */ (details.level);
-    const langs = /** @type {{ value?: string[], details?: string } | undefined } */ (
-        details.languages
-    );
+    const langs =
+        /** @type {{ value?: string[], details?: string } | undefined } */ (details.languages);
     const pubNotes = /** @type {string | undefined } */ (
         typeof details.publicNotes === "string" ? details.publicNotes : undefined
     );
@@ -323,9 +331,8 @@ export function mapCreature(rawJson, packName) {
  * @returns {ImportableRuleItem}
  */
 export function mapSpell(rawJson, packName) {
-    const raw = /** @type {{ _id?: string, name?: string, system?: Record<string, unknown> }} */ (
-        rawJson
-    );
+    const raw =
+        /** @type {{ _id?: string, name?: string, system?: Record<string, unknown> }} */ (rawJson);
     const sys = /** @type {Record<string, unknown>} */ (raw.system ?? {});
     const level = /** @type {{ value?: number } | undefined } */ (sys.level);
     const traditions = /** @type {{ value?: string[] } | undefined } */ (sys.traditions);
@@ -369,9 +376,8 @@ export function mapSpell(rawJson, packName) {
  * @returns {ImportableRuleItem}
  */
 export function mapEquipment(rawJson, packName) {
-    const raw = /** @type {{ _id?: string, name?: string, system?: Record<string, unknown> }} */ (
-        rawJson
-    );
+    const raw =
+        /** @type {{ _id?: string, name?: string, system?: Record<string, unknown> }} */ (rawJson);
     const sys = /** @type {Record<string, unknown>} */ (raw.system ?? {});
     const level = /** @type {{ value?: number } | undefined } */ (sys.level);
     const price = /** @type {{ value?: Record<string, number> } | undefined } */ (sys.price);
@@ -415,15 +421,45 @@ export function mapEquipment(rawJson, packName) {
 }
 
 /**
+ * Maps a Foundry effect JSON (from equipment-effects, spell-effects,
+ * bestiary-effects, etc.) to an importable rule item.
+ * @param {unknown} rawJson
+ * @param {string} packName
+ * @returns {ImportableRuleItem}
+ */
+export function mapEffect(rawJson, packName) {
+    const raw =
+        /** @type {{ _id?: string, name?: string, system?: Record<string, unknown> }} */ (rawJson);
+    const sys = /** @type {Record<string, unknown>} */ (raw.system ?? {});
+    const description = /** @type {{ value?: string } | undefined } */ (sys.description);
+    const traits = /** @type {{ value?: string[] } | undefined } */ (sys.traits);
+    const level = /** @type {{ value?: number } | undefined } */ (sys.level);
+
+    const compendiumSource = buildCompendiumSource(packName, raw._id ?? "");
+
+    return {
+        type: "effect",
+        name: raw.name ?? "Unknown Effect",
+        compendiumSource,
+        dataJson: JSON.stringify({
+            name: raw.name ?? "Unknown Effect",
+            level: level?.value ?? 0,
+            description: description?.value ? stripHtml(description.value) : "",
+            traits: traits?.value ?? [],
+            compendiumSource,
+        }),
+    };
+}
+
+/**
  * Maps a Foundry feat JSON to an importable rule item.
  * @param {unknown} rawJson
  * @param {string} packName
  * @returns {ImportableRuleItem}
  */
 export function mapFeat(rawJson, packName) {
-    const raw = /** @type {{ _id?: string, name?: string, system?: Record<string, unknown> }} */ (
-        rawJson
-    );
+    const raw =
+        /** @type {{ _id?: string, name?: string, system?: Record<string, unknown> }} */ (rawJson);
     const sys = /** @type {Record<string, unknown>} */ (raw.system ?? {});
     const level = /** @type {{ value?: number } | undefined } */ (sys.level);
     const actionType = /** @type {{ value?: string } | undefined } */ (sys.actionType);

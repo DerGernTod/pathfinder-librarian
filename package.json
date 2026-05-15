@@ -21,9 +21,11 @@
         "e2e": "playwright test",
         "e2e-local": "playwright test --project=chromium --retries=0 --ui",
         "gh:update-snapshots": "gh workflow run \"Update Snapshots\" --ref main",
-        "create:demo": "bun run create:demo:import-foundry && bun run create:demo:vector-db",
-        "create:demo:import-foundry": "bun ./scripts/import-foundry.js --pack pathfinder-bestiary --limit 10",
+        "create:demo": "bun run import:foundry && bun run import:traits && bun run create:demo:vector-db",
         "create:demo:vector-db": "bun ./scripts/create-vector-db.js --model gemini-embedding-001 --limit 100 --batch-size 100",
+        "import:foundry": "bun ./scripts/import-foundry.js --source ./temp/foundry-vtt-pf2e --verbose",
+        "import:traits": "bun ./scripts/import-foundry-traits.js --source ./temp/foundry-vtt-pf2e",
+        "export:localizations": "bun ./scripts/export-localizations.js",
         "create:embeddings": "bun ./scripts/create-vector-db.js --model gemini-embedding-001"
     },
     "dependencies": {

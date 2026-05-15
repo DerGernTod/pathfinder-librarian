@@ -6,7 +6,7 @@
 
 /** @typedef {{ id: string, name: string, initials: string, subtitle: string, mode: Mode }} User */
 
-/** @typedef {{ id: string, type: "creature" | "spell" | "melee" | "weapon" | "armor" | "equipment" | "action" | "feat" | "spellcastingEntry" | "trait" | "condition", name: string, compendiumSource?: string, parentId?: string, linkedSource?: string, data: unknown, createdAt: string }} RuleItem */
+/** @typedef {{ id: string, type: "creature" | "spell" | "melee" | "weapon" | "armor" | "equipment" | "action" | "feat" | "spellcastingEntry" | "trait" | "condition" | "effect", name: string, compendiumSource?: string, parentId?: string, linkedSource?: string, data: unknown, createdAt: string }} RuleItem */
 
 /** @typedef {{ id: string, userId: string, token: string, createdAt: string, expiresAt: string }} Session */
 
@@ -24,13 +24,13 @@
 /** @typedef {{ value: number }} SaveValue */
 /** @typedef {{ value: number, ability?: string }} SkillValue */
 
-/** @typedef {{ name: string, attack: string, damage: string, damageType?: string, compendiumSource?: string, traits?: string[] }} MeleeEntry */
+/** @typedef {{ name: string, attack: string, damage: string, damageType?: string, compendiumSource?: string, traits?: string[], traitRefs?: Array<{ name: string, ruleItemId?: string }> }} MeleeEntry */
 
 /** @typedef {{ name: string, compendiumSource?: string, rank?: number, usage?: string, heightened?: boolean }} SpellSlotEntry */
 
 /** @typedef {{ name: string, tradition?: string, type?: string, dc?: number, attackModifier?: number, slots?: Record<string, SpellSlotEntry[]>, cantrips?: SpellSlotEntry[] }} SpellcastingEntry */
 
-/** @typedef {{ name: string, actionType?: number | "reaction" | "free", traits?: string[], description: string, compendiumSource?: string, deathNote?: boolean, descriptionSegments?: Array<{ text: string, ruleItemId?: string }> }} ActionEntry */
+/** @typedef {{ name: string, actionType?: number | "reaction" | "free", traits?: string[], traitRefs?: Array<{ name: string, ruleItemId?: string }>, description: string, compendiumSource?: string, deathNote?: boolean, descriptionSegments?: Array<{ text: string, ruleItemId?: string }> }} ActionEntry */
 
 /**
  * @typedef {{
@@ -68,7 +68,7 @@
  * }} CreatureData
  */
 
-/** @typedef {{ type: "stat-block", title: string, data?: CreatureData, ruleItemId?: string }} StatBlockMessageBlock */
+/** @typedef {{ type: "stat-block", title?: string, data?: CreatureData, ruleItemId?: string }} StatBlockMessageBlock */
 
 /** @typedef {{ type: "list", items: Array<ListItem> }} ListBlock */
 

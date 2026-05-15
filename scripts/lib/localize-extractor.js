@@ -31,6 +31,7 @@ function flattenObject(obj, prefix = "") {
  */
 export function extractLocalizations(pf2eRootDir) {
     const candidates = [
+        join(pf2eRootDir, "static", "lang", "en.json"),
         join(pf2eRootDir, "localization", "en.json"),
         join(pf2eRootDir, "lang", "en.json"),
     ];

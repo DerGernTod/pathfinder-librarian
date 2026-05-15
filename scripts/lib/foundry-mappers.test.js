@@ -7,6 +7,7 @@ import {
     classifyPackDirectory,
     extractEmbeddedItems,
     mapCreature,
+    mapEffect,
     mapEquipment,
     mapFeat,
     mapSpell,
@@ -56,6 +57,20 @@ describe("foundry-mappers", () => {
         it("classifies action directories as action", () => {
             expect(classifyPackDirectory("actions")).toBe("action");
             expect(classifyPackDirectory("bestiary-ability-glossary-srd")).toBe("action");
+        });
+
+        it("classifies effect pack directories as effect", () => {
+            expect(classifyPackDirectory("bestiary-effects")).toBe("effect");
+            expect(classifyPackDirectory("campaign-effects")).toBe("effect");
+            expect(classifyPackDirectory("equipment-effects")).toBe("effect");
+            expect(classifyPackDirectory("feat-effects")).toBe("effect");
+            expect(classifyPackDirectory("other-effects")).toBe("effect");
+            expect(classifyPackDirectory("spell-effects")).toBe("effect");
+        });
+
+        it("does not falsely classify non-effect directories", () => {
+            expect(classifyPackDirectory("actions")).toBe("action");
+            expect(classifyPackDirectory("feats")).toBe("feat");
         });
 
         it("returns mixed for unknown directories", () => {
@@ -285,7 +300,14 @@ describe("foundry-mappers", () => {
         });
 
         it("skips non-relevant embedded item types", () => {
-            const items = [{ _id: "effect001", name: "Some Effect", type: "effect", system: {} }];
+            const items = [
+                {
+                    _id: "effect001",
+                    name: "Some Effect",
+                    type: "effect",
+                    system: {},
+                },
+            ];
             const { embeddedItems } = extractEmbeddedItems(items, "Compendium.test");
 
             expect(embeddedItems).toHaveLength(0);
@@ -332,7 +354,12 @@ describe("foundry-mappers", () => {
 
         it("handles minimal spell data", () => {
             const result = mapSpell(
-                { _id: "min001", name: "Cantrip", type: "spell", system: { level: { value: 0 } } },
+                {
+                    _id: "min001",
+                    name: "Cantrip",
+                    type: "spell",
+                    system: { level: { value: 0 } },
+                },
                 "spells",
             );
             const data = JSON.parse(result.dataJson);
@@ -389,6 +416,92 @@ describe("foundry-mappers", () => {
             const data = JSON.parse(result.dataJson);
 
             expect(data.description).toBe("You unleash a particularly powerful attack.");
+        });
+    });
+
+    describe("mapEffect", () => {
+        it("maps well-formed effect JSON", () => {
+            const raw = {
+                _id: "effect001",
+                name: "Effect: Frost Vial",
+                type: "effect",
+                system: {
+                    description: {
+                        value: "<p>Granted by @UUID[Compendium.pf2e.equipment-srd.Item.Frost Vial]</p>\n<p>You take a status penalty to your Speeds.</p>",
+                    },
+                    level: { value: 3 },
+                    traits: { value: ["alchemical", "cold"] },
+                },
+            };
+            const result = mapEffect(raw, "equipment-effects");
+
+            expect(result.type).toBe("effect");
+            expect(result.name).toBe("Effect: Frost Vial");
+            expect(result.compendiumSource).toBe(
+                "Compendium.pf2e.equipment-effects.Item.effect001",
+            );
+
+            const data = JSON.parse(result.dataJson);
+            expect(data.name).toBe("Effect: Frost Vial");
+            expect(data.level).toBe(3);
+            expect(data.description).toContain("You take a status penalty to your Speeds.");
+            expect(data.description).not.toContain("<p>"); // HTML stripped
+            expect(data.traits).toEqual(["alchemical", "cold"]);
+        });
+
+        it("handles missing description gracefully", () => {
+            const raw = {
+                _id: "effect002",
+                name: "Effect: Simple Buff",
+                type: "effect",
+                system: {
+                    level: { value: 1 },
+                },
+            };
+            const result = mapEffect(raw, "spell-effects");
+            const data = JSON.parse(result.dataJson);
+
+            expect(data.description).toBe("");
+            expect(data.traits).toEqual([]);
+            expect(data.level).toBe(1);
+        });
+
+        it("handles missing system gracefully", () => {
+            const raw = {
+                _id: "effect003",
+                name: "Minimal Effect",
+            };
+            const result = mapEffect(raw, "other-effects");
+
+            expect(result.name).toBe("Minimal Effect");
+            expect(result.type).toBe("effect");
+
+            const data = JSON.parse(result.dataJson);
+            expect(data.level).toBe(0);
+            expect(data.description).toBe("");
+        });
+
+        it("strips HTML tags including nested @UUID from description", () => {
+            const raw = {
+                _id: "effect004",
+                name: "Complex Effect",
+                type: "effect",
+                system: {
+                    description: {
+                        value: "<p>Granted by @UUID[Compendium.pf2e.equipment-srd.Item.Some Item]</p>\n<ul><li>Point 1</li><li>Point 2</li></ul>",
+                    },
+                },
+            };
+            const result = mapEffect(raw, "equipment-effects");
+            const data = JSON.parse(result.dataJson);
+
+            // @UUID markup stays in text (server resolves it) but HTML tags are stripped
+            expect(data.description).toContain(
+                "@UUID[Compendium.pf2e.equipment-srd.Item.Some Item]",
+            );
+            expect(data.description).not.toContain("<p>");
+            expect(data.description).not.toContain("<ul>");
+            expect(data.description).toContain("Point 1");
         });
     });
 });

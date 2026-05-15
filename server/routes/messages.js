@@ -47,7 +47,10 @@ function tryEnqueue(controller, event) {
 function resolveStatBlock(database, block) {
     const ruleItem = queries.getRuleItemById(database, block.ruleItemId);
     if (!ruleItem) {
-        return { type: "paragraph", text: `Creature not found: ${block.title}` };
+        return {
+            type: "paragraph",
+            text: `Creature not found: ${block.title}`,
+        };
     }
 
     const data = /** @type {import("../../shared/types.js").CreatureData} */ (ruleItem.data);
@@ -92,13 +95,49 @@ function resolveStatBlock(database, block) {
         data.actions = actions;
     }
 
-    // Resolve trait names → rule item IDs
+    // Resolve creature trait names → rule item IDs
     if (data.traits?.length) {
         const traitMap = queries.getRuleItemsByTypeAndNames(database, "trait", data.traits);
         data.traitRefs = data.traits.map((name) => {
             const found = traitMap.get(name);
             return { name, ruleItemId: found?.id };
         });
+    }
+
+    // Resolve action trait names → rule item IDs (enables interactive tags)
+    if (data.actions?.length) {
+        const actionTraitNames = [...new Set(data.actions.flatMap((a) => a.traits ?? []))];
+        if (actionTraitNames.length > 0) {
+            const traitMap = queries.getRuleItemsByTypeAndNames(
+                database,
+                "trait",
+                actionTraitNames,
+            );
+            for (const action of data.actions) {
+                if (action.traits?.length) {
+                    action.traitRefs = action.traits.map((name) => ({
+                        name,
+                        ruleItemId: traitMap.get(name)?.id,
+                    }));
+                }
+            }
+        }
+    }
+
+    // Resolve melee trait names → rule item IDs (enables interactive tags)
+    if (data.melee?.length) {
+        const meleeTraitNames = [...new Set(data.melee.flatMap((m) => m.traits ?? []))];
+        if (meleeTraitNames.length > 0) {
+            const traitMap = queries.getRuleItemsByTypeAndNames(database, "trait", meleeTraitNames);
+            for (const melee of data.melee) {
+                if (melee.traits?.length) {
+                    melee.traitRefs = melee.traits.map((name) => ({
+                        name,
+                        ruleItemId: traitMap.get(name)?.id,
+                    }));
+                }
+            }
+        }
     }
 
     // Resolve @UUID and @Localize in action descriptions
@@ -115,53 +154,89 @@ function resolveStatBlock(database, block) {
         }
     }
 
-    const { ruleItemId: _id, ...blockWithoutId } = block;
-    return { ...blockWithoutId, data };
+    const { ruleItemId: _id, title: blockTitle, ...blockWithoutId } = block;
+    // Fall back to the creature's name from the DB if the LLM omitted the title.
+    return { ...blockWithoutId, title: blockTitle ?? ruleItem.name, data };
 }
 
 /**
  * Resolves a rule-detail block with ruleItemId to one with full item data.
+ * Returns null when the item is not found so the caller can drop it.
  * @param {import("bun:sqlite").Database} db
  * @param {{ type: "rule-detail", ruleItemId: string }} block
- * @returns {import("../../shared/types.js").MessageBlock}
+ * @returns {import("../../shared/types.js").MessageBlock | null}
  */
 function resolveRuleDetail(db, block) {
     const item = queries.getRuleItemById(db, block.ruleItemId);
     if (!item) {
-        return block;
+        // The LLM produced an ID that doesn't exist — drop the block rather
+        // than rendering an empty, meaningless card.
+        return null;
     }
     const itemData = /** @type {Record<string, unknown>} */ (item.data ?? {});
+    let rawDescription =
+        typeof itemData.description === "string" ? itemData.description : undefined;
+
+    // Resolve @Localize and @UUID references in the description, same as
+    // resolveStatBlock does for action descriptions.
+    if (rawDescription) {
+        const localizations = loadLocalizations();
+        rawDescription = resolveLocalizeRefs(rawDescription, localizations);
+        const resolved = resolveUuidRefs(rawDescription, db);
+        rawDescription = resolved.segments.length > 0 ? undefined : resolved.text;
+        return /** @type {import("../../shared/types.js").MessageBlock} */ ({
+            type: "rule-detail",
+            title: item.name,
+            category: item.type,
+            description: rawDescription,
+            descriptionSegments: resolved.segments.length > 0 ? resolved.segments : undefined,
+            traits: Array.isArray(itemData.traits) ? itemData.traits : undefined,
+        });
+    }
+
     return {
         type: "rule-detail",
         title: item.name,
         category: item.type,
-        description: typeof itemData.description === "string" ? itemData.description : undefined,
+        description: rawDescription,
         traits: Array.isArray(itemData.traits) ? itemData.traits : undefined,
     };
 }
 
 /**
  * Resolves LLM block references (stat-block, rule-detail) to their full data.
+ * Drops rule-detail blocks whose ruleItemId doesn't resolve to a DB item
+ * rather than emitting empty cards.
  * @param {import("bun:sqlite").Database} db
  * @param {import("../../shared/types.js").MessageBlock[]} llmBlocks
  * @returns {import("../../shared/types.js").MessageBlock[]}
  */
 function resolveBlocks(db, llmBlocks) {
-    return llmBlocks.map((block) => {
+    /** @type {import("../../shared/types.js").MessageBlock[]} */
+    const result = [];
+    for (const block of llmBlocks) {
         if (block.type === "stat-block" && block.ruleItemId) {
-            return resolveStatBlock(
-                db,
-                /** @type {{ type: "stat-block", title: string, ruleItemId: string }} */ (block),
+            result.push(
+                resolveStatBlock(
+                    db,
+                    /** @type {{ type: "stat-block", title: string, ruleItemId: string }} */ (
+                        block
+                    ),
+                ),
             );
-        }
-        if (block.type === "rule-detail" && "ruleItemId" in block && block.ruleItemId) {
-            return resolveRuleDetail(
+        } else if (block.type === "rule-detail" && "ruleItemId" in block && block.ruleItemId) {
+            const resolved = resolveRuleDetail(
                 db,
                 /** @type {{ type: "rule-detail", ruleItemId: string }} */ (block),
             );
+            if (resolved !== null) {
+                result.push(resolved);
+            }
+        } else {
+            result.push(block);
         }
-        return block;
-    });
+    }
+    return result;
 }
 
 /**
@@ -204,7 +279,11 @@ async function getLlmResponseWithRetry({ content, contextText, mode, userId }, n
             if (attempt < MAX_RETRIES - 1) {
                 const connected = notify({
                     type: "retryScheduled",
-                    data: { delay: 30, attempt: attempt + 1, maxAttempts: MAX_RETRIES },
+                    data: {
+                        delay: 30,
+                        attempt: attempt + 1,
+                        maxAttempts: MAX_RETRIES,
+                    },
                 });
                 if (!connected) {
                     break;
@@ -286,7 +365,10 @@ async function runResponseStream(controller, ctx) {
             content: null,
             blocksJson: JSON.stringify(blocks),
         });
-        tryEnqueue(controller, { type: "assistantComplete", data: assistantMsg });
+        tryEnqueue(controller, {
+            type: "assistantComplete",
+            data: assistantMsg,
+        });
         try {
             controller.close();
         } catch {
@@ -301,9 +383,18 @@ export const messagesRouter = new Hono()
         const convId = c.req.valid("param").id;
         const conv = queries.getConversationById(db, convId);
         if (!conv) {
-            return c.json({ result: /** @type {"error"} */ ("error"), message: "Not found" }, 404);
+            return c.json(
+                {
+                    result: /** @type {"error"} */ ("error"),
+                    message: "Not found",
+                },
+                404,
+            );
         }
-        return c.json({ result: /** @type {"success"} */ ("success"), data: conv });
+        return c.json({
+            result: /** @type {"success"} */ ("success"),
+            data: conv,
+        });
     })
     .get("/messages", validateId, async (c) => {
         const db = getDb(c);

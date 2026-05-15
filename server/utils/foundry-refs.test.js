@@ -81,6 +81,49 @@ describe("foundry-refs", () => {
             const result = resolveUuidRefs("", db);
             expect(result.segments).toHaveLength(0);
         });
+
+        it("resolves bare @UUID without display text using DB item name", () => {
+            const text = "@UUID[Compendium.pf2e.actions.Item.ShieldBlock]";
+            const result = resolveUuidRefs(text, db);
+
+            expect(result.segments).toHaveLength(1);
+            expect(result.segments[0].text).toBe("Shield Block");
+            expect(result.segments[0].ruleItemId).toBeDefined();
+        });
+
+        it("resolves bare @UUID without display text for unknown source using friendly name", () => {
+            const text = "@UUID[Compendium.pf2e.equipment-effects.Item.Effect: Frost Vial]";
+            const result = resolveUuidRefs(text, db);
+
+            expect(result.segments).toHaveLength(1);
+            // Should extract "Effect: Frost Vial" from the UUID path
+            expect(result.segments[0].text).toBe("Effect: Frost Vial");
+            expect(result.segments[0].ruleItemId).toBeUndefined();
+        });
+
+        it("resolves bare @UUID with opaque hex ID using pack name", () => {
+            const text = "@UUID[Compendium.pf2e.conditionitems.Item.a1b2c3d4e5f6a7b8]";
+            const result = resolveUuidRefs(text, db);
+
+            expect(result.segments).toHaveLength(1);
+            // Pure hex ID → falls back to pack name "conditionitems"
+            expect(result.segments[0].text).toBe("conditionitems");
+            expect(result.segments[0].ruleItemId).toBeUndefined();
+        });
+
+        it("mixes bare @UUID and @UUID with display text in one string", () => {
+            const text =
+                "Use @UUID[Compendium.pf2e.actions.Item.ShieldBlock]{Shield Block} then @UUID[Compendium.pf2e.equipment-effects.Item.Effect: Frost Vial]";
+            const result = resolveUuidRefs(text, db);
+
+            expect(result.segments).toHaveLength(4);
+            expect(result.segments[0].text).toBe("Use ");
+            expect(result.segments[1].text).toBe("Shield Block");
+            expect(result.segments[1].ruleItemId).toBeDefined();
+            expect(result.segments[2].text).toBe(" then ");
+            expect(result.segments[3].text).toBe("Effect: Frost Vial");
+            expect(result.segments[3].ruleItemId).toBeUndefined();
+        });
     });
 
     describe("resolveLocalizeRefs", () => {

@@ -344,7 +344,13 @@ describe("stat-block", () => {
             traits: ["Goblin"],
             perception: "+5",
             languages: "Common, Goblin",
-            attributes: { ac: 15, hp: 20, fortitude: "+6", reflex: "+5", will: "+3" },
+            attributes: {
+                ac: 15,
+                hp: 20,
+                fortitude: "+6",
+                reflex: "+5",
+                will: "+3",
+            },
             skills: { Stealth: "+7" },
             str: 2,
             dex: 3,
@@ -353,8 +359,16 @@ describe("stat-block", () => {
             wis: 1,
             cha: 0,
             actions: [
-                { name: "Strike", actionType: "single", description: "A melee Strike." },
-                { name: "Retaliate", actionType: "reaction", description: "Trigger..." },
+                {
+                    name: "Strike",
+                    actionType: "single",
+                    description: "A melee Strike.",
+                },
+                {
+                    name: "Retaliate",
+                    actionType: "reaction",
+                    description: "Trigger...",
+                },
             ],
         };
 
@@ -444,9 +458,21 @@ describe("stat-block", () => {
                     { name: "Free", actionType: 0, description: "free action" },
                     { name: "One", actionType: 1, description: "one action" },
                     { name: "Two", actionType: 2, description: "two actions" },
-                    { name: "Three", actionType: 3, description: "three actions" },
-                    { name: "React", actionType: "reaction", description: "reaction" },
-                    { name: "FreeAct", actionType: "free", description: "free" },
+                    {
+                        name: "Three",
+                        actionType: 3,
+                        description: "three actions",
+                    },
+                    {
+                        name: "React",
+                        actionType: "reaction",
+                        description: "reaction",
+                    },
+                    {
+                        name: "FreeAct",
+                        actionType: "free",
+                        description: "free",
+                    },
                 ],
             };
             const el = createStatBlock("Test", data);
@@ -593,7 +619,10 @@ describe("stat-block", () => {
                             "Use @UUID[Compendium.pf2e.actions.Item.ShieldBlock]{Shield Block}.",
                         descriptionSegments: [
                             { text: "Use " },
-                            { text: "Shield Block", ruleItemId: "id-shield-block" },
+                            {
+                                text: "Shield Block",
+                                ruleItemId: "id-shield-block",
+                            },
                             { text: "." },
                         ],
                     },
@@ -603,7 +632,9 @@ describe("stat-block", () => {
             await el.updateComplete;
 
             const actionsSection = el.shadowRoot.querySelector("sl-details[summary='Actions']");
-            const link = actionsSection.querySelector("a.rule-ref");
+            const pfDesc = actionsSection.querySelector("pf-description");
+            await pfDesc.updateComplete;
+            const link = pfDesc.shadowRoot.querySelector("a.rule-ref");
             expect(link).toBeTruthy();
             expect(link.textContent).toBe("Shield Block");
         });
@@ -619,7 +650,10 @@ describe("stat-block", () => {
                         description: "Text",
                         descriptionSegments: [
                             { text: "Use " },
-                            { text: "Shield Block", ruleItemId: "id-shield-block" },
+                            {
+                                text: "Shield Block",
+                                ruleItemId: "id-shield-block",
+                            },
                             { text: "." },
                         ],
                     },
@@ -633,7 +667,9 @@ describe("stat-block", () => {
             el.addEventListener("rule-detail-request", listener);
 
             const actionsSection = el.shadowRoot.querySelector("sl-details[summary='Actions']");
-            const link = actionsSection.querySelector("a.rule-ref");
+            const pfDesc = actionsSection.querySelector("pf-description");
+            await pfDesc.updateComplete;
+            const link = pfDesc.shadowRoot.querySelector("a.rule-ref");
             link.click();
 
             expect(listener).toHaveBeenCalled();
@@ -709,6 +745,54 @@ describe("stat-block", () => {
             await el.updateComplete;
             expect(el.shadowRoot.querySelector("h3")).toBeTruthy();
             expect(el.shadowRoot.querySelector("h3").textContent).toBe("Unknown");
+        });
+    });
+
+    describe("action trait interactivity", () => {
+        it("renders actions with interactive trait tags", async () => {
+            // The StatBlock class is exported via customElement(); cast to
+            // HTMLElement with the expected properties.
+            const el =
+                /** @type {HTMLElement & { title: string, data: unknown, updateComplete: Promise<unknown> }} */ (
+                    document.createElement("stat-block")
+                );
+            el.title = "Test Creature";
+            el.data = {
+                name: "Test Creature",
+                level: 5,
+                traits: [],
+                actions: [
+                    {
+                        name: "Test Action",
+                        actionType: 1,
+                        traits: ["Manipulate"],
+                        traitRefs: [{ name: "Manipulate", ruleItemId: "test-trait-id" }],
+                        description: "A test action with @Check[acrobatics|dc:20].",
+                    },
+                ],
+            };
+
+            document.body.appendChild(el);
+            await el.updateComplete;
+
+            const root = el.shadowRoot;
+            const slDetails = root?.querySelector("sl-details[summary='Actions']");
+            expect(slDetails).not.toBeNull();
+
+            // Trait tags should be clickable
+            const traitTags = slDetails?.querySelectorAll("sl-tag.clickable");
+            expect(traitTags?.length).toBeGreaterThanOrEqual(1);
+
+            // pf-description should render the @Check as a badge
+            const pfDesc =
+                /** @type {HTMLElement & { updateComplete: Promise<unknown>, shadowRoot: ShadowRoot | null }} */ (
+                    slDetails?.querySelector("pf-description")
+                );
+            await pfDesc?.updateComplete;
+            const checkBadge = pfDesc?.shadowRoot?.querySelector(".check-badge");
+            expect(checkBadge).not.toBeNull();
+
+            document.body.removeChild(el);
         });
     });
 });

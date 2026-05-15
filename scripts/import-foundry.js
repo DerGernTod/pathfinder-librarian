@@ -5,7 +5,15 @@ import { z } from "zod";
 
 import { createDb } from "../server/db/database.js";
 import { batchUpsertRuleItems, getRuleItemBySource } from "../server/db/queries.js";
-import { mapCreature, mapEquipment, mapFeat, mapSpell } from "./lib/foundry-mappers.js";
+import { mapCreature, mapEffect, mapEquipment, mapFeat, mapSpell } from "./lib/foundry-mappers.js";
+import { mapCondition } from "./lib/trait-mappers.js";
+
+// Map filesystem directory names to Foundry compendium pack names.
+// The pf2e repo uses "conditions" as directory but compendium UUIDs use
+// "conditionitems".
+const PACK_NAME_OVERRIDE = {
+    conditions: "conditionitems",
+};
 
 /**
  * Spawns a process using Bun if available, otherwise throws.
@@ -213,6 +221,21 @@ export function processFile(filePath, packName, options) {
                 type: "action",
                 dataJson: item.dataJson, // Keep data as-is
             }));
+        } else if (type === "effect" && (!options.types || options.types.includes("effect"))) {
+            items = [mapEffect(raw, packName)];
+        } else if (
+            type === "condition" &&
+            (!options.types || options.types.includes("condition"))
+        ) {
+            // The pf2e repo directory is "conditions" but compendium UUIDs use
+            // "conditionitems". Override to match Foundry compendium references.
+            items = [
+                mapCondition(
+                    raw,
+                    /** @type {Record<string, string>} */ (PACK_NAME_OVERRIDE)[packName] ??
+                        packName,
+                ),
+            ];
         } else {
             return { items: [], skipped: true, error: null };
         }

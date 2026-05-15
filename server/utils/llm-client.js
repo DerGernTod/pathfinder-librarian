@@ -81,7 +81,9 @@ export function buildGeminiResponseSchema() {
             title: { type: "string" },
             ruleItemId: { type: "string" },
         },
-        required: ["type", "title", "ruleItemId"],
+        // title is marked optional so Gemini's anyOf handling never drops
+        // a stat-block just because two schemas share the ruleItemId field.
+        required: ["type", "ruleItemId"],
     };
 
     const ruleDetailBlock = {
@@ -136,25 +138,26 @@ Enumerations, options, features, or bullet-point information. Each item has a "t
 - Example: { "type": "list", "items": [{ "title": "Stride", "text": "Move up to your Speed" }, { "title": "Strike", "text": "Make a melee or ranged attack" }] }
 
 ### stat-block
-Creature stat block. Use when the reference data contains a creature. Instead of copying the stats, reference the creature by its ruleItemId.
+Creature stat block. Use when the reference data contains a creature entry. Reference the creature by the ruleItemId shown in its [ID: ...] header.
 - Example: { "type": "stat-block", "title": "Goblin Warrior", "ruleItemId": "abc-123" }
-- The ruleItemId is shown in the reference data header as [ID: ...]
+- The ruleItemId comes from the [ID: ...] in the creature's reference data header
+- NEVER use stat-block for traits, conditions, or other non-creature items
 
 ### rule-detail
-Reference to a rule item (trait, condition, feat, etc.) by ID. Use when referencing a non-creature rule item from the context data.
+A non-creature rule item (trait, condition, feat, etc.) that has its OWN dedicated entry in the reference data — meaning it has its own [ID: ...] header line.
 - Example: { "type": "rule-detail", "ruleItemId": "abc-123" }
-- The ruleItemId is shown in the reference data header as [ID: ...]
-- Use for traits, conditions, feats, equipment, and other non-creature items
+- The ruleItemId MUST come from an [ID: ...] line on that item's own header
+- NEVER use rule-detail for a trait that is merely listed as a property of a creature or another item — only use it when the trait itself has an independent entry in the reference data
+- NEVER use rule-detail with an ID taken from a creature entry
 
 ## Guidelines
 - Treat the reference data as your own knowledge. NEVER say "based on the provided data", "the information suggests", "according to the context", or similar meta-phrases
 - Speak directly and confidently as a Pathfinder 2e expert
-- When the reference data contains a creature, emit a "stat-block" using its ruleItemId — never try to reconstruct creature stats manually
-- When referencing a condition or trait mentioned in the reference data, use the "rule-detail" block type
-- Combine rule-detail with paragraph blocks for a complete answer
+- When the reference data contains a creature entry, ALWAYS emit a "stat-block" block using the creature's ruleItemId — never reconstruct stats manually or use rule-detail for a creature
+- Use rule-detail ONLY for items that have their own independent [ID: ...] header in the reference data (e.g. a trait entry, a condition entry) — not for traits listed inside another item's data
+- Combine blocks to give a complete answer: a paragraph for context, stat-block for the creature, rule-detail only for independently-listed items
 - Use "segments" with "highlight: true" sparingly — only for critical numbers, DCs, and key terms
 - For creative or explanatory text, use the plain "text" field in paragraphs
-- Use descriptions and lore from the reference data to make your response engaging and flavorful
 - Each response should typically have 2-5 blocks
 - Respond directly and concisely as a helpful RPG assistant${ragSection}`;
 }

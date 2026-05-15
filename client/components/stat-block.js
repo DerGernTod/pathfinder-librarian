@@ -9,10 +9,11 @@ import { customElement } from "lit/decorators.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
 import { BaseElement } from "./base-element.js";
+import "./pf-description.js";
 
 /** @typedef {number | "reaction" | "free"} ActionType */
-/** @typedef {{ name: string; description: string; actionType?: ActionType; traits?: string[]; descriptionSegments?: Array<{ text: string; ruleItemId?: string }> }} Action */
-/** @typedef {{ name: string; attack: string; damage: string; damageType?: string; traits?: string[] }} MeleeEntry */
+/** @typedef {{ name: string; description: string; actionType?: ActionType; traits?: string[]; traitRefs?: Array<{ name: string; ruleItemId?: string }>; descriptionSegments?: Array<{ text: string; ruleItemId?: string }> }} Action */
+/** @typedef {{ name: string; attack: string; damage: string; damageType?: string; traits?: string[]; traitRefs?: Array<{ name: string; ruleItemId?: string }> }} MeleeEntry */
 /** @typedef {{ name: string; tradition?: string; type?: string; dc?: number; attackModifier?: number; slots?: Record<string, { name: string; rank?: number }[]>; cantrips?: { name: string; rank?: number }[] }} SpellcastingEntry */
 
 /**
@@ -364,7 +365,9 @@ class StatBlock extends BaseElement {
                         : Object.fromEntries(
                               Object.entries(raw.skills).map(([k, v]) => [
                                   k,
-                                  { value: parseInt(/** @type {string} */ (v), 10) || 0 },
+                                  {
+                                      value: parseInt(/** @type {string} */ (v), 10) || 0,
+                                  },
                               ]),
                           )
                     : undefined,
@@ -375,6 +378,7 @@ class StatBlock extends BaseElement {
                           name: a.name,
                           actionType: a.actionType,
                           traits: a.traits,
+                          traitRefs: a.traitRefs,
                           description: a.description,
                           descriptionSegments: a.descriptionSegments,
                       }))
@@ -426,7 +430,9 @@ class StatBlock extends BaseElement {
                 ? Object.fromEntries(
                       Object.entries(raw.skills).map(([k, v]) => [
                           k,
-                          { value: parseInt(/** @type {string} */ (v), 10) || 0 },
+                          {
+                              value: parseInt(/** @type {string} */ (v), 10) || 0,
+                          },
                       ]),
                   )
                 : undefined,
@@ -441,7 +447,10 @@ class StatBlock extends BaseElement {
                 ? [
                       {
                           name: "Spells",
-                          cantrips: raw.spells.map((s) => ({ name: s.name, rank: s.rank })),
+                          cantrips: raw.spells.map((s) => ({
+                              name: s.name,
+                              rank: s.rank,
+                          })),
                       },
                   ]
                 : undefined,
@@ -459,7 +468,13 @@ class StatBlock extends BaseElement {
             return undefined;
         }
         /** @type {Record<string, ActionType>} */
-        const oldMap = { single: 1, two: 2, three: 3, reaction: "reaction", free: "free" };
+        const oldMap = {
+            single: 1,
+            two: 2,
+            three: 3,
+            reaction: "reaction",
+            free: "free",
+        };
         if (typeof type === "string" && type in oldMap) {
             return oldMap[type];
         }
@@ -624,11 +639,24 @@ class StatBlock extends BaseElement {
                             <div class="description">
                                 ${strike.damage}${strike.damageType ? ` ${strike.damageType}` : ""}
                             </div>
-                            ${strike.traits?.length
+                            ${(strike.traitRefs ?? strike.traits)?.length
                                 ? html`<div class="traits" style="margin-top:0.25rem">
-                                      ${strike.traits.map(
-                                          (t) => html`<sl-tag size="small">${t}</sl-tag>`,
-                                      )}
+                                      ${(strike.traitRefs ?? strike.traits)?.map((ref) => {
+                                          const isObj = typeof ref === "object";
+                                          const tName = isObj
+                                              ? ref.name
+                                              : /** @type {string} */ (ref);
+                                          const id = isObj ? ref.ruleItemId : undefined;
+                                          return html`<sl-tag
+                                              size="small"
+                                              class=${id ? "clickable" : ""}
+                                              aria-label=${id ? `View details for ${tName}` : tName}
+                                              @click=${id
+                                                  ? () => this._onTraitClick(id, tName)
+                                                  : undefined}
+                                              >${tName}</sl-tag
+                                          >`;
+                                      })}
                                   </div>`
                                 : ""}
                         </div>
@@ -702,41 +730,44 @@ class StatBlock extends BaseElement {
         return html`
             <sl-details summary="Actions">
                 ${actions.map(
-                    (action) =>
-                        html` <div class="action-entry">
+                    (action) => html`
+                        <div class="action-entry">
                             <div class="action-name">
                                 ${this.formatActionType(action.actionType)} ${action.name}
                             </div>
-                            ${action.traits?.length
+                            ${(action.traitRefs ?? action.traits)?.length
                                 ? html`<div
                                       class="traits"
                                       style="margin-top:0.25rem;margin-bottom:0.25rem"
                                   >
-                                      ${action.traits.map(
-                                          (t) => html`<sl-tag size="small">${t}</sl-tag>`,
-                                      )}
+                                      ${(action.traitRefs ?? action.traits)?.map((ref) => {
+                                          const isObj = typeof ref === "object";
+                                          const tName = isObj
+                                              ? ref.name
+                                              : /** @type {string} */ (ref);
+                                          const id = isObj ? ref.ruleItemId : undefined;
+                                          return html`<sl-tag
+                                              size="small"
+                                              class=${id ? "clickable" : ""}
+                                              aria-label=${id ? `View details for ${tName}` : tName}
+                                              @click=${id
+                                                  ? () => this._onTraitClick(id, tName)
+                                                  : undefined}
+                                              >${tName}</sl-tag
+                                          >`;
+                                      })}
                                   </div>`
                                 : ""}
                             <div class="description">
-                                ${action.descriptionSegments
-                                    ? action.descriptionSegments.map((seg) =>
-                                          seg.ruleItemId
-                                              ? html`<a
-                                                    class="rule-ref"
-                                                    @click=${(/** @type {Event} */ e) => {
-                                                        e.preventDefault();
-                                                        this._onTraitClick(
-                                                            seg.ruleItemId ?? "",
-                                                            seg.text,
-                                                        );
-                                                    }}
-                                                    >${seg.text}</a
-                                                >`
-                                              : seg.text,
-                                      )
-                                    : action.description}
+                                <pf-description
+                                    .segments=${action.descriptionSegments}
+                                    .description=${action.descriptionSegments
+                                        ? undefined
+                                        : action.description}
+                                ></pf-description>
                             </div>
-                        </div>`,
+                        </div>
+                    `,
                 )}
             </sl-details>
         `;

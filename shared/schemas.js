@@ -16,6 +16,7 @@ const ruleItemTypeSchema = z.enum([
     "spellcastingEntry",
     "trait",
     "condition",
+    "effect",
 ]);
 
 const abilityModSchema = z.object({ mod: z.number() });
@@ -191,7 +192,9 @@ const listBlockSchema = z.object({
 
 const statBlockMessageSchema = z.object({
     type: z.literal("stat-block"),
-    title: z.string(),
+    // title is optional here: Gemini may omit it when anyOf schemas share
+    // ruleItemId. resolveStatBlock falls back to the creature name from the DB.
+    title: z.string().optional(),
     ruleItemId: z.string(),
 });
 

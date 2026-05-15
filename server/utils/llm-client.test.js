@@ -83,7 +83,9 @@ describe("llm-client", () => {
 
             const opts = calls[0][1];
             expect(opts.method).toBe("POST");
-            expect(opts.headers).toEqual({ "Content-Type": "application/json" });
+            expect(opts.headers).toEqual({
+                "Content-Type": "application/json",
+            });
 
             const body = JSON.parse(/** @type {string} */ (opts.body));
             expect(body.contents).toHaveLength(1);
@@ -230,7 +232,10 @@ describe("llm-client", () => {
             const result = await callGeminiJson("test", "", "player");
 
             expect(result).toEqual([
-                { type: "paragraph", text: "I couldn't generate a response. Please try again." },
+                {
+                    type: "paragraph",
+                    text: "I couldn't generate a response. Please try again.",
+                },
             ]);
         });
     });
@@ -346,7 +351,9 @@ describe("llm-client", () => {
             expect(para.required).toEqual(["type"]);
             expect(callout.required).toEqual(["type", "title"]);
             expect(list.required).toEqual(["type", "items"]);
-            expect(statBlock.required).toEqual(["type", "title", "ruleItemId"]);
+            // title is intentionally NOT required — Gemini sometimes omits it when
+            // anyOf schemas share ruleItemId; resolveStatBlock falls back to the DB name.
+            expect(statBlock.required).toEqual(["type", "ruleItemId"]);
             expect(ruleDetail.required).toEqual(["type", "ruleItemId"]);
         });
 
