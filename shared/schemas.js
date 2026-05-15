@@ -15,6 +15,7 @@ const ruleItemTypeSchema = z.enum([
     "feat",
     "spellcastingEntry",
     "trait",
+    "condition",
 ]);
 
 const abilityModSchema = z.object({ mod: z.number() });
@@ -194,11 +195,17 @@ const statBlockMessageSchema = z.object({
     ruleItemId: z.string(),
 });
 
+const ruleDetailBlockSchema = z.object({
+    type: z.literal("rule-detail"),
+    ruleItemId: z.string(),
+});
+
 const messageBlockSchema = z.union([
     paragraphBlockSchema,
     calloutBlockSchema,
     listBlockSchema,
     statBlockMessageSchema,
+    ruleDetailBlockSchema,
 ]);
 
 const messageBlocksArraySchema = z.array(messageBlockSchema);
@@ -230,6 +237,7 @@ export {
     listItemSchema,
     listBlockSchema,
     statBlockMessageSchema,
+    ruleDetailBlockSchema,
     messageBlockSchema,
     messageBlocksArraySchema,
 };

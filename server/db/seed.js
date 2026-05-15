@@ -733,6 +733,65 @@ export function seedRuleItems(database) {
             "2025-01-01T09:00:00Z",
         ],
     );
+
+    // Seed "Humanoid" trait
+    database.run(
+        "INSERT INTO rule_items (id, type, name, compendium_source, parent_id, linked_source, data_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        [
+            SEED_IDS.RULE_TRAIT_HUMANOID,
+            "trait",
+            "Humanoid",
+            "Compendium.pf2e.traits.Item.Humanoid",
+            null,
+            null,
+            JSON.stringify({
+                name: "Humanoid",
+                description: "Humanoid creatures are any creatures that are vaguely human-shaped.",
+                category: "creature",
+            }),
+            "2025-01-01T09:00:00Z",
+        ],
+    );
+
+    // Seed "Goblinoid" trait
+    database.run(
+        "INSERT INTO rule_items (id, type, name, compendium_source, parent_id, linked_source, data_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        [
+            SEED_IDS.RULE_TRAIT_GOBLINOID,
+            "trait",
+            "Goblinoid",
+            "Compendium.pf2e.traits.Item.Goblinoid",
+            null,
+            null,
+            JSON.stringify({
+                name: "Goblinoid",
+                description:
+                    "Goblinoids are a family of related creatures that includes goblins, hobgoblins, and bugbears.",
+                category: "creature",
+            }),
+            "2025-01-01T09:00:00Z",
+        ],
+    );
+
+    // Seed "Enfeebled" condition
+    database.run(
+        "INSERT INTO rule_items (id, type, name, compendium_source, parent_id, linked_source, data_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        [
+            SEED_IDS.RULE_CONDITION_ENFEEBLED,
+            "condition",
+            "Enfeebled",
+            "Compendium.pf2e.conditionitems.Item.Enfeebled",
+            null,
+            null,
+            JSON.stringify({
+                name: "Enfeebled",
+                description:
+                    "Your physical attacks are weakened. You take a status penalty to your Strength-based attack and damage rolls.",
+                category: "condition",
+            }),
+            "2025-01-01T09:00:00Z",
+        ],
+    );
 }
 
 // ─── Clear all tables ───

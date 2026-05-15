@@ -6,7 +6,7 @@
 
 /** @typedef {{ id: string, name: string, initials: string, subtitle: string, mode: Mode }} User */
 
-/** @typedef {{ id: string, type: "creature" | "spell" | "melee" | "weapon" | "armor" | "equipment" | "action" | "feat" | "spellcastingEntry" | "trait", name: string, compendiumSource?: string, parentId?: string, linkedSource?: string, data: unknown, createdAt: string }} RuleItem */
+/** @typedef {{ id: string, type: "creature" | "spell" | "melee" | "weapon" | "armor" | "equipment" | "action" | "feat" | "spellcastingEntry" | "trait" | "condition", name: string, compendiumSource?: string, parentId?: string, linkedSource?: string, data: unknown, createdAt: string }} RuleItem */
 
 /** @typedef {{ id: string, userId: string, token: string, createdAt: string, expiresAt: string }} Session */
 
@@ -30,7 +30,7 @@
 
 /** @typedef {{ name: string, tradition?: string, type?: string, dc?: number, attackModifier?: number, slots?: Record<string, SpellSlotEntry[]>, cantrips?: SpellSlotEntry[] }} SpellcastingEntry */
 
-/** @typedef {{ name: string, actionType?: number | "reaction" | "free", traits?: string[], description: string, compendiumSource?: string, deathNote?: boolean }} ActionEntry */
+/** @typedef {{ name: string, actionType?: number | "reaction" | "free", traits?: string[], description: string, compendiumSource?: string, deathNote?: boolean, descriptionSegments?: Array<{ text: string, ruleItemId?: string }> }} ActionEntry */
 
 /**
  * @typedef {{
@@ -64,6 +64,7 @@
  *   description?: string,
  *   compendiumSource?: string,
  *   itemRefs?: string[],
+ *   traitRefs?: Array<{ name: string, ruleItemId?: string }>,
  * }} CreatureData
  */
 
@@ -73,7 +74,13 @@
 
 /** @typedef {{ title: string, text?: string, segments?: Segment[] }} ListItem */
 
-/** @typedef {ParagraphBlock | CalloutBlock | StatBlockMessageBlock | ListBlock} MessageBlock */
+/** @typedef {{ type: "rule-detail", ruleItemId?: string, title?: string, category?: string, description?: string, traits?: string[] }} RuleDetailBlock */
+
+/** @typedef {{ name: string, ruleItemId?: string }} TraitRef */
+
+/** @typedef {{ text: string, ruleItemId?: string, ruleItemType?: string }} RuleRefSegment */
+
+/** @typedef {ParagraphBlock | CalloutBlock | StatBlockMessageBlock | ListBlock | RuleDetailBlock} MessageBlock */
 
 /** @typedef {{ id: string, type: string, name: string, compendiumSource: string, dataJson: string, parentId?: string, linkedSource?: string, itemRefs?: string[] }} ImportableRuleItem */
 

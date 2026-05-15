@@ -168,8 +168,8 @@ describe("create-vector-db", () => {
             const all = getRuleItems(db, undefined, { includeChildren: true });
 
             expect(all.length).toBeGreaterThan(rootOnly.length);
-            expect(all.length).toBe(6);
-            expect(rootOnly.length).toBe(2);
+            expect(all.length).toBe(9);
+            expect(rootOnly.length).toBe(5);
         });
 
         it("child chunks include parent context", async () => {

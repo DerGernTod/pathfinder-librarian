@@ -84,10 +84,19 @@ export function buildGeminiResponseSchema() {
         required: ["type", "title", "ruleItemId"],
     };
 
+    const ruleDetailBlock = {
+        type: "object",
+        properties: {
+            type: { type: "string", enum: ["rule-detail"] },
+            ruleItemId: { type: "string" },
+        },
+        required: ["type", "ruleItemId"],
+    };
+
     return {
         type: "array",
         items: {
-            anyOf: [paragraphBlock, calloutBlock, listBlock, statBlockMessage],
+            anyOf: [paragraphBlock, calloutBlock, listBlock, statBlockMessage, ruleDetailBlock],
         },
     };
 }
@@ -131,10 +140,18 @@ Creature stat block. Use when the reference data contains a creature. Instead of
 - Example: { "type": "stat-block", "title": "Goblin Warrior", "ruleItemId": "abc-123" }
 - The ruleItemId is shown in the reference data header as [ID: ...]
 
+### rule-detail
+Reference to a rule item (trait, condition, feat, etc.) by ID. Use when referencing a non-creature rule item from the context data.
+- Example: { "type": "rule-detail", "ruleItemId": "abc-123" }
+- The ruleItemId is shown in the reference data header as [ID: ...]
+- Use for traits, conditions, feats, equipment, and other non-creature items
+
 ## Guidelines
 - Treat the reference data as your own knowledge. NEVER say "based on the provided data", "the information suggests", "according to the context", or similar meta-phrases
 - Speak directly and confidently as a Pathfinder 2e expert
 - When the reference data contains a creature, emit a "stat-block" using its ruleItemId — never try to reconstruct creature stats manually
+- When referencing a condition or trait mentioned in the reference data, use the "rule-detail" block type
+- Combine rule-detail with paragraph blocks for a complete answer
 - Use "segments" with "highlight: true" sparingly — only for critical numbers, DCs, and key terms
 - For creative or explanatory text, use the plain "text" field in paragraphs
 - Use descriptions and lore from the reference data to make your response engaging and flavorful

@@ -162,7 +162,7 @@ describe("queries", () => {
     describe("getRuleItems", () => {
         it("returns root items only by default (excludes children)", () => {
             const items = queries.getRuleItems(db);
-            expect(items).toHaveLength(2);
+            expect(items).toHaveLength(5);
             for (const item of items) {
                 expect(item.parentId).toBeUndefined();
             }
@@ -170,7 +170,7 @@ describe("queries", () => {
 
         it("returns all items including children with includeChildren option", () => {
             const items = queries.getRuleItems(db, undefined, { includeChildren: true });
-            expect(items).toHaveLength(6);
+            expect(items).toHaveLength(9);
         });
 
         it("returns filtered rule items by type", () => {
@@ -430,6 +430,47 @@ describe("queries", () => {
         it("returns null for non-existent item", () => {
             const parent = queries.getParentItem(db, "00000000-0000-0000-0000-000000000000");
             expect(parent).toBeNull();
+        });
+    });
+
+    describe("getRuleItemsByTypeAndNames", () => {
+        it("returns matching items by type and names", () => {
+            const result = queries.getRuleItemsByTypeAndNames(db, "trait", [
+                "Humanoid",
+                "Goblinoid",
+            ]);
+            expect(result.size).toBe(2);
+            expect(result.get("Humanoid")).toBeDefined();
+            expect(result.get("Humanoid")?.id).toBe(SEED_IDS.RULE_TRAIT_HUMANOID);
+            expect(result.get("Goblinoid")).toBeDefined();
+            expect(result.get("Goblinoid")?.id).toBe(SEED_IDS.RULE_TRAIT_GOBLINOID);
+        });
+
+        it("returns matching conditions by type and name", () => {
+            const result = queries.getRuleItemsByTypeAndNames(db, "condition", ["Enfeebled"]);
+            expect(result.size).toBe(1);
+            expect(result.get("Enfeebled")).toBeDefined();
+            expect(result.get("Enfeebled")?.id).toBe(SEED_IDS.RULE_CONDITION_ENFEEBLED);
+        });
+
+        it("returns empty map when no matches", () => {
+            const result = queries.getRuleItemsByTypeAndNames(db, "trait", ["NonExistentTrait"]);
+            expect(result.size).toBe(0);
+        });
+
+        it("returns empty map for empty names array", () => {
+            const result = queries.getRuleItemsByTypeAndNames(db, "trait", []);
+            expect(result.size).toBe(0);
+        });
+
+        it("only matches items of the specified type", () => {
+            const result = queries.getRuleItemsByTypeAndNames(db, "creature", [
+                "Humanoid",
+                "Mitflit King",
+            ]);
+            expect(result.size).toBe(1);
+            expect(result.get("Mitflit King")).toBeDefined();
+            expect(result.get("Humanoid")).toBeUndefined();
         });
     });
 

@@ -11,7 +11,7 @@ import { tokens } from "../styles/tokens.js";
 import { BaseElement } from "./base-element.js";
 
 /** @typedef {number | "reaction" | "free"} ActionType */
-/** @typedef {{ name: string; description: string; actionType?: ActionType; traits?: string[] }} Action */
+/** @typedef {{ name: string; description: string; actionType?: ActionType; traits?: string[]; descriptionSegments?: Array<{ text: string; ruleItemId?: string }> }} Action */
 /** @typedef {{ name: string; attack: string; damage: string; damageType?: string; traits?: string[] }} MeleeEntry */
 /** @typedef {{ name: string; tradition?: string; type?: string; dc?: number; attackModifier?: number; slots?: Record<string, { name: string; rank?: number }[]>; cantrips?: { name: string; rank?: number }[] }} SpellcastingEntry */
 
@@ -44,6 +44,7 @@ import { BaseElement } from "./base-element.js";
  *     melee?: MeleeEntry[];
  *     spellcasting?: SpellcastingEntry[];
  *     spells?: { name: string; description: string; tradition?: string; rank?: number; dc?: number }[];
+ *     traitRefs?: Array<{ name: string; ruleItemId?: string }>;
  * }} StatBlockData
  */
 
@@ -77,6 +78,7 @@ import { BaseElement } from "./base-element.js";
  *     spellcasting?: SpellcastingEntry[];
  *     actions?: Action[];
  *     description?: string;
+ *     traitRefs?: Array<{ name: string; ruleItemId?: string }>;
  * }} NormalizedCreatureData
  */
 
@@ -258,6 +260,18 @@ class StatBlock extends BaseElement {
             .spell-tradition {
                 font-size: 0.75rem;
             }
+            sl-tag.clickable {
+                cursor: pointer;
+            }
+            sl-tag.clickable:hover {
+                opacity: 0.8;
+                outline: 1px solid var(--border);
+            }
+            a.rule-ref {
+                color: var(--accent);
+                text-decoration: underline;
+                cursor: pointer;
+            }
             @media (max-width: 767px) {
                 .ability-scores {
                     grid-template-columns: repeat(3, 1fr);
@@ -362,8 +376,10 @@ class StatBlock extends BaseElement {
                           actionType: a.actionType,
                           traits: a.traits,
                           description: a.description,
+                          descriptionSegments: a.descriptionSegments,
                       }))
                     : undefined,
+                traitRefs: raw.traitRefs,
             };
             return result;
         }
@@ -454,7 +470,11 @@ class StatBlock extends BaseElement {
      * @param {NormalizedCreatureData} data
      */
     renderHeader(data) {
-        const { name, type, level, rarity, traits } = data;
+        const { name, type, level, rarity, traits, traitRefs } =
+            /** @type {NormalizedCreatureData & { traitRefs?: Array<{ name: string, ruleItemId?: string }> }} */ (
+                data
+            );
+        const traitSource = traitRefs ?? traits ?? [];
         return html`
             <div class="header">
                 <h3>${name || "Unknown"}</h3>
@@ -463,7 +483,20 @@ class StatBlock extends BaseElement {
                     ${type || ""} ${level !== undefined ? level : ""}
                 </div>
                 <div class="traits">
-                    ${(traits || []).map((trait) => html` <sl-tag>${trait}</sl-tag> `)}
+                    ${traitSource.map((ref) => {
+                        const isObj = typeof ref === "object";
+                        const tName = isObj ? ref.name : ref;
+                        const id = isObj ? ref.ruleItemId : undefined;
+                        return html`
+                            <sl-tag
+                                class="${id ? "clickable" : ""}"
+                                data-rule-item-id=${id ?? ""}
+                                aria-label=${id ? `View details for ${tName}` : tName}
+                                @click=${id ? () => this._onTraitClick(id, tName) : undefined}
+                                >${tName}</sl-tag
+                            >
+                        `;
+                    })}
                 </div>
             </div>
         `;
@@ -684,11 +717,43 @@ class StatBlock extends BaseElement {
                                       )}
                                   </div>`
                                 : ""}
-                            <div class="description">${action.description}</div>
+                            <div class="description">
+                                ${action.descriptionSegments
+                                    ? action.descriptionSegments.map((seg) =>
+                                          seg.ruleItemId
+                                              ? html`<a
+                                                    class="rule-ref"
+                                                    @click=${(/** @type {Event} */ e) => {
+                                                        e.preventDefault();
+                                                        this._onTraitClick(
+                                                            seg.ruleItemId ?? "",
+                                                            seg.text,
+                                                        );
+                                                    }}
+                                                    >${seg.text}</a
+                                                >`
+                                              : seg.text,
+                                      )
+                                    : action.description}
+                            </div>
                         </div>`,
                 )}
             </sl-details>
         `;
+    }
+
+    /**
+     * @param {string} ruleItemId
+     * @param {string} name
+     */
+    _onTraitClick(ruleItemId, name) {
+        this.dispatchEvent(
+            new CustomEvent("rule-detail-request", {
+                detail: { ruleItemId, name },
+                bubbles: true,
+                composed: true,
+            }),
+        );
     }
 
     /**

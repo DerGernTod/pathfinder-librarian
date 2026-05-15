@@ -4,6 +4,7 @@ import { Hono } from "hono";
 import { createMessageSchema } from "../../shared/schemas.js";
 import * as queries from "../db/queries.js";
 import { getDb, getUserId, getVectorDb } from "../utils/context.js";
+import { resolveLocalizeRefs, resolveUuidRefs, loadLocalizations } from "../utils/foundry-refs.js";
 import { RetryableError, getLlmResponse } from "../utils/llm-client.js";
 import { queryRagContext } from "../utils/rag-query.js";
 import { paramSchema } from "./conversations-schema.js";
@@ -91,25 +92,76 @@ function resolveStatBlock(database, block) {
         data.actions = actions;
     }
 
+    // Resolve trait names → rule item IDs
+    if (data.traits?.length) {
+        const traitMap = queries.getRuleItemsByTypeAndNames(database, "trait", data.traits);
+        data.traitRefs = data.traits.map((name) => {
+            const found = traitMap.get(name);
+            return { name, ruleItemId: found?.id };
+        });
+    }
+
+    // Resolve @UUID and @Localize in action descriptions
+    const localizations = loadLocalizations();
+    if (data.actions?.length) {
+        for (const action of data.actions) {
+            if (typeof action.description === "string") {
+                action.description = resolveLocalizeRefs(action.description, localizations);
+                const resolved = resolveUuidRefs(action.description, database);
+                if (resolved.segments.length > 0) {
+                    action.descriptionSegments = resolved.segments;
+                }
+            }
+        }
+    }
+
     const { ruleItemId: _id, ...blockWithoutId } = block;
     return { ...blockWithoutId, data };
 }
 
 /**
- * Resolves stat-block references in an array of LLM blocks to their full creature data.
+ * Resolves a rule-detail block with ruleItemId to one with full item data.
+ * @param {import("bun:sqlite").Database} db
+ * @param {{ type: "rule-detail", ruleItemId: string }} block
+ * @returns {import("../../shared/types.js").MessageBlock}
+ */
+function resolveRuleDetail(db, block) {
+    const item = queries.getRuleItemById(db, block.ruleItemId);
+    if (!item) {
+        return block;
+    }
+    const itemData = /** @type {Record<string, unknown>} */ (item.data ?? {});
+    return {
+        type: "rule-detail",
+        title: item.name,
+        category: item.type,
+        description: typeof itemData.description === "string" ? itemData.description : undefined,
+        traits: Array.isArray(itemData.traits) ? itemData.traits : undefined,
+    };
+}
+
+/**
+ * Resolves LLM block references (stat-block, rule-detail) to their full data.
  * @param {import("bun:sqlite").Database} db
  * @param {import("../../shared/types.js").MessageBlock[]} llmBlocks
  * @returns {import("../../shared/types.js").MessageBlock[]}
  */
 function resolveBlocks(db, llmBlocks) {
-    return llmBlocks.map((block) =>
-        block.type === "stat-block" && block.ruleItemId
-            ? resolveStatBlock(
-                  db,
-                  /** @type {{ type: "stat-block", title: string, ruleItemId: string }} */ (block),
-              )
-            : block,
-    );
+    return llmBlocks.map((block) => {
+        if (block.type === "stat-block" && block.ruleItemId) {
+            return resolveStatBlock(
+                db,
+                /** @type {{ type: "stat-block", title: string, ruleItemId: string }} */ (block),
+            );
+        }
+        if (block.type === "rule-detail" && "ruleItemId" in block && block.ruleItemId) {
+            return resolveRuleDetail(
+                db,
+                /** @type {{ type: "rule-detail", ruleItemId: string }} */ (block),
+            );
+        }
+        return block;
+    });
 }
 
 /**

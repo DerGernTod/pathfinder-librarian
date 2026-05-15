@@ -284,6 +284,7 @@ describe("llm-client", () => {
             expect(prompt).toContain("callout");
             expect(prompt).toContain("list");
             expect(prompt).toContain("stat-block");
+            expect(prompt).toContain("rule-detail");
             expect(prompt).toContain("Pathfinder");
         });
 
@@ -309,7 +310,7 @@ describe("llm-client", () => {
 
             expect(schema.type).toBe("array");
             expect(schema.items).toBeDefined();
-            expect(items.anyOf).toHaveLength(4);
+            expect(items.anyOf).toHaveLength(5);
         });
 
         it("uses enum for type discriminators (not const)", () => {
@@ -326,7 +327,13 @@ describe("llm-client", () => {
                 },
             );
 
-            expect(typeEnums).toEqual([["paragraph"], ["callout"], ["list"], ["stat-block"]]);
+            expect(typeEnums).toEqual([
+                ["paragraph"],
+                ["callout"],
+                ["list"],
+                ["stat-block"],
+                ["rule-detail"],
+            ]);
         });
 
         it("includes required fields for each block type", () => {
@@ -334,12 +341,13 @@ describe("llm-client", () => {
             const items = /** @type {{ anyOf: Record<string, unknown>[] }} */ (
                 /** @type {unknown} */ (schema.items)
             );
-            const [para, callout, list, statBlock] = items.anyOf;
+            const [para, callout, list, statBlock, ruleDetail] = items.anyOf;
 
             expect(para.required).toEqual(["type"]);
             expect(callout.required).toEqual(["type", "title"]);
             expect(list.required).toEqual(["type", "items"]);
             expect(statBlock.required).toEqual(["type", "title", "ruleItemId"]);
+            expect(ruleDetail.required).toEqual(["type", "ruleItemId"]);
         });
 
         it("stat-block uses ruleItemId instead of nested creature data", () => {

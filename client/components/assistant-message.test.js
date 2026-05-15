@@ -119,6 +119,62 @@ describe("assistant-message", () => {
         expect(el.shadowRoot.querySelector(".assistant-message")).toBeNull();
     });
 
+    it("renders rule-detail block with title, category, and description", async () => {
+        const el = createAssistantMessage({
+            id: "1",
+            role: "assistant",
+            blocks: [
+                {
+                    type: "rule-detail",
+                    title: "Enfeebled",
+                    category: "condition",
+                    description: "You take a status penalty to Strength-based rolls.",
+                },
+            ],
+        });
+        await el.updateComplete;
+        const block = el.shadowRoot.querySelector(".rule-detail-block");
+        expect(block).toBeTruthy();
+        expect(getByText(el.shadowRoot, "Enfeebled")).toBeTruthy();
+        expect(getByText(el.shadowRoot, "condition")).toBeTruthy();
+        expect(
+            getByText(el.shadowRoot, "You take a status penalty to Strength-based rolls."),
+        ).toBeTruthy();
+    });
+
+    it("renders rule-detail block with trait tags", async () => {
+        const el = createAssistantMessage({
+            id: "1",
+            role: "assistant",
+            blocks: [
+                {
+                    type: "rule-detail",
+                    title: "Humanoid",
+                    category: "trait",
+                    traits: ["Human", "Shapechanger"],
+                },
+            ],
+        });
+        await el.updateComplete;
+        const traitsContainer = el.shadowRoot.querySelector(".rule-detail-traits");
+        expect(traitsContainer).toBeTruthy();
+        const tags = traitsContainer.querySelectorAll("sl-tag");
+        expect(tags.length).toBe(2);
+        expect(tags[0].textContent).toBe("Human");
+        expect(tags[1].textContent).toBe("Shapechanger");
+    });
+
+    it("renders rule-detail-sheet component", async () => {
+        const el = createAssistantMessage({
+            id: "1",
+            role: "assistant",
+            blocks: [{ type: "paragraph", text: "Hello" }],
+        });
+        await el.updateComplete;
+        const sheet = el.shadowRoot.querySelector("rule-detail-sheet");
+        expect(sheet).toBeTruthy();
+    });
+
     it("applies player data-mode attribute", async () => {
         const el = createAssistantMessage({
             id: "1",

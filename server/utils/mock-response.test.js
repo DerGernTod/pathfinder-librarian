@@ -11,7 +11,7 @@ describe("getMockResponse", () => {
 
     it("each block has a valid type property", () => {
         const response = getMockResponse();
-        const validTypes = ["paragraph", "callout", "list", "stat-block"];
+        const validTypes = ["paragraph", "callout", "list", "stat-block", "rule-detail"];
 
         for (const block of response) {
             expect(block).toHaveProperty("type");
@@ -74,6 +74,9 @@ describe("getMockResponse", () => {
             } else if (block.type === "stat-block") {
                 expect(block).toHaveProperty("title");
                 expect(block).toHaveProperty("data");
+            } else if (block.type === "rule-detail") {
+                expect(block).toHaveProperty("ruleItemId");
+                expect(typeof block.ruleItemId).toBe("string");
             }
         }
     });

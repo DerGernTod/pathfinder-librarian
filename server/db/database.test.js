@@ -80,7 +80,7 @@ describe("database", () => {
 
     it("seeds rule items", () => {
         const ruleItems = db.query("SELECT * FROM rule_items ORDER BY id").all();
-        expect(ruleItems.length).toBe(6);
+        expect(ruleItems.length).toBe(9);
         const ids = ruleItems.map((r) => r.id);
         expect(ids).toContain(SEED_IDS.RULE_MITFLIT_KING);
         expect(ids).toContain(SEED_IDS.RULE_SAMPLE_SPELL);

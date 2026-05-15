@@ -1,5 +1,7 @@
 import "./stat-block.js";
+import "./rule-detail-sheet.js";
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/card/card.js?deps=lit@3.3.2";
+import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/tag/tag.js?deps=lit@3.3.2";
 import { css } from "lit-element";
 import { html, nothing } from "lit-html";
 import { customElement } from "lit/decorators.js";
@@ -97,6 +99,30 @@ class AssistantMessage extends BaseElement {
                 color: var(--foreground);
                 font-weight: 700;
             }
+            .rule-detail-block {
+                padding: 0.5rem 0;
+            }
+            .rule-detail-block .rule-detail-title {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                margin-bottom: 0.25rem;
+            }
+            .rule-detail-block .rule-detail-title strong {
+                font-size: 0.9375rem;
+                color: var(--foreground);
+            }
+            .rule-detail-description {
+                font-size: 0.875rem;
+                color: var(--muted-foreground);
+                margin: 0.25rem 0;
+            }
+            .rule-detail-traits {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.375rem;
+                margin-top: 0.25rem;
+            }
             @media (max-width: 767px) {
                 .assistant-content {
                     max-width: 92%;
@@ -134,6 +160,7 @@ class AssistantMessage extends BaseElement {
                     </div>
                 </div>
             </div>
+            <rule-detail-sheet></rule-detail-sheet>
         `;
     }
 
@@ -171,6 +198,25 @@ class AssistantMessage extends BaseElement {
                             `,
                         )}
                     </ul>
+                `;
+            case "rule-detail":
+                return html`
+                    <div class="rule-detail-block">
+                        <div class="rule-detail-title">
+                            <sl-tag size="small" variant="neutral">${block.category}</sl-tag>
+                            <strong>${block.title}</strong>
+                        </div>
+                        ${block.description
+                            ? html`<p class="rule-detail-description">${block.description}</p>`
+                            : ""}
+                        ${block.traits?.length
+                            ? html`<div class="rule-detail-traits">
+                                  ${block.traits.map(
+                                      (t) => html`<sl-tag size="small">${t}</sl-tag>`,
+                                  )}
+                              </div>`
+                            : ""}
+                    </div>
                 `;
             default:
                 return nothing;
