@@ -69,8 +69,8 @@ function _migrateRuleItemsConstraint(database) {
         return;
     }
     const sql = /** @type {string} */ (tableInfo.sql);
-    // If the constraint already includes 'effect', no migration needed
-    if (sql.includes("'effect'")) {
+    // If the constraint already includes 'backpack', no migration needed
+    if (sql.includes("'backpack'")) {
         return;
     }
 
@@ -78,7 +78,7 @@ function _migrateRuleItemsConstraint(database) {
     database.run(`
         CREATE TABLE rule_items (
             id                TEXT PRIMARY KEY,
-            type              TEXT NOT NULL CHECK(type IN ('creature', 'spell', 'melee', 'weapon', 'armor', 'equipment', 'action', 'feat', 'spellcastingEntry', 'trait', 'condition', 'effect')),
+            type              TEXT NOT NULL CHECK(type IN ('creature', 'spell', 'melee', 'weapon', 'armor', 'equipment', 'action', 'feat', 'spellcastingEntry', 'trait', 'condition', 'effect', 'class', 'ancestry', 'heritage', 'background', 'deity', 'consumable', 'ammo', 'shield', 'hazard', 'treasure', 'backpack')),
             name              TEXT NOT NULL,
             compendium_source TEXT,
             parent_id         TEXT REFERENCES rule_items(id) ON DELETE CASCADE,

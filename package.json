@@ -22,7 +22,7 @@
         "e2e-local": "playwright test --project=chromium --retries=0 --ui",
         "gh:update-snapshots": "gh workflow run \"Update Snapshots\" --ref main",
         "create:demo": "bun run import:foundry && bun run import:traits && bun run create:demo:vector-db",
-        "create:demo:vector-db": "bun ./scripts/create-vector-db.js --model gemini-embedding-001 --limit 100 --batch-size 100",
+        "create:demo:vector-db": "bun ./scripts/create-vector-db.js --model gemini-embedding-001 --limit 200 --batch-size 100",
         "import:foundry": "bun ./scripts/import-foundry.js --source ./temp/foundry-vtt-pf2e --verbose",
         "import:traits": "bun ./scripts/import-foundry-traits.js --source ./temp/foundry-vtt-pf2e",
         "export:localizations": "bun ./scripts/export-localizations.js",

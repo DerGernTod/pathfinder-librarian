@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS messages (
 
 CREATE TABLE IF NOT EXISTS rule_items (
     id                TEXT PRIMARY KEY,
-    type              TEXT NOT NULL CHECK(type IN ('creature', 'spell', 'melee', 'weapon', 'armor', 'equipment', 'action', 'feat', 'spellcastingEntry', 'trait', 'condition', 'effect')),
+    type              TEXT NOT NULL CHECK(type IN ('creature', 'spell', 'melee', 'weapon', 'armor', 'equipment', 'action', 'feat', 'spellcastingEntry', 'trait', 'condition', 'effect', 'class', 'ancestry', 'heritage', 'background', 'deity', 'consumable', 'ammo', 'shield', 'hazard', 'treasure', 'backpack')),
     name              TEXT NOT NULL,
     compendium_source TEXT,
     parent_id         TEXT REFERENCES rule_items(id) ON DELETE CASCADE,

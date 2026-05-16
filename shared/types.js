@@ -6,7 +6,7 @@
 
 /** @typedef {{ id: string, name: string, initials: string, subtitle: string, mode: Mode }} User */
 
-/** @typedef {{ id: string, type: "creature" | "spell" | "melee" | "weapon" | "armor" | "equipment" | "action" | "feat" | "spellcastingEntry" | "trait" | "condition" | "effect", name: string, compendiumSource?: string, parentId?: string, linkedSource?: string, data: unknown, createdAt: string }} RuleItem */
+/** @typedef {{ id: string, type: "creature" | "spell" | "melee" | "weapon" | "armor" | "equipment" | "action" | "feat" | "spellcastingEntry" | "trait" | "condition" | "effect" | "class" | "ancestry" | "heritage" | "background" | "deity" | "consumable" | "ammo" | "shield" | "hazard" | "treasure" | "backpack", name: string, compendiumSource?: string, parentId?: string, linkedSource?: string, data: unknown, createdAt: string }} RuleItem */
 
 /** @typedef {{ id: string, userId: string, token: string, createdAt: string, expiresAt: string }} Session */
 

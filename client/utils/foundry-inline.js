@@ -15,7 +15,7 @@
  * rolls. Roll patterns capture optional {display text}.
  */
 const INLINE_RE =
-    /@(Check|Damage|Template)\[((?:[^\[\]]+|\[[^\]]*\])+)\](?:\{([^}]+)\})?|\[\[\/([^\]]+)\]\](?:\{([^}]+)\})?/g;
+    /@(Check|Damage|Template)\[((?:[^[\]]+|\[[^\]]*\])+)\](?:\{([^}]+)\})?|\[\[\/([^\]]+)\]\](?:\{([^}]+)\})?/g;
 
 /**
  * Parses pipe-delimited `|key:value` options from an inline parameter string.

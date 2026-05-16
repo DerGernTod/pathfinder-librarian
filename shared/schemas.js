@@ -17,6 +17,17 @@ const ruleItemTypeSchema = z.enum([
     "trait",
     "condition",
     "effect",
+    "class",
+    "ancestry",
+    "heritage",
+    "background",
+    "deity",
+    "consumable",
+    "ammo",
+    "shield",
+    "hazard",
+    "treasure",
+    "backpack",
 ]);
 
 const abilityModSchema = z.object({ mod: z.number() });
