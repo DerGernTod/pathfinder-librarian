@@ -136,11 +136,15 @@ describe("queries", () => {
             expect(msg.content).toBeNull();
             expect(Array.isArray(msg.blocks)).toBe(true);
             expect(msg.blocks).toHaveLength(2);
-            const assistantMsg = /** @type {import("../../shared/types.js").AssistantMessage} */ (
-                /** @type {unknown} */ (msg)
-            );
+            const assistantMsg =
+                /** @type {import("../../shared/types.js").AssistantMessage} */ (
+                    /** @type {unknown} */ (msg)
+                );
             expect(assistantMsg.blocks).not.toBeNull();
-            expect(assistantMsg.blocks?.[0]).toEqual({ type: "paragraph", text: "Test paragraph" });
+            expect(assistantMsg.blocks?.[0]).toEqual({
+                type: "paragraph",
+                text: "Test paragraph",
+            });
         });
 
         it("maintains backward compatibility with createUserMessage alias", () => {
@@ -162,15 +166,17 @@ describe("queries", () => {
     describe("getRuleItems", () => {
         it("returns root items only by default (excludes children)", () => {
             const items = queries.getRuleItems(db);
-            expect(items).toHaveLength(2);
+            expect(items).toHaveLength(5);
             for (const item of items) {
                 expect(item.parentId).toBeUndefined();
             }
         });
 
         it("returns all items including children with includeChildren option", () => {
-            const items = queries.getRuleItems(db, undefined, { includeChildren: true });
-            expect(items).toHaveLength(6);
+            const items = queries.getRuleItems(db, undefined, {
+                includeChildren: true,
+            });
+            expect(items).toHaveLength(9);
         });
 
         it("returns filtered rule items by type", () => {
@@ -217,13 +223,21 @@ describe("queries", () => {
                 type: "creature",
                 name: "Test Dragon",
                 compendiumSource: "Compendium.pf2e.bestiary.Actor.abc123",
-                dataJson: JSON.stringify({ name: "Test Dragon", level: 5, traits: ["Dragon"] }),
+                dataJson: JSON.stringify({
+                    name: "Test Dragon",
+                    level: 5,
+                    traits: ["Dragon"],
+                }),
             });
             expect(result).toHaveProperty("id");
             expect(result.type).toBe("creature");
             expect(result.name).toBe("Test Dragon");
             expect(result.compendiumSource).toBe("Compendium.pf2e.bestiary.Actor.abc123");
-            expect(result.data).toEqual({ name: "Test Dragon", level: 5, traits: ["Dragon"] });
+            expect(result.data).toEqual({
+                name: "Test Dragon",
+                level: 5,
+                traits: ["Dragon"],
+            });
         });
 
         it("updates existing item when compendium_source matches", () => {
@@ -232,13 +246,21 @@ describe("queries", () => {
                 type: "creature",
                 name: "Original Name",
                 compendiumSource: source,
-                dataJson: JSON.stringify({ name: "Original Name", level: 3, traits: [] }),
+                dataJson: JSON.stringify({
+                    name: "Original Name",
+                    level: 3,
+                    traits: [],
+                }),
             });
             const updated = queries.upsertRuleItem(db, {
                 type: "creature",
                 name: "Updated Name",
                 compendiumSource: source,
-                dataJson: JSON.stringify({ name: "Updated Name", level: 4, traits: ["Beast"] }),
+                dataJson: JSON.stringify({
+                    name: "Updated Name",
+                    level: 4,
+                    traits: ["Beast"],
+                }),
             });
             expect(updated.name).toBe("Updated Name");
             // Should be same item (updated), not a new one
@@ -263,7 +285,11 @@ describe("queries", () => {
                 type: "creature",
                 name: "Lookup Creature",
                 compendiumSource: source,
-                dataJson: JSON.stringify({ name: "Lookup Creature", level: 1, traits: [] }),
+                dataJson: JSON.stringify({
+                    name: "Lookup Creature",
+                    level: 1,
+                    traits: [],
+                }),
             });
             const item = queries.getRuleItemBySource(db, source);
             expect(item).not.toBeNull();
@@ -287,13 +313,20 @@ describe("queries", () => {
                     type: "creature",
                     name: "Batch Creature 1",
                     compendiumSource: "Compendium.pf2e.test.Item.batch1",
-                    dataJson: JSON.stringify({ name: "Batch Creature 1", level: 1, traits: [] }),
+                    dataJson: JSON.stringify({
+                        name: "Batch Creature 1",
+                        level: 1,
+                        traits: [],
+                    }),
                 },
                 {
                     type: "spell",
                     name: "Batch Spell 1",
                     compendiumSource: "Compendium.pf2e.test.Item.batch2",
-                    dataJson: JSON.stringify({ name: "Batch Spell 1", level: 2 }),
+                    dataJson: JSON.stringify({
+                        name: "Batch Spell 1",
+                        level: 2,
+                    }),
                 },
             ]);
 
@@ -311,7 +344,11 @@ describe("queries", () => {
                 type: "creature",
                 name: "Original",
                 compendiumSource: "Compendium.pf2e.test.Item.existing",
-                dataJson: JSON.stringify({ name: "Original", level: 1, traits: [] }),
+                dataJson: JSON.stringify({
+                    name: "Original",
+                    level: 1,
+                    traits: [],
+                }),
             });
 
             const result = queries.batchUpsertRuleItems(db, [
@@ -319,7 +356,11 @@ describe("queries", () => {
                     type: "creature",
                     name: "Updated",
                     compendiumSource: "Compendium.pf2e.test.Item.existing",
-                    dataJson: JSON.stringify({ name: "Updated", level: 2, traits: ["Beast"] }),
+                    dataJson: JSON.stringify({
+                        name: "Updated",
+                        level: 2,
+                        traits: ["Beast"],
+                    }),
                 },
                 {
                     type: "spell",
@@ -366,6 +407,31 @@ describe("queries", () => {
             expect(result.updated).toBe(0);
         });
 
+        it("accepts all known rule item types", () => {
+            const allTypes = [
+                "creature",
+                "spell",
+                "melee",
+                "weapon",
+                "armor",
+                "equipment",
+                "action",
+                "feat",
+                "spellcastingEntry",
+                "trait",
+                "condition",
+                "effect",
+            ];
+            const items = allTypes.map((type) => ({
+                type,
+                name: `Test ${type}`,
+                compendiumSource: `Compendium.pf2e.test.Item.${type}`,
+                dataJson: JSON.stringify({ name: `Test ${type}` }),
+            }));
+            const result = queries.batchUpsertRuleItems(db, items);
+            expect(result.inserted).toBe(allTypes.length);
+        });
+
         it("inserts items with parentId and linkedSource", () => {
             // Insert a parent first
             const parent = queries.upsertRuleItem(db, {
@@ -380,7 +446,10 @@ describe("queries", () => {
                     type: "melee",
                     name: "Child Melee",
                     compendiumSource: "Compendium.pf2e.test.Item.child1",
-                    dataJson: JSON.stringify({ name: "Child Melee", attack: "+10" }),
+                    dataJson: JSON.stringify({
+                        name: "Child Melee",
+                        attack: "+10",
+                    }),
                     parentId: parent.id,
                     linkedSource: "Compendium.pf2e.other.Item.linked",
                 },
@@ -430,6 +499,47 @@ describe("queries", () => {
         it("returns null for non-existent item", () => {
             const parent = queries.getParentItem(db, "00000000-0000-0000-0000-000000000000");
             expect(parent).toBeNull();
+        });
+    });
+
+    describe("getRuleItemsByTypeAndNames", () => {
+        it("returns matching items by type and names", () => {
+            const result = queries.getRuleItemsByTypeAndNames(db, "trait", [
+                "Humanoid",
+                "Goblinoid",
+            ]);
+            expect(result.size).toBe(2);
+            expect(result.get("Humanoid")).toBeDefined();
+            expect(result.get("Humanoid")?.id).toBe(SEED_IDS.RULE_TRAIT_HUMANOID);
+            expect(result.get("Goblinoid")).toBeDefined();
+            expect(result.get("Goblinoid")?.id).toBe(SEED_IDS.RULE_TRAIT_GOBLINOID);
+        });
+
+        it("returns matching conditions by type and name", () => {
+            const result = queries.getRuleItemsByTypeAndNames(db, "condition", ["Enfeebled"]);
+            expect(result.size).toBe(1);
+            expect(result.get("Enfeebled")).toBeDefined();
+            expect(result.get("Enfeebled")?.id).toBe(SEED_IDS.RULE_CONDITION_ENFEEBLED);
+        });
+
+        it("returns empty map when no matches", () => {
+            const result = queries.getRuleItemsByTypeAndNames(db, "trait", ["NonExistentTrait"]);
+            expect(result.size).toBe(0);
+        });
+
+        it("returns empty map for empty names array", () => {
+            const result = queries.getRuleItemsByTypeAndNames(db, "trait", []);
+            expect(result.size).toBe(0);
+        });
+
+        it("only matches items of the specified type", () => {
+            const result = queries.getRuleItemsByTypeAndNames(db, "creature", [
+                "Humanoid",
+                "Mitflit King",
+            ]);
+            expect(result.size).toBe(1);
+            expect(result.get("Mitflit King")).toBeDefined();
+            expect(result.get("Humanoid")).toBeUndefined();
         });
     });
 

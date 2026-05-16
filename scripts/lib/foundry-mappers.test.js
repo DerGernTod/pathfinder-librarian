@@ -6,10 +6,24 @@ import {
     buildCompendiumSource,
     classifyPackDirectory,
     extractEmbeddedItems,
+    mapAmmo,
+    mapAncestry,
+    mapArmor,
+    mapBackpack,
+    mapBackground,
+    mapClass,
+    mapConsumable,
     mapCreature,
+    mapDeity,
+    mapEffect,
     mapEquipment,
     mapFeat,
+    mapHazard,
+    mapHeritage,
+    mapShield,
     mapSpell,
+    mapTreasure,
+    mapWeapon,
 } from "./foundry-mappers.js";
 
 const FIXTURE_DIR = join(import.meta.dirname, "../../test/fixtures/foundry");
@@ -56,6 +70,20 @@ describe("foundry-mappers", () => {
         it("classifies action directories as action", () => {
             expect(classifyPackDirectory("actions")).toBe("action");
             expect(classifyPackDirectory("bestiary-ability-glossary-srd")).toBe("action");
+        });
+
+        it("classifies effect pack directories as effect", () => {
+            expect(classifyPackDirectory("bestiary-effects")).toBe("effect");
+            expect(classifyPackDirectory("campaign-effects")).toBe("effect");
+            expect(classifyPackDirectory("equipment-effects")).toBe("effect");
+            expect(classifyPackDirectory("feat-effects")).toBe("effect");
+            expect(classifyPackDirectory("other-effects")).toBe("effect");
+            expect(classifyPackDirectory("spell-effects")).toBe("effect");
+        });
+
+        it("does not falsely classify non-effect directories", () => {
+            expect(classifyPackDirectory("actions")).toBe("action");
+            expect(classifyPackDirectory("feats")).toBe("feat");
         });
 
         it("returns mixed for unknown directories", () => {
@@ -285,7 +313,14 @@ describe("foundry-mappers", () => {
         });
 
         it("skips non-relevant embedded item types", () => {
-            const items = [{ _id: "effect001", name: "Some Effect", type: "effect", system: {} }];
+            const items = [
+                {
+                    _id: "effect001",
+                    name: "Some Effect",
+                    type: "effect",
+                    system: {},
+                },
+            ];
             const { embeddedItems } = extractEmbeddedItems(items, "Compendium.test");
 
             expect(embeddedItems).toHaveLength(0);
@@ -332,7 +367,12 @@ describe("foundry-mappers", () => {
 
         it("handles minimal spell data", () => {
             const result = mapSpell(
-                { _id: "min001", name: "Cantrip", type: "spell", system: { level: { value: 0 } } },
+                {
+                    _id: "min001",
+                    name: "Cantrip",
+                    type: "spell",
+                    system: { level: { value: 0 } },
+                },
                 "spells",
             );
             const data = JSON.parse(result.dataJson);
@@ -389,6 +429,594 @@ describe("foundry-mappers", () => {
             const data = JSON.parse(result.dataJson);
 
             expect(data.description).toBe("You unleash a particularly powerful attack.");
+        });
+    });
+
+    describe("mapEffect", () => {
+        it("maps well-formed effect JSON", () => {
+            const raw = {
+                _id: "effect001",
+                name: "Effect: Frost Vial",
+                type: "effect",
+                system: {
+                    description: {
+                        value: "<p>Granted by @UUID[Compendium.pf2e.equipment-srd.Item.Frost Vial]</p>\n<p>You take a status penalty to your Speeds.</p>",
+                    },
+                    level: { value: 3 },
+                    traits: { value: ["alchemical", "cold"] },
+                },
+            };
+            const result = mapEffect(raw, "equipment-effects");
+
+            expect(result.type).toBe("effect");
+            expect(result.name).toBe("Effect: Frost Vial");
+            expect(result.compendiumSource).toBe(
+                "Compendium.pf2e.equipment-effects.Item.effect001",
+            );
+
+            const data = JSON.parse(result.dataJson);
+            expect(data.name).toBe("Effect: Frost Vial");
+            expect(data.level).toBe(3);
+            expect(data.description).toContain("You take a status penalty to your Speeds.");
+            expect(data.description).not.toContain("<p>"); // HTML stripped
+            expect(data.traits).toEqual(["alchemical", "cold"]);
+        });
+
+        it("handles missing description gracefully", () => {
+            const raw = {
+                _id: "effect002",
+                name: "Effect: Simple Buff",
+                type: "effect",
+                system: {
+                    level: { value: 1 },
+                },
+            };
+            const result = mapEffect(raw, "spell-effects");
+            const data = JSON.parse(result.dataJson);
+
+            expect(data.description).toBe("");
+            expect(data.traits).toEqual([]);
+            expect(data.level).toBe(1);
+        });
+
+        it("handles missing system gracefully", () => {
+            const raw = {
+                _id: "effect003",
+                name: "Minimal Effect",
+            };
+            const result = mapEffect(raw, "other-effects");
+
+            expect(result.name).toBe("Minimal Effect");
+            expect(result.type).toBe("effect");
+
+            const data = JSON.parse(result.dataJson);
+            expect(data.level).toBe(0);
+            expect(data.description).toBe("");
+        });
+
+        it("classifies conditions directory", () => {
+            expect(classifyPackDirectory("conditions")).toBe("condition");
+        });
+
+        it("strips HTML tags including nested @UUID from description", () => {
+            const raw = {
+                _id: "effect004",
+                name: "Complex Effect",
+                type: "effect",
+                system: {
+                    description: {
+                        value: "<p>Granted by @UUID[Compendium.pf2e.equipment-srd.Item.Some Item]</p>\n<ul><li>Point 1</li><li>Point 2</li></ul>",
+                    },
+                },
+            };
+            const result = mapEffect(raw, "equipment-effects");
+            const data = JSON.parse(result.dataJson);
+
+            // @UUID markup stays in text (server resolves it) but HTML tags are stripped
+            expect(data.description).toContain(
+                "@UUID[Compendium.pf2e.equipment-srd.Item.Some Item]",
+            );
+            expect(data.description).not.toContain("<p>");
+            expect(data.description).not.toContain("<ul>");
+            expect(data.description).toContain("Point 1");
+        });
+    });
+
+    describe("mapClass", () => {
+        it("maps class with features and stats", () => {
+            const raw = {
+                _id: "class001",
+                name: "Fighter",
+                system: {
+                    description: { value: "<p>Martial expert.</p>" },
+                    keyAbility: { value: ["str", "dex"] },
+                    hp: 10,
+                    perception: 1,
+                    savingThrows: { fortitude: 2, reflex: 1, will: 0 },
+                    attacks: { simple: 2, martial: 2, advanced: 1, unarmed: 2 },
+                    defenses: { unarmored: 1, light: 2, heavy: 2 },
+                    trainedSkills: { value: ["athletics"], additional: 2 },
+                    classFeatLevels: { value: [1, 2, 4, 6] },
+                    ancestryFeatLevels: { value: [1, 5, 9, 13] },
+                    generalFeatLevels: { value: [3, 7, 11, 15] },
+                    skillFeatLevels: { value: [2, 4, 6, 8] },
+                    skillIncreaseLevels: { value: [3, 5, 7, 9] },
+                    spellcasting: 0,
+                    items: {
+                        a: { level: 1, name: "Attack of Opportunity", uuid: "Compendium.feat.aoo" },
+                        b: { level: 5, name: "Sudden Charge", uuid: "Compendium.feat.sc" },
+                    },
+                    traits: { rarity: "common" },
+                },
+            };
+            const result = mapClass(raw, "classes");
+
+            expect(result.type).toBe("class");
+            expect(result.name).toBe("Fighter");
+            expect(result.compendiumSource).toBe("Compendium.pf2e.classes.Item.class001");
+
+            const data = JSON.parse(result.dataJson);
+            expect(data.keyAbility).toEqual(["str", "dex"]);
+            expect(data.hp).toBe(10);
+            expect(data.perception).toBe(1);
+            expect(data.savingThrows).toEqual({ fortitude: 2, reflex: 1, will: 0 });
+            expect(data.attacks).toEqual({
+                simple: 2,
+                martial: 2,
+                advanced: 1,
+                unarmed: 2,
+                other: undefined,
+            });
+            expect(data.defenses).toEqual({ unarmored: 1, light: 2, heavy: 2 });
+            expect(data.trainedSkills).toEqual({ value: ["athletics"], additional: 2 });
+            expect(data.classFeatLevels).toEqual([1, 2, 4, 6]);
+            expect(data.classFeatures).toHaveLength(2);
+            expect(data.classFeatures[0].name).toBe("Attack of Opportunity");
+            expect(data.description).toBe("Martial expert.");
+            expect(data.rarity).toBe("common");
+        });
+
+        it("handles minimal class data", () => {
+            const result = mapClass({ _id: "c2", name: "Bare" }, "classes");
+            const data = JSON.parse(result.dataJson);
+
+            expect(data.hp).toBe(0);
+            expect(data.keyAbility).toEqual([]);
+            expect(data.classFeatures).toEqual([]);
+        });
+    });
+
+    describe("mapAncestry", () => {
+        it("maps ancestry with boosts, flaws, features", () => {
+            const raw = {
+                _id: "anc001",
+                name: "Dwarf",
+                system: {
+                    description: { value: "<p>Stout and sturdy.</p>" },
+                    boosts: { str: { value: ["str", "con"] } },
+                    flaws: { cha: { value: ["cha"] } },
+                    hp: 10,
+                    size: "med",
+                    speed: 20,
+                    vision: "darkvision",
+                    reach: 5,
+                    hands: 2,
+                    languages: { value: ["Common", "Dwarven"], custom: "undercommon" },
+                    additionalLanguages: { count: 2, value: ["Giant", "Gnomish"] },
+                    items: {
+                        x: { level: 1, name: "Dwarven Lore", uuid: "Compendium.feat.dl" },
+                    },
+                    traits: { rarity: "common", value: ["dwarf"] },
+                },
+            };
+            const result = mapAncestry(raw, "ancestries");
+            const data = JSON.parse(result.dataJson);
+
+            expect(result.type).toBe("ancestry");
+            expect(data.hp).toBe(10);
+            expect(data.size).toBe("med");
+            expect(data.speed).toBe(20);
+            expect(data.vision).toBe("darkvision");
+            expect(data.boosts).toEqual({ str: { value: ["str", "con"] } });
+            expect(data.flaws).toEqual({ cha: { value: ["cha"] } });
+            expect(data.languages).toEqual(["Common", "Dwarven"]);
+            expect(data.additionalLanguages).toEqual({ count: 2, value: ["Giant", "Gnomish"] });
+            expect(data.ancestryFeatures).toHaveLength(1);
+            expect(data.traits).toEqual(["Dwarf"]);
+            expect(data.description).toBe("Stout and sturdy.");
+        });
+
+        it("handles missing ancestry fields with defaults", () => {
+            const result = mapAncestry({ _id: "a2", name: "X" }, "ancestries");
+            const data = JSON.parse(result.dataJson);
+
+            expect(data.hp).toBe(0);
+            expect(data.size).toBe("med");
+            expect(data.speed).toBe(25);
+            expect(data.vision).toBe("normal");
+            expect(data.reach).toBe(5);
+            expect(data.hands).toBe(2);
+        });
+    });
+
+    describe("mapHeritage", () => {
+        it("maps heritage with ancestry link", () => {
+            const raw = {
+                _id: "her001",
+                name: "Ancient Elf",
+                system: {
+                    description: { value: "<p>Elven heritage.</p>" },
+                    ancestry: { name: "Elf", slug: "elf", uuid: "Compendium.anc.elf" },
+                    traits: { rarity: "uncommon", value: ["elf"] },
+                },
+            };
+            const result = mapHeritage(raw, "heritages");
+            const data = JSON.parse(result.dataJson);
+
+            expect(result.type).toBe("heritage");
+            expect(data.ancestry).toEqual({ name: "Elf", slug: "elf" });
+            expect(data.traits).toEqual(["Elf"]);
+            expect(data.description).toBe("Elven heritage.");
+        });
+
+        it("handles heritage without ancestry", () => {
+            const result = mapHeritage({ _id: "h2", name: "Unknown" }, "heritages");
+            const data = JSON.parse(result.dataJson);
+
+            expect(data.ancestry).toBeUndefined();
+        });
+    });
+
+    describe("mapBackground", () => {
+        it("maps background with skills and granted items", () => {
+            const raw = {
+                _id: "bg001",
+                name: "Warrior",
+                system: {
+                    description: { value: "<p>You were a soldier.</p>" },
+                    boosts: { str: { value: ["str"] }, cha: { value: ["cha"] } },
+                    trainedSkills: { value: ["Athletics", "Intimidation"], lore: ["Warfare Lore"] },
+                    items: {
+                        i: { name: "Sword", uuid: "Compendium.item.sword" },
+                    },
+                    traits: { rarity: "common" },
+                },
+            };
+            const result = mapBackground(raw, "backgrounds");
+            const data = JSON.parse(result.dataJson);
+
+            expect(result.type).toBe("background");
+            expect(data.trainedSkills).toEqual({
+                value: ["Athletics", "Intimidation"],
+                lore: ["Warfare Lore"],
+            });
+            expect(data.grantedItems).toEqual([{ name: "Sword", uuid: "Compendium.item.sword" }]);
+            expect(data.description).toBe("You were a soldier.");
+        });
+    });
+
+    describe("mapDeity", () => {
+        it("maps deity with domains and sanctification", () => {
+            const raw = {
+                _id: "deity001",
+                name: "Sarenrae",
+                system: {
+                    description: { value: "<p>Goddess of the sun.</p>" },
+                    category: "deity",
+                    attribute: ["con", "str"],
+                    domains: { primary: ["healing", "sun"], alternate: ["fire"] },
+                    font: ["heal", "harm"],
+                    sanctification: { modal: "can", what: ["holy"] },
+                    skill: ["medicine"],
+                    spells: { rank1: "heal" },
+                    weapons: ["scimitar"],
+                },
+            };
+            const result = mapDeity(raw, "deities");
+            const data = JSON.parse(result.dataJson);
+
+            expect(result.type).toBe("deity");
+            expect(data.category).toBe("deity");
+            expect(data.attribute).toEqual(["con", "str"]);
+            expect(data.domains).toEqual({ primary: ["healing", "sun"], alternate: ["fire"] });
+            expect(data.font).toEqual(["heal", "harm"]);
+            expect(data.sanctification).toEqual({ modal: "can", what: ["holy"] });
+            expect(data.skill).toEqual(["medicine"]);
+            expect(data.spells).toEqual({ rank1: "heal" });
+            expect(data.weapons).toEqual(["scimitar"]);
+            expect(data.description).toBe("Goddess of the sun.");
+        });
+
+        it("handles minimal deity", () => {
+            const result = mapDeity({ _id: "d2", name: "X" }, "deities");
+            const data = JSON.parse(result.dataJson);
+
+            expect(data.category).toBe("deity");
+            expect(data.attribute).toEqual([]);
+            expect(data.domains).toBeUndefined();
+            expect(data.sanctification).toBeUndefined();
+        });
+    });
+
+    describe("mapWeapon", () => {
+        it("maps weapon with all fields", () => {
+            const raw = {
+                _id: "wpn001",
+                name: "Longbow",
+                system: {
+                    description: { value: "<p>A ranged weapon.</p>" },
+                    level: { value: 1 },
+                    price: { value: { gp: 4 }, per: 1 },
+                    traits: { rarity: "common", value: ["deadly-d10", "volley"] },
+                    category: "martial",
+                    group: "bow",
+                    damage: { damageType: "piercing", dice: 1, die: "d8" },
+                    range: { value: 100 },
+                    reload: { value: 0 },
+                    baseItem: "longbow",
+                    bulk: 2,
+                },
+            };
+            const result = mapWeapon(raw, "weapons");
+            const data = JSON.parse(result.dataJson);
+
+            expect(result.type).toBe("weapon");
+            expect(data.level).toBe(1);
+            expect(data.price).toBe("4 gp per 1");
+            expect(data.category).toBe("martial");
+            expect(data.group).toBe("bow");
+            expect(data.damage).toBe("1d8 piercing");
+            expect(data.range).toBe(100);
+            expect(data.reload).toBe(0);
+            expect(data.baseItem).toBe("longbow");
+            expect(data.bulk).toBe(2);
+            expect(data.rarity).toBe("common");
+            expect(data.traits).toEqual(["deadly-d10", "volley"]);
+            expect(data.description).toBe("A ranged weapon.");
+        });
+
+        it("handles weapon with string reload", () => {
+            const raw = {
+                _id: "wpn002",
+                name: "Crossbow",
+                system: {
+                    reload: "-",
+                    damage: { damageType: "piercing", dice: 1, die: "d8" },
+                },
+            };
+            const result = mapWeapon(raw, "weapons");
+            const data = JSON.parse(result.dataJson);
+
+            expect(data.reload).toBe("-");
+        });
+    });
+
+    describe("mapArmor", () => {
+        it("maps armor with all fields", () => {
+            const raw = {
+                _id: "arm001",
+                name: "Half Plate",
+                system: {
+                    description: { value: "<p>Heavy armor.</p>" },
+                    level: { value: 2 },
+                    price: { value: { gp: 18 } },
+                    traits: { rarity: "common", value: ["bulwark"] },
+                    acBonus: 4,
+                    category: "heavy",
+                    group: "plate",
+                    checkPenalty: -3,
+                    dexCap: 1,
+                    speedPenalty: -10,
+                    strength: 16,
+                    baseItem: "half-plate",
+                    bulk: 3,
+                },
+            };
+            const result = mapArmor(raw, "armor");
+            const data = JSON.parse(result.dataJson);
+
+            expect(result.type).toBe("armor");
+            expect(data.acBonus).toBe(4);
+            expect(data.category).toBe("heavy");
+            expect(data.checkPenalty).toBe(-3);
+            expect(data.dexCap).toBe(1);
+            expect(data.speedPenalty).toBe(-10);
+            expect(data.strength).toBe(16);
+            expect(data.bulk).toBe(3);
+            expect(data.description).toBe("Heavy armor.");
+        });
+    });
+
+    describe("mapShield", () => {
+        it("maps shield with all fields", () => {
+            const raw = {
+                _id: "shd001",
+                name: "Steel Shield",
+                system: {
+                    description: { value: "<p>A sturdy shield.</p>" },
+                    level: { value: 1 },
+                    price: { value: { gp: 2 } },
+                    traits: { rarity: "common", value: [] },
+                    acBonus: 2,
+                    hardness: 5,
+                    hp: { max: 20, value: 20 },
+                    speedPenalty: 0,
+                    baseItem: "steel-shield",
+                    bulk: 1,
+                },
+            };
+            const result = mapShield(raw, "shields");
+            const data = JSON.parse(result.dataJson);
+
+            expect(result.type).toBe("shield");
+            expect(data.acBonus).toBe(2);
+            expect(data.hardness).toBe(5);
+            expect(data.hp).toBe(20);
+            expect(data.bulk).toBe(1);
+            expect(data.description).toBe("A sturdy shield.");
+        });
+    });
+
+    describe("mapConsumable", () => {
+        it("maps consumable with all fields", () => {
+            const raw = {
+                _id: "con001",
+                name: "Healing Potion",
+                system: {
+                    description: { value: "<p>Restores HP.</p>" },
+                    level: { value: 3 },
+                    price: { value: { gp: 10 } },
+                    traits: { rarity: "common", value: ["consumable", "healing", "magical"] },
+                    category: "potion",
+                    bulk: 0,
+                    usage: "held-in-one-hand",
+                },
+            };
+            const result = mapConsumable(raw, "consumables");
+            const data = JSON.parse(result.dataJson);
+
+            expect(result.type).toBe("consumable");
+            expect(data.category).toBe("potion");
+            expect(data.bulk).toBe(0);
+            expect(data.usage).toBe("held-in-one-hand");
+            expect(data.level).toBe(3);
+            expect(data.description).toBe("Restores HP.");
+        });
+    });
+
+    describe("mapAmmo", () => {
+        it("maps ammo with all fields", () => {
+            const raw = {
+                _id: "ammo001",
+                name: "Arrows",
+                system: {
+                    description: { value: "<p>Standard arrows.</p>" },
+                    level: { value: 0 },
+                    price: { value: { sp: 1 } },
+                    traits: { rarity: "common", value: [] },
+                    baseItem: "arrows",
+                    bulk: 0,
+                    quantity: 10,
+                },
+            };
+            const result = mapAmmo(raw, "ammo");
+            const data = JSON.parse(result.dataJson);
+
+            expect(result.type).toBe("ammo");
+            expect(data.baseItem).toBe("arrows");
+            expect(data.quantity).toBe(10);
+            expect(data.level).toBe(0);
+            expect(data.description).toBe("Standard arrows.");
+        });
+    });
+
+    describe("mapHazard", () => {
+        it("maps hazard with all fields", () => {
+            const raw = {
+                _id: "haz001",
+                name: "Poison Dart Trap",
+                system: {
+                    details: {
+                        description: "<p>A hidden trap.</p>",
+                        disable: "<p>Thievery DC 20.</p>",
+                        isComplex: true,
+                        level: { value: 3 },
+                        reset: "<p>Resets after 1 hour.</p>",
+                        routine: "<p>Fires a dart.</p>",
+                    },
+                    attributes: {
+                        ac: { value: 18 },
+                        hardness: 8,
+                        hp: { max: 30, value: 30 },
+                        stealth: { value: 20, details: "<p>hidden</p>" },
+                    },
+                    saves: { fortitude: { value: 10 }, reflex: { value: 5 }, will: { value: 0 } },
+                    traits: {
+                        rarity: "common",
+                        value: ["mechanical", "trap"],
+                        size: { value: "med" },
+                    },
+                },
+            };
+            const result = mapHazard(raw, "hazards");
+            const data = JSON.parse(result.dataJson);
+
+            expect(result.type).toBe("hazard");
+            expect(data.level).toBe(3);
+            expect(data.isComplex).toBe(true);
+            expect(data.description).toBe("A hidden trap.");
+            expect(data.disable).toBe("Thievery DC 20.");
+            expect(data.reset).toBe("Resets after 1 hour.");
+            expect(data.routine).toBe("Fires a dart.");
+            expect(data.ac).toBe(18);
+            expect(data.hardness).toBe(8);
+            expect(data.hp).toBe(30);
+            expect(data.stealth).toBe(20);
+            expect(data.stealthDetails).toBe("hidden");
+            expect(data.saves).toEqual({ fortitude: 10, reflex: 5, will: 0 });
+            expect(data.size).toBe("med");
+            expect(data.traits).toEqual(["Mechanical", "Trap"]);
+        });
+
+        it("handles hazard with minimal data", () => {
+            const result = mapHazard({ _id: "hz2", name: "Pit" }, "hazards");
+            const data = JSON.parse(result.dataJson);
+
+            expect(data.level).toBe(0);
+            expect(data.isComplex).toBe(false);
+            expect(data.ac).toBe(0);
+            expect(data.saves).toBeUndefined();
+        });
+    });
+
+    describe("mapTreasure", () => {
+        it("maps treasure with all fields", () => {
+            const raw = {
+                _id: "tr001",
+                name: "Gold Ring",
+                system: {
+                    level: { value: 2 },
+                    price: { value: { gp: 5 } },
+                    traits: { rarity: "common" },
+                    category: "treasure",
+                    bulk: 0,
+                },
+            };
+            const result = mapTreasure(raw, "treasure");
+            const data = JSON.parse(result.dataJson);
+
+            expect(result.type).toBe("treasure");
+            expect(data.level).toBe(2);
+            expect(data.price).toBe("5 gp");
+            expect(data.category).toBe("treasure");
+            expect(data.bulk).toBe(0);
+        });
+    });
+
+    describe("mapBackpack", () => {
+        it("maps backpack with all fields", () => {
+            const raw = {
+                _id: "bp001",
+                name: "Backpack",
+                system: {
+                    description: { value: "<p>A simple backpack.</p>" },
+                    level: { value: 0 },
+                    price: { value: { sp: 5 } },
+                    traits: { rarity: "common", value: [] },
+                    bulk: { capacity: 4, heldOrStowed: 0, ignored: 0, value: 1 },
+                    stowing: true,
+                    usage: "worn",
+                },
+            };
+            const result = mapBackpack(raw, "backpacks");
+            const data = JSON.parse(result.dataJson);
+
+            expect(result.type).toBe("backpack");
+            expect(data.capacity).toBe(4);
+            expect(data.bulk).toBe(1);
+            expect(data.stowing).toBe(true);
+            expect(data.usage).toBe("worn");
+            expect(data.description).toBe("A simple backpack.");
         });
     });
 });

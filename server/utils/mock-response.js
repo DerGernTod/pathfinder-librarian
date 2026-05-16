@@ -2,6 +2,8 @@
  * @typedef {import("../../shared/types.js").MessageBlock} MessageBlock
  */
 
+import { SEED_IDS } from "../../shared/constants.js";
+
 /**
  * Pre-defined mock responses — Pathfinder-themed.
  * Each entry is an array of MessageBlock objects.
@@ -291,6 +293,17 @@ const MOCK_RESPONSES = [
         {
             type: "paragraph",
             text: "Feats come in multiple types: Class feats (unique to your class), Ancestry feats (from your heritage), General feats (available to all), Skill feats (require skill training), and Archetype feats (from multiclassing or dedication feats).",
+        },
+    ],
+    // Conditions and status effects
+    [
+        {
+            type: "paragraph",
+            text: "The Enfeebled condition reduces your physical capability.",
+        },
+        {
+            type: "rule-detail",
+            ruleItemId: SEED_IDS.RULE_CONDITION_ENFEEBLED,
         },
     ],
 ];

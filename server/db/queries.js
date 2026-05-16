@@ -810,3 +810,26 @@ export function getParentItem(database, childId) {
     }
     return getRuleItemById(database, /** @type {string} */ (child.parent_id));
 }
+
+/**
+ * Looks up rule items by type and names. Used to resolve trait/condition
+ * names to rule item IDs during stat block enrichment.
+ * @param {import("bun:sqlite").Database} database - The database instance
+ * @param {string} type - e.g. "trait" or "condition"
+ * @param {string[]} names
+ * @returns {Map<string, { id: string, name: string }>}
+ */
+export function getRuleItemsByTypeAndNames(database, type, names) {
+    if (names.length === 0) {
+        return new Map();
+    }
+    const placeholders = names.map(() => "?").join(",");
+    const query = `SELECT id, name FROM rule_items WHERE type = ? AND name IN (${placeholders})`;
+    /** @type {unknown} */
+    const rows = database.query(query).all(type, ...names);
+    const map = new Map();
+    for (const row of /** @type {Array<{ id: string, name: string }>} */ (rows ?? [])) {
+        map.set(row.name, row);
+    }
+    return map;
+}

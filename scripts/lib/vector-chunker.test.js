@@ -267,6 +267,348 @@ describe("vector-chunker", () => {
             expect(chunks).toHaveLength(1);
             expect(chunks[0].text).toBe("Armor: Knight's Chain Mail");
         });
+
+        it("creates class chunk with hp, key ability, saves, features", () => {
+            const ruleItem = {
+                id: "class-1",
+                type: "class",
+                name: "Fighter",
+                compendiumSource: "Compendium.pf2e.classes.Item.f1",
+                data: {
+                    name: "Fighter",
+                    hp: 10,
+                    keyAbility: ["str", "dex"],
+                    perception: 1,
+                    savingThrows: { fortitude: 2, reflex: 1, will: 0 },
+                    classFeatLevels: [1, 2, 4],
+                    trainedSkills: { value: ["athletics"], additional: 2 },
+                    classFeatures: [
+                        { level: 1, name: "Attack of Opportunity" },
+                        { level: 5, name: "Sudden Charge" },
+                    ],
+                    description: "Martial expert.",
+                },
+            };
+            const chunks = createChunksFromRuleItem(ruleItem);
+
+            expect(chunks).toHaveLength(1);
+            expect(chunks[0].text).toContain("Class: Fighter");
+            expect(chunks[0].text).toContain("HP per level: 10");
+            expect(chunks[0].text).toContain("Key Ability: str or dex");
+            expect(chunks[0].text).toContain("Perception: Trained");
+            expect(chunks[0].text).toContain("Fort Expert");
+            expect(chunks[0].text).toContain("Class feats at levels: 1, 2, 4");
+            expect(chunks[0].text).toContain("Trained skills: athletics");
+            expect(chunks[0].text).toContain("+2 additional skills");
+            expect(chunks[0].text).toContain(
+                "Class features: L1 Attack of Opportunity, L5 Sudden Charge",
+            );
+        });
+
+        it("creates ancestry chunk with boosts, features, traits", () => {
+            const ruleItem = {
+                id: "anc-1",
+                type: "ancestry",
+                name: "Dwarf",
+                compendiumSource: undefined,
+                data: {
+                    name: "Dwarf",
+                    hp: 10,
+                    size: "med",
+                    speed: 20,
+                    vision: "darkvision",
+                    languages: ["Common", "Dwarven"],
+                    ancestryFeatures: [{ level: 1, name: "Dwarven Lore" }],
+                    traits: ["Dwarf"],
+                    description: "Stout folk.",
+                },
+            };
+            const chunks = createChunksFromRuleItem(ruleItem);
+
+            expect(chunks).toHaveLength(1);
+            expect(chunks[0].text).toContain("Ancestry: Dwarf");
+            expect(chunks[0].text).toContain("HP: 10");
+            expect(chunks[0].text).toContain("Size: Medium");
+            expect(chunks[0].text).toContain("Speed: 20 ft");
+            expect(chunks[0].text).toContain("Vision: darkvision");
+            expect(chunks[0].text).toContain("Languages: Common, Dwarven");
+            expect(chunks[0].text).toContain("Features: L1 Dwarven Lore");
+            expect(chunks[0].text).toContain("Traits: Dwarf");
+        });
+
+        it("creates heritage chunk with ancestry link", () => {
+            const ruleItem = {
+                id: "her-1",
+                type: "heritage",
+                name: "Ancient Elf",
+                data: {
+                    name: "Ancient Elf",
+                    ancestry: { name: "Elf" },
+                    traits: ["Elf"],
+                    description: "Elven heritage.",
+                },
+            };
+            const chunks = createChunksFromRuleItem(ruleItem);
+
+            expect(chunks).toHaveLength(1);
+            expect(chunks[0].text).toContain("Heritage: Ancient Elf");
+            expect(chunks[0].text).toContain("Ancestry: Elf");
+            expect(chunks[0].text).toContain("Traits: Elf");
+        });
+
+        it("creates background chunk with skills and granted items", () => {
+            const ruleItem = {
+                id: "bg-1",
+                type: "background",
+                name: "Warrior",
+                data: {
+                    name: "Warrior",
+                    trainedSkills: { value: ["Athletics"], lore: ["Warfare Lore"] },
+                    grantedItems: [{ name: "Longsword" }],
+                    description: "A soldier.",
+                },
+            };
+            const chunks = createChunksFromRuleItem(ruleItem);
+
+            expect(chunks).toHaveLength(1);
+            expect(chunks[0].text).toContain("Background: Warrior");
+            expect(chunks[0].text).toContain("Trained in: Athletics, Warfare Lore");
+            expect(chunks[0].text).toContain("Granted: Longsword");
+        });
+
+        it("creates deity chunk with domains, weapons, sanctification", () => {
+            const ruleItem = {
+                id: "deity-1",
+                type: "deity",
+                name: "Sarenrae",
+                data: {
+                    name: "Sarenrae",
+                    category: "deity",
+                    attribute: ["con", "str"],
+                    domains: { primary: ["healing", "sun"], alternate: ["fire"] },
+                    font: ["heal", "harm"],
+                    sanctification: { modal: "can", what: ["holy"] },
+                    skill: ["medicine"],
+                    weapons: ["scimitar"],
+                    description: "Sun goddess.",
+                },
+            };
+            const chunks = createChunksFromRuleItem(ruleItem);
+
+            expect(chunks).toHaveLength(1);
+            expect(chunks[0].text).toContain("Deity: Sarenrae");
+            expect(chunks[0].text).toContain("Divine Ability: con, str");
+            expect(chunks[0].text).toContain("Domains: healing, sun");
+            expect(chunks[0].text).toContain("Font: heal, harm");
+            expect(chunks[0].text).toContain("Divine Skill: medicine");
+            expect(chunks[0].text).toContain("Favored Weapon: scimitar");
+        });
+
+        it("creates shield chunk with ac, hardness, hp", () => {
+            const ruleItem = {
+                id: "shield-1",
+                type: "shield",
+                name: "Steel Shield",
+                data: {
+                    name: "Steel Shield",
+                    acBonus: 2,
+                    hardness: 5,
+                    hp: 20,
+                    speedPenalty: 0,
+                    level: 1,
+                    traits: ["shield"],
+                    description: "Sturdy shield.",
+                },
+            };
+            const chunks = createChunksFromRuleItem(ruleItem);
+
+            expect(chunks).toHaveLength(1);
+            expect(chunks[0].text).toContain("Shield: Steel Shield");
+            expect(chunks[0].text).toContain("AC +2");
+            expect(chunks[0].text).toContain("Hardness 5");
+            expect(chunks[0].text).toContain("HP 20");
+            expect(chunks[0].text).toContain("Level 1");
+        });
+
+        it("creates consumable chunk with category, level, traits", () => {
+            const ruleItem = {
+                id: "cons-1",
+                type: "consumable",
+                name: "Healing Potion",
+                data: {
+                    name: "Healing Potion",
+                    category: "potion",
+                    level: 3,
+                    traits: ["consumable", "healing"],
+                    description: "Restores HP.",
+                },
+            };
+            const chunks = createChunksFromRuleItem(ruleItem);
+
+            expect(chunks).toHaveLength(1);
+            expect(chunks[0].text).toContain("Consumable: Healing Potion");
+            expect(chunks[0].text).toContain("Potion");
+            expect(chunks[0].text).toContain("Level 3");
+        });
+
+        it("creates ammo chunk with level and traits", () => {
+            const ruleItem = {
+                id: "ammo-1",
+                type: "ammo",
+                name: "Arrows",
+                data: {
+                    name: "Arrows",
+                    level: 2,
+                    traits: ["ammunition"],
+                    description: "Standard arrows.",
+                },
+            };
+            const chunks = createChunksFromRuleItem(ruleItem);
+
+            expect(chunks).toHaveLength(1);
+            expect(chunks[0].text).toContain("Ammunition: Arrows");
+            expect(chunks[0].text).toContain("Level 2");
+            expect(chunks[0].text).toContain("Traits: ammunition");
+        });
+
+        it("creates hazard chunk with level, ac, stealth, saves", () => {
+            const ruleItem = {
+                id: "haz-1",
+                type: "hazard",
+                name: "Poison Dart Trap",
+                data: {
+                    name: "Poison Dart Trap",
+                    level: 3,
+                    isComplex: true,
+                    ac: 18,
+                    hp: 30,
+                    stealth: 20,
+                    saves: { fortitude: 10, reflex: 5, will: 0 },
+                    traits: ["mechanical", "trap"],
+                    description: "Hidden trap.",
+                    disable: "Thievery DC 20.",
+                },
+            };
+            const chunks = createChunksFromRuleItem(ruleItem);
+
+            expect(chunks).toHaveLength(1);
+            expect(chunks[0].text).toContain("Hazard: Poison Dart Trap");
+            expect(chunks[0].text).toContain("Level 3");
+            expect(chunks[0].text).toContain("Complex");
+            expect(chunks[0].text).toContain("AC 18");
+            expect(chunks[0].text).toContain("HP 30");
+            expect(chunks[0].text).toContain("Stealth DC 20");
+            expect(chunks[0].text).toContain("Disable: Thievery DC 20.");
+        });
+
+        it("creates hazard chunk as Simple when isComplex is false", () => {
+            const ruleItem = {
+                id: "haz-2",
+                type: "hazard",
+                name: "Pit",
+                data: { name: "Pit", isComplex: false },
+            };
+            const chunks = createChunksFromRuleItem(ruleItem);
+
+            expect(chunks[0].text).toContain("Simple");
+        });
+
+        it("creates treasure chunk with category", () => {
+            const ruleItem = {
+                id: "treas-1",
+                type: "treasure",
+                name: "Gold Ring",
+                data: { name: "Gold Ring", category: "treasure" },
+            };
+            const chunks = createChunksFromRuleItem(ruleItem);
+
+            expect(chunks).toHaveLength(1);
+            expect(chunks[0].text).toContain("Treasure: Gold Ring");
+            expect(chunks[0].text).toContain("Treasure");
+        });
+
+        it("creates backpack/container chunk with capacity", () => {
+            const ruleItem = {
+                id: "bp-1",
+                type: "backpack",
+                name: "Backpack",
+                data: {
+                    name: "Backpack",
+                    capacity: 4,
+                    description: "Simple container.",
+                },
+            };
+            const chunks = createChunksFromRuleItem(ruleItem);
+
+            expect(chunks).toHaveLength(1);
+            expect(chunks[0].text).toContain("Container: Backpack");
+            expect(chunks[0].text).toContain("Capacity 4 Bulk");
+        });
+
+        it("creates weapon chunk with category, damage, range, traits", () => {
+            const ruleItem = {
+                id: "wpn-1",
+                type: "weapon",
+                name: "Longbow",
+                data: {
+                    name: "Longbow",
+                    category: "martial",
+                    damage: "1d8 piercing",
+                    range: 100,
+                    level: 1,
+                    traits: ["deadly-d10"],
+                    description: "Ranged weapon.",
+                },
+            };
+            const chunks = createChunksFromRuleItem(ruleItem);
+
+            expect(chunks).toHaveLength(1);
+            expect(chunks[0].text).toContain("Weapon: Longbow");
+            expect(chunks[0].text).toContain("Martial");
+            expect(chunks[0].text).toContain("Damage: 1d8 piercing");
+            expect(chunks[0].text).toContain("Range 100 ft");
+            expect(chunks[0].text).toContain("Level 1");
+        });
+
+        it("creates armor chunk with category, acBonus, dexCap", () => {
+            const ruleItem = {
+                id: "arm-1",
+                type: "armor",
+                name: "Chain Mail",
+                data: {
+                    name: "Chain Mail",
+                    category: "heavy",
+                    acBonus: 4,
+                    dexCap: 1,
+                    checkPenalty: -3,
+                    speedPenalty: -10,
+                    level: 2,
+                    traits: ["bulwark"],
+                },
+            };
+            const chunks = createChunksFromRuleItem(ruleItem);
+
+            expect(chunks).toHaveLength(1);
+            expect(chunks[0].text).toContain("Armor: Chain Mail");
+            expect(chunks[0].text).toContain("Heavy");
+            expect(chunks[0].text).toContain("AC +4");
+            expect(chunks[0].text).toContain("Dex Cap +1");
+            expect(chunks[0].text).toContain("Check Penalty -3");
+            expect(chunks[0].text).toContain("Speed Penalty -10 ft");
+        });
+
+        it("uses fallback for unknown type", () => {
+            const ruleItem = {
+                id: "unknown-1",
+                type: "custom",
+                name: "Custom Thing",
+                data: {},
+            };
+            const chunks = createChunksFromRuleItem(ruleItem);
+
+            expect(chunks).toHaveLength(1);
+            expect(chunks[0].text).toBe("custom: Custom Thing");
+        });
     });
 
     describe("createCreatureSummaryChunk", () => {

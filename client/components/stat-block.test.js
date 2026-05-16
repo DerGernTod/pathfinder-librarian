@@ -1,5 +1,5 @@
 import "./stat-block.js";
-import { beforeEach, describe, expect, it } from "bun:test";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 
 describe("stat-block", () => {
     beforeEach(() => {
@@ -344,7 +344,13 @@ describe("stat-block", () => {
             traits: ["Goblin"],
             perception: "+5",
             languages: "Common, Goblin",
-            attributes: { ac: 15, hp: 20, fortitude: "+6", reflex: "+5", will: "+3" },
+            attributes: {
+                ac: 15,
+                hp: 20,
+                fortitude: "+6",
+                reflex: "+5",
+                will: "+3",
+            },
             skills: { Stealth: "+7" },
             str: 2,
             dex: 3,
@@ -353,8 +359,16 @@ describe("stat-block", () => {
             wis: 1,
             cha: 0,
             actions: [
-                { name: "Strike", actionType: "single", description: "A melee Strike." },
-                { name: "Retaliate", actionType: "reaction", description: "Trigger..." },
+                {
+                    name: "Strike",
+                    actionType: "single",
+                    description: "A melee Strike.",
+                },
+                {
+                    name: "Retaliate",
+                    actionType: "reaction",
+                    description: "Trigger...",
+                },
             ],
         };
 
@@ -444,9 +458,21 @@ describe("stat-block", () => {
                     { name: "Free", actionType: 0, description: "free action" },
                     { name: "One", actionType: 1, description: "one action" },
                     { name: "Two", actionType: 2, description: "two actions" },
-                    { name: "Three", actionType: 3, description: "three actions" },
-                    { name: "React", actionType: "reaction", description: "reaction" },
-                    { name: "FreeAct", actionType: "free", description: "free" },
+                    {
+                        name: "Three",
+                        actionType: 3,
+                        description: "three actions",
+                    },
+                    {
+                        name: "React",
+                        actionType: "reaction",
+                        description: "reaction",
+                    },
+                    {
+                        name: "FreeAct",
+                        actionType: "free",
+                        description: "free",
+                    },
                 ],
             };
             const el = createStatBlock("Test", data);
@@ -513,6 +539,158 @@ describe("stat-block", () => {
         });
     });
 
+    describe("interactive traits", () => {
+        const dataWithTraitRefs = {
+            ...fullCreatureData,
+            traitRefs: [
+                { name: "Goblinoid", ruleItemId: "id-goblinoid" },
+                { name: "Humanoid", ruleItemId: "id-humanoid" },
+                { name: "Mitflit" },
+            ],
+        };
+
+        it("renders clickable traits with ruleItemId", async () => {
+            const el = createStatBlock("Test", dataWithTraitRefs);
+            await el.updateComplete;
+            const traitsContainer = el.shadowRoot.querySelector(".header .traits");
+            const tags = traitsContainer.querySelectorAll("sl-tag");
+            expect(tags.length).toBe(3);
+
+            // First two should have clickable class (check attribute)
+            expect(tags[0].getAttribute("class")).toContain("clickable");
+            expect(tags[1].getAttribute("class")).toContain("clickable");
+            // Third has no ruleItemId, not clickable
+            expect(tags[2].getAttribute("class")).not.toContain("clickable");
+        });
+
+        it("clickable traits fire rule-detail-request event with ruleItemId", async () => {
+            const el = createStatBlock("Test", dataWithTraitRefs);
+            await el.updateComplete;
+
+            /** @type {import("bun:test").Mock<(arg: CustomEvent) => void>} */
+            const listener = mock(() => {});
+            el.addEventListener("rule-detail-request", listener);
+
+            const traitsContainer = el.shadowRoot.querySelector(".header .traits");
+            const clickableTag = traitsContainer.querySelectorAll("sl-tag")[0];
+            clickableTag.click();
+
+            expect(listener).toHaveBeenCalled();
+            const eventDetail = listener.mock.calls[0][0].detail;
+            expect(eventDetail.ruleItemId).toBe("id-goblinoid");
+            expect(eventDetail.name).toBe("Goblinoid");
+        });
+
+        it("non-linked traits render without click handler", async () => {
+            const el = createStatBlock("Test", dataWithTraitRefs);
+            await el.updateComplete;
+
+            /** @type {import("bun:test").Mock<(arg: CustomEvent) => void>} */
+            const listener = mock(() => {});
+            el.addEventListener("rule-detail-request", listener);
+
+            const traitsContainer = el.shadowRoot.querySelector(".header .traits");
+            const plainTag = traitsContainer.querySelectorAll("sl-tag")[2];
+            plainTag.click();
+
+            expect(listener).not.toHaveBeenCalled();
+        });
+
+        it("aria-label present on clickable traits", async () => {
+            const el = createStatBlock("Test", dataWithTraitRefs);
+            await el.updateComplete;
+            const traitsContainer = el.shadowRoot.querySelector(".header .traits");
+            const tags = traitsContainer.querySelectorAll("sl-tag");
+            expect(tags[0].getAttribute("aria-label")).toBe("View details for Goblinoid");
+            expect(tags[2].getAttribute("aria-label")).toBe("Mitflit");
+        });
+    });
+
+    describe("action description segments", () => {
+        it("renders descriptionSegments as clickable links", async () => {
+            const data = {
+                ...fullCreatureData,
+                actions: [
+                    {
+                        name: "Sneak",
+                        actionType: 1,
+                        traits: ["move"],
+                        description:
+                            "Use @UUID[Compendium.pf2e.actions.Item.ShieldBlock]{Shield Block}.",
+                        descriptionSegments: [
+                            { text: "Use " },
+                            {
+                                text: "Shield Block",
+                                ruleItemId: "id-shield-block",
+                            },
+                            { text: "." },
+                        ],
+                    },
+                ],
+            };
+            const el = createStatBlock("Test", data);
+            await el.updateComplete;
+
+            const actionsSection = el.shadowRoot.querySelector("sl-details[summary='Actions']");
+            const pfDesc = actionsSection.querySelector("pf-description");
+            await pfDesc.updateComplete;
+            const link = pfDesc.shadowRoot.querySelector("a.rule-ref");
+            expect(link).toBeTruthy();
+            expect(link.textContent).toBe("Shield Block");
+        });
+
+        it("clicking rule-ref fires rule-detail-request event", async () => {
+            const data = {
+                ...fullCreatureData,
+                actions: [
+                    {
+                        name: "Sneak",
+                        actionType: 1,
+                        traits: ["move"],
+                        description: "Text",
+                        descriptionSegments: [
+                            { text: "Use " },
+                            {
+                                text: "Shield Block",
+                                ruleItemId: "id-shield-block",
+                            },
+                            { text: "." },
+                        ],
+                    },
+                ],
+            };
+            const el = createStatBlock("Test", data);
+            await el.updateComplete;
+
+            /** @type {import("bun:test").Mock<(arg: CustomEvent) => void>} */
+            const listener = mock(() => {});
+            el.addEventListener("rule-detail-request", listener);
+
+            const actionsSection = el.shadowRoot.querySelector("sl-details[summary='Actions']");
+            const pfDesc = actionsSection.querySelector("pf-description");
+            await pfDesc.updateComplete;
+            const link = pfDesc.shadowRoot.querySelector("a.rule-ref");
+            link.click();
+
+            expect(listener).toHaveBeenCalled();
+            const eventDetail = listener.mock.calls[0][0].detail;
+            expect(eventDetail.ruleItemId).toBe("id-shield-block");
+            expect(eventDetail.name).toBe("Shield Block");
+        });
+
+        it("falls back to plain description when no segments", async () => {
+            const el = createStatBlock("Test", fullCreatureData);
+            await el.updateComplete;
+
+            const actionsSection = el.shadowRoot.querySelector("sl-details[summary='Actions']");
+            const descriptions = actionsSection.querySelectorAll(".description");
+            expect(descriptions.length).toBeGreaterThan(0);
+            // Should have plain text, no links
+            const links = actionsSection.querySelectorAll("a.rule-ref");
+            expect(links.length).toBe(0);
+        });
+    });
+
     describe("edge cases", () => {
         it("renders with minimal creature data (no melee/spellcasting/actions)", async () => {
             const minimalData = {
@@ -567,6 +745,54 @@ describe("stat-block", () => {
             await el.updateComplete;
             expect(el.shadowRoot.querySelector("h3")).toBeTruthy();
             expect(el.shadowRoot.querySelector("h3").textContent).toBe("Unknown");
+        });
+    });
+
+    describe("action trait interactivity", () => {
+        it("renders actions with interactive trait tags", async () => {
+            // The StatBlock class is exported via customElement(); cast to
+            // HTMLElement with the expected properties.
+            const el =
+                /** @type {HTMLElement & { title: string, data: unknown, updateComplete: Promise<unknown> }} */ (
+                    document.createElement("stat-block")
+                );
+            el.title = "Test Creature";
+            el.data = {
+                name: "Test Creature",
+                level: 5,
+                traits: [],
+                actions: [
+                    {
+                        name: "Test Action",
+                        actionType: 1,
+                        traits: ["Manipulate"],
+                        traitRefs: [{ name: "Manipulate", ruleItemId: "test-trait-id" }],
+                        description: "A test action with @Check[acrobatics|dc:20].",
+                    },
+                ],
+            };
+
+            document.body.appendChild(el);
+            await el.updateComplete;
+
+            const root = el.shadowRoot;
+            const slDetails = root?.querySelector("sl-details[summary='Actions']");
+            expect(slDetails).not.toBeNull();
+
+            // Trait tags should be clickable
+            const traitTags = slDetails?.querySelectorAll("sl-tag.clickable");
+            expect(traitTags?.length).toBeGreaterThanOrEqual(1);
+
+            // pf-description should render the @Check as a badge
+            const pfDesc =
+                /** @type {HTMLElement & { updateComplete: Promise<unknown>, shadowRoot: ShadowRoot | null }} */ (
+                    slDetails?.querySelector("pf-description")
+                );
+            await pfDesc?.updateComplete;
+            const checkBadge = pfDesc?.shadowRoot?.querySelector(".check-badge");
+            expect(checkBadge).not.toBeNull();
+
+            document.body.removeChild(el);
         });
     });
 });

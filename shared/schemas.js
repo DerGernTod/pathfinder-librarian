@@ -15,6 +15,19 @@ const ruleItemTypeSchema = z.enum([
     "feat",
     "spellcastingEntry",
     "trait",
+    "condition",
+    "effect",
+    "class",
+    "ancestry",
+    "heritage",
+    "background",
+    "deity",
+    "consumable",
+    "ammo",
+    "shield",
+    "hazard",
+    "treasure",
+    "backpack",
 ]);
 
 const abilityModSchema = z.object({ mod: z.number() });
@@ -190,7 +203,14 @@ const listBlockSchema = z.object({
 
 const statBlockMessageSchema = z.object({
     type: z.literal("stat-block"),
-    title: z.string(),
+    // title is optional here: Gemini may omit it when anyOf schemas share
+    // ruleItemId. resolveStatBlock falls back to the creature name from the DB.
+    title: z.string().optional(),
+    ruleItemId: z.string(),
+});
+
+const ruleDetailBlockSchema = z.object({
+    type: z.literal("rule-detail"),
     ruleItemId: z.string(),
 });
 
@@ -199,6 +219,7 @@ const messageBlockSchema = z.union([
     calloutBlockSchema,
     listBlockSchema,
     statBlockMessageSchema,
+    ruleDetailBlockSchema,
 ]);
 
 const messageBlocksArraySchema = z.array(messageBlockSchema);
@@ -230,6 +251,7 @@ export {
     listItemSchema,
     listBlockSchema,
     statBlockMessageSchema,
+    ruleDetailBlockSchema,
     messageBlockSchema,
     messageBlocksArraySchema,
 };

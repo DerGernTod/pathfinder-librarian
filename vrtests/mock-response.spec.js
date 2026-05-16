@@ -92,23 +92,20 @@ test.describe("mock LLM response visual regression", () => {
         await expect(chatInput).toHaveScreenshot("chat-input-disabled.png");
     });
 
-    test.skip("chat input enabled after response", async ({ page }) => {
+    test("chat input enabled after response", async ({ page }) => {
         // Skipped: flaky due to potential lingering requests from previous tests
         const input = page.locator("chat-input textarea");
         await input.fill("Test message");
         await page.keyboard.press("Enter");
 
-        // Wait for network idle to ensure no pending requests
-        await page.waitForLoadState("networkidle");
+        await page.locator(".loading").waitFor({ state: "visible" });
+        await page.locator(".loading").waitFor({ state: "hidden" });
 
         // Wait for assistant response to complete
         await page.waitForSelector("assistant-message", {
             state: "visible",
             timeout: 5000,
         });
-        // Wait longer for state to update
-        await page.waitForTimeout(3000);
-
         const chatInput = page.locator("chat-input");
         // After response completes the Stop button should not be visible
         const stopBtn = page.locator("chat-input button", { hasText: "Stop" });

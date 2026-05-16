@@ -26,8 +26,8 @@ describe("clearAllTables", () => {
             [crypto.randomUUID(), "Test", "TE", "Tester", "gm", "test@test.local", 1],
         );
 
-        // Verify data exists (2 root + 4 children)
-        expect(db.query("SELECT COUNT(*) as count FROM rule_items").get().count).toBe(6);
+        // Verify data exists (5 root + 4 children)
+        expect(db.query("SELECT COUNT(*) as count FROM rule_items").get().count).toBe(9);
         expect(db.query("SELECT COUNT(*) as count FROM users").get().count).toBe(1);
 
         clearAllTables(db);
@@ -153,13 +153,16 @@ describe("seedRuleItems", () => {
         }
     });
 
-    it("seeds 6 rule items (2 root + 4 children)", () => {
+    it("seeds 9 rule items (5 root + 4 children)", () => {
         seedRuleItems(db);
         const items = db.query("SELECT * FROM rule_items ORDER BY id").all();
-        expect(items.length).toBe(6);
+        expect(items.length).toBe(9);
         const ids = items.map((r) => r.id);
         expect(ids).toContain(SEED_IDS.RULE_MITFLIT_KING);
         expect(ids).toContain(SEED_IDS.RULE_SAMPLE_SPELL);
+        expect(ids).toContain(SEED_IDS.RULE_TRAIT_HUMANOID);
+        expect(ids).toContain(SEED_IDS.RULE_TRAIT_GOBLINOID);
+        expect(ids).toContain(SEED_IDS.RULE_CONDITION_ENFEEBLED);
     });
 
     it("seeds mitflit king with creature type", () => {
@@ -215,7 +218,7 @@ describe("seedRuleItems", () => {
         seedRuleItems(db);
         const count2 = db.query("SELECT COUNT(*) as count FROM rule_items").get().count;
         expect(count2).toBe(count1);
-        expect(count2).toBe(6);
+        expect(count2).toBe(9);
     });
 
     it("seeds Mitflit King children with correct parent_id", () => {
@@ -223,7 +226,7 @@ describe("seedRuleItems", () => {
 
         // Root items only via getRuleItems
         const rootItems = queries.getRuleItems(db);
-        expect(rootItems).toHaveLength(2);
+        expect(rootItems).toHaveLength(5);
 
         // Children of Mitflit King
         const children = queries.getChildItems(db, SEED_IDS.RULE_MITFLIT_KING);

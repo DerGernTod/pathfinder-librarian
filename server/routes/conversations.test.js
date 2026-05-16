@@ -293,7 +293,7 @@ describe("rule-items routes", () => {
             expect(res.status).toBe(200);
             const { data } = await res.json();
             expect(Array.isArray(data)).toBe(true);
-            expect(data).toHaveLength(2);
+            expect(data).toHaveLength(5);
         });
 
         it("filters by type", async () => {

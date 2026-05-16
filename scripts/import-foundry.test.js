@@ -1,20 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { unlinkSync, writeFileSync } from "fs";
 import { join } from "path";
 
 import { createDb } from "../server/db/database.js";
 import {
     batchUpsertRuleItems,
+    getChildItems,
     getRuleItemBySource,
     getRuleItems,
-    getChildItems,
 } from "../server/db/queries.js";
-import { discoverFiles, parseArgs, processFile } from "./import-foundry.js";
+import { discoverFiles, importFromDir, parseArgs, processFile } from "./lib/import-foundry-core.js";
 
 const FIXTURE_DIR = join(import.meta.dirname, "../test/fixtures/foundry");
 
 /**
  * Two-phase insert: root items first, then children with resolved parentId.
- * Mirrors the logic in runImport.
  * @param {import("bun:sqlite").Database} db
  * @param {Array<{ type: string, name: string, compendiumSource: string, dataJson: string, parentId?: string }>} items
  */
@@ -34,7 +34,7 @@ function twoPhaseInsert(db, items) {
     batchUpsertRuleItems(db, childItems);
 }
 
-describe("import-foundry", () => {
+describe("import-foundry-core", () => {
     describe("parseArgs", () => {
         it("parses all arguments", () => {
             const args = [
@@ -102,15 +102,13 @@ describe("import-foundry", () => {
         it("discovers fixture files grouped by directory", () => {
             const packs = discoverFiles(FIXTURE_DIR);
 
-            // All fixture files should be discovered
             expect(packs.size).toBeGreaterThan(0);
 
-            // Check that at least one file was found
             let totalFiles = 0;
             for (const files of packs.values()) {
                 totalFiles += files.length;
             }
-            expect(totalFiles).toBe(5); // 5 fixture files
+            expect(totalFiles).toBe(5);
         });
 
         it("skips _folders.json files", () => {
@@ -133,7 +131,6 @@ describe("import-foundry", () => {
 
             expect(result.skipped).toBe(false);
             expect(result.error).toBeNull();
-            // Creature + embedded items
             expect(result.items.length).toBeGreaterThanOrEqual(2);
             expect(result.items[0].type).toBe("creature");
             expect(result.items[0].name).toBe("Bloodseeker");
@@ -158,7 +155,6 @@ describe("import-foundry", () => {
                 verbose: false,
             });
 
-            // Spell filtered out since types only includes creature
             expect(result.skipped).toBe(true);
         });
 
@@ -172,10 +168,504 @@ describe("import-foundry", () => {
         });
 
         it("skips files without _id or type", () => {
-            // Create a minimal object without required fields
-            const result = processFile(join(FIXTURE_DIR, "spell.json"), "test", { verbose: false });
-            // This file has _id and type, so it should succeed
-            expect(result.skipped).toBe(false);
+            const tmpPath = join(FIXTURE_DIR, "_test_no_id.json");
+            writeFileSync(tmpPath, JSON.stringify({ name: "Nope" }));
+            try {
+                const result = processFile(tmpPath, "test", { verbose: false });
+                expect(result.skipped).toBe(true);
+            } finally {
+                unlinkSync(tmpPath);
+            }
+        });
+
+        it("processes action type files with type override", () => {
+            const tmpPath = join(FIXTURE_DIR, "_test_action.json");
+            writeFileSync(
+                tmpPath,
+                JSON.stringify({
+                    _id: "act001",
+                    name: "Demoralize",
+                    type: "action",
+                    system: {
+                        actionType: { value: "action" },
+                        actions: { value: 1 },
+                        description: { value: "<p>Intimidate a foe.</p>" },
+                        traits: { value: ["mental", "skill"] },
+                    },
+                }),
+            );
+            try {
+                const result = processFile(tmpPath, "actions", { verbose: false });
+                expect(result.skipped).toBe(false);
+                expect(result.items).toHaveLength(1);
+                expect(result.items[0].type).toBe("action");
+                expect(result.items[0].name).toBe("Demoralize");
+            } finally {
+                unlinkSync(tmpPath);
+            }
+        });
+
+        it("processes effect type files", () => {
+            const tmpPath = join(FIXTURE_DIR, "_test_effect.json");
+            writeFileSync(
+                tmpPath,
+                JSON.stringify({
+                    _id: "eff001",
+                    name: "Effect: Inspire Courage",
+                    type: "effect",
+                    system: {
+                        description: { value: "<p>+1 status bonus to attack rolls.</p>" },
+                        level: { value: 1 },
+                        traits: { value: ["bard", "enchantment"] },
+                    },
+                }),
+            );
+            try {
+                const result = processFile(tmpPath, "spell-effects", { verbose: false });
+                expect(result.skipped).toBe(false);
+                expect(result.items).toHaveLength(1);
+                expect(result.items[0].type).toBe("effect");
+            } finally {
+                unlinkSync(tmpPath);
+            }
+        });
+
+        it("processes condition type files with pack name override", () => {
+            const tmpPath = join(FIXTURE_DIR, "_test_condition.json");
+            writeFileSync(
+                tmpPath,
+                JSON.stringify({
+                    _id: "cond001",
+                    name: "Blinded",
+                    type: "condition",
+                    system: {
+                        description: { value: "<p>You cannot see.</p>" },
+                    },
+                }),
+            );
+            try {
+                const result = processFile(tmpPath, "conditions", { verbose: false });
+                expect(result.skipped).toBe(false);
+                expect(result.items).toHaveLength(1);
+                expect(result.items[0].type).toBe("condition");
+                const data = JSON.parse(result.items[0].dataJson);
+                expect(data.compendiumSource).toContain("conditionitems");
+            } finally {
+                unlinkSync(tmpPath);
+            }
+        });
+
+        it("processes condition type without pack name override", () => {
+            const tmpPath = join(FIXTURE_DIR, "_test_condition2.json");
+            writeFileSync(
+                tmpPath,
+                JSON.stringify({
+                    _id: "cond002",
+                    name: "Drained",
+                    type: "condition",
+                    system: {
+                        description: { value: "<p>You lose hit points.</p>" },
+                    },
+                }),
+            );
+            try {
+                const result = processFile(tmpPath, "other-conditions", { verbose: false });
+                expect(result.skipped).toBe(false);
+                expect(result.items[0].type).toBe("condition");
+            } finally {
+                unlinkSync(tmpPath);
+            }
+        });
+
+        it("processes class type files", () => {
+            const tmpPath = join(FIXTURE_DIR, "_test_class.json");
+            writeFileSync(
+                tmpPath,
+                JSON.stringify({
+                    _id: "class001",
+                    name: "Fighter",
+                    type: "class",
+                    system: {
+                        description: { value: "Martial." },
+                        keyAbility: { value: ["str"] },
+                        hp: 10,
+                    },
+                }),
+            );
+            try {
+                const result = processFile(tmpPath, "classes", { verbose: false });
+                expect(result.skipped).toBe(false);
+                expect(result.items).toHaveLength(1);
+                expect(result.items[0].type).toBe("class");
+            } finally {
+                unlinkSync(tmpPath);
+            }
+        });
+
+        it("processes ancestry type files", () => {
+            const tmpPath = join(FIXTURE_DIR, "_test_ancestry.json");
+            writeFileSync(
+                tmpPath,
+                JSON.stringify({
+                    _id: "anc001",
+                    name: "Dwarf",
+                    type: "ancestry",
+                    system: { hp: 10 },
+                }),
+            );
+            try {
+                const result = processFile(tmpPath, "ancestries", { verbose: false });
+                expect(result.skipped).toBe(false);
+                expect(result.items[0].type).toBe("ancestry");
+            } finally {
+                unlinkSync(tmpPath);
+            }
+        });
+
+        it("processes heritage type files", () => {
+            const tmpPath = join(FIXTURE_DIR, "_test_heritage.json");
+            writeFileSync(
+                tmpPath,
+                JSON.stringify({
+                    _id: "her001",
+                    name: "Ancient Elf",
+                    type: "heritage",
+                    system: {},
+                }),
+            );
+            try {
+                const result = processFile(tmpPath, "heritages", { verbose: false });
+                expect(result.skipped).toBe(false);
+                expect(result.items[0].type).toBe("heritage");
+            } finally {
+                unlinkSync(tmpPath);
+            }
+        });
+
+        it("processes background type files", () => {
+            const tmpPath = join(FIXTURE_DIR, "_test_background.json");
+            writeFileSync(
+                tmpPath,
+                JSON.stringify({
+                    _id: "bg001",
+                    name: "Warrior",
+                    type: "background",
+                    system: {},
+                }),
+            );
+            try {
+                const result = processFile(tmpPath, "backgrounds", { verbose: false });
+                expect(result.skipped).toBe(false);
+                expect(result.items[0].type).toBe("background");
+            } finally {
+                unlinkSync(tmpPath);
+            }
+        });
+
+        it("processes deity type files", () => {
+            const tmpPath = join(FIXTURE_DIR, "_test_deity.json");
+            writeFileSync(
+                tmpPath,
+                JSON.stringify({
+                    _id: "deity001",
+                    name: "Sarenrae",
+                    type: "deity",
+                    system: {},
+                }),
+            );
+            try {
+                const result = processFile(tmpPath, "deities", { verbose: false });
+                expect(result.skipped).toBe(false);
+                expect(result.items[0].type).toBe("deity");
+            } finally {
+                unlinkSync(tmpPath);
+            }
+        });
+
+        it("processes weapon type files", () => {
+            const tmpPath = join(FIXTURE_DIR, "_test_weapon.json");
+            writeFileSync(
+                tmpPath,
+                JSON.stringify({
+                    _id: "wpn001",
+                    name: "Longsword",
+                    type: "weapon",
+                    system: { damage: { damageType: "slashing", dice: 1, die: "d8" } },
+                }),
+            );
+            try {
+                const result = processFile(tmpPath, "weapons", { verbose: false });
+                expect(result.skipped).toBe(false);
+                expect(result.items[0].type).toBe("weapon");
+            } finally {
+                unlinkSync(tmpPath);
+            }
+        });
+
+        it("processes armor type files", () => {
+            const tmpPath = join(FIXTURE_DIR, "_test_armor.json");
+            writeFileSync(
+                tmpPath,
+                JSON.stringify({
+                    _id: "arm001",
+                    name: "Chain Mail",
+                    type: "armor",
+                    system: {},
+                }),
+            );
+            try {
+                const result = processFile(tmpPath, "armor", { verbose: false });
+                expect(result.skipped).toBe(false);
+                expect(result.items[0].type).toBe("armor");
+            } finally {
+                unlinkSync(tmpPath);
+            }
+        });
+
+        it("processes shield type files", () => {
+            const tmpPath = join(FIXTURE_DIR, "_test_shield.json");
+            writeFileSync(
+                tmpPath,
+                JSON.stringify({
+                    _id: "shd001",
+                    name: "Steel Shield",
+                    type: "shield",
+                    system: {},
+                }),
+            );
+            try {
+                const result = processFile(tmpPath, "shields", { verbose: false });
+                expect(result.skipped).toBe(false);
+                expect(result.items[0].type).toBe("shield");
+            } finally {
+                unlinkSync(tmpPath);
+            }
+        });
+
+        it("processes consumable type files", () => {
+            const tmpPath = join(FIXTURE_DIR, "_test_consumable.json");
+            writeFileSync(
+                tmpPath,
+                JSON.stringify({
+                    _id: "con001",
+                    name: "Potion",
+                    type: "consumable",
+                    system: {},
+                }),
+            );
+            try {
+                const result = processFile(tmpPath, "consumables", { verbose: false });
+                expect(result.skipped).toBe(false);
+                expect(result.items[0].type).toBe("consumable");
+            } finally {
+                unlinkSync(tmpPath);
+            }
+        });
+
+        it("processes ammo type files", () => {
+            const tmpPath = join(FIXTURE_DIR, "_test_ammo.json");
+            writeFileSync(
+                tmpPath,
+                JSON.stringify({
+                    _id: "ammo001",
+                    name: "Arrows",
+                    type: "ammo",
+                    system: {},
+                }),
+            );
+            try {
+                const result = processFile(tmpPath, "ammo", { verbose: false });
+                expect(result.skipped).toBe(false);
+                expect(result.items[0].type).toBe("ammo");
+            } finally {
+                unlinkSync(tmpPath);
+            }
+        });
+
+        it("processes hazard type files", () => {
+            const tmpPath = join(FIXTURE_DIR, "_test_hazard.json");
+            writeFileSync(
+                tmpPath,
+                JSON.stringify({
+                    _id: "haz001",
+                    name: "Trap",
+                    type: "hazard",
+                    system: {},
+                }),
+            );
+            try {
+                const result = processFile(tmpPath, "hazards", { verbose: false });
+                expect(result.skipped).toBe(false);
+                expect(result.items[0].type).toBe("hazard");
+            } finally {
+                unlinkSync(tmpPath);
+            }
+        });
+
+        it("processes treasure type files", () => {
+            const tmpPath = join(FIXTURE_DIR, "_test_treasure.json");
+            writeFileSync(
+                tmpPath,
+                JSON.stringify({
+                    _id: "tr001",
+                    name: "Gold",
+                    type: "treasure",
+                    system: {},
+                }),
+            );
+            try {
+                const result = processFile(tmpPath, "treasure", { verbose: false });
+                expect(result.skipped).toBe(false);
+                expect(result.items[0].type).toBe("treasure");
+            } finally {
+                unlinkSync(tmpPath);
+            }
+        });
+
+        it("processes backpack type files", () => {
+            const tmpPath = join(FIXTURE_DIR, "_test_backpack.json");
+            writeFileSync(
+                tmpPath,
+                JSON.stringify({
+                    _id: "bp001",
+                    name: "Backpack",
+                    type: "backpack",
+                    system: {},
+                }),
+            );
+            try {
+                const result = processFile(tmpPath, "backpacks", { verbose: false });
+                expect(result.skipped).toBe(false);
+                expect(result.items[0].type).toBe("backpack");
+            } finally {
+                unlinkSync(tmpPath);
+            }
+        });
+
+        it("skips unknown types", () => {
+            const tmpPath = join(FIXTURE_DIR, "_test_unknown.json");
+            writeFileSync(
+                tmpPath,
+                JSON.stringify({
+                    _id: "unk001",
+                    name: "Mystery",
+                    type: "kit",
+                    system: {},
+                }),
+            );
+            try {
+                const result = processFile(tmpPath, "kits", { verbose: false });
+                expect(result.skipped).toBe(true);
+            } finally {
+                unlinkSync(tmpPath);
+            }
+        });
+
+        it("filters by types parameter", () => {
+            const tmpPath = join(FIXTURE_DIR, "_test_filter.json");
+            writeFileSync(
+                tmpPath,
+                JSON.stringify({
+                    _id: "class002",
+                    name: "Wizard",
+                    type: "class",
+                    system: {},
+                }),
+            );
+            try {
+                const result = processFile(tmpPath, "classes", {
+                    types: ["creature"],
+                    verbose: false,
+                });
+                expect(result.skipped).toBe(true);
+            } finally {
+                unlinkSync(tmpPath);
+            }
+        });
+    });
+
+    describe("importFromDir", () => {
+        let testCounter = 0;
+
+        function getTmpDbPath() {
+            testCounter++;
+            return `temp/import-it-${Date.now()}-${testCounter}.sqlite`;
+        }
+
+        it("imports all fixture files into the database", async () => {
+            const result = await importFromDir(FIXTURE_DIR, {
+                db: getTmpDbPath(),
+                dryRun: false,
+                verbose: false,
+            });
+
+            expect(result.inserted).toBeGreaterThan(0);
+            expect(result.errors).toBe(0);
+        });
+
+        it("dry-run counts items without inserting", async () => {
+            const result = await importFromDir(FIXTURE_DIR, {
+                db: getTmpDbPath(),
+                dryRun: true,
+                verbose: false,
+            });
+
+            expect(result.inserted).toBeGreaterThan(0);
+            expect(result.updated).toBe(0);
+        });
+
+        it("filters packs by name", async () => {
+            const result = await importFromDir(FIXTURE_DIR, {
+                pack: ["nonexistent-pack"],
+                db: getTmpDbPath(),
+                dryRun: true,
+                verbose: false,
+            });
+
+            expect(result.inserted).toBe(0);
+        });
+
+        it("filters by entity types", async () => {
+            const result = await importFromDir(FIXTURE_DIR, {
+                types: ["spell"],
+                db: getTmpDbPath(),
+                dryRun: true,
+                verbose: false,
+            });
+
+            expect(result.inserted).toBeGreaterThan(0);
+        });
+
+        it("respects limit option", async () => {
+            const result = await importFromDir(FIXTURE_DIR, {
+                limit: 1,
+                db: getTmpDbPath(),
+                dryRun: true,
+                verbose: false,
+            });
+
+            expect(result.inserted).toBeLessThanOrEqual(4);
+        });
+
+        it("creates parent-child relationships for creature embedded items", async () => {
+            const dbPath = getTmpDbPath();
+            await importFromDir(FIXTURE_DIR, {
+                db: dbPath,
+                dryRun: false,
+                verbose: false,
+            });
+
+            const db = createDb(dbPath);
+            try {
+                const creatures = getRuleItems(db, "creature");
+                expect(creatures.length).toBeGreaterThan(0);
+                for (const creature of creatures) {
+                    const children = getChildItems(db, creature.id);
+                    expect(children.length).toBeGreaterThan(0);
+                }
+            } finally {
+                db.close();
+            }
         });
     });
 
@@ -209,11 +699,9 @@ describe("import-foundry", () => {
 
             twoPhaseInsert(db, allItems);
 
-            // Verify creature was inserted (root items only)
             const creatures = getRuleItems(db, "creature");
             expect(creatures.length).toBeGreaterThan(0);
 
-            // Verify spell was inserted
             const spells = getRuleItems(db, "spell");
             expect(spells.length).toBeGreaterThan(0);
         });
@@ -234,7 +722,6 @@ describe("import-foundry", () => {
 
             twoPhaseInsert(db, allItems);
 
-            // Every imported item should have a compendium source
             for (const item of allItems) {
                 expect(item.compendiumSource).toBeTruthy();
                 const found = getRuleItemBySource(db, item.compendiumSource);
@@ -251,7 +738,6 @@ describe("import-foundry", () => {
             const creature = result.items[0];
             const data = JSON.parse(creature.dataJson);
 
-            // Should have required CreatureData fields
             expect(data.name).toBe("Bloodseeker");
             expect(data.level).toBe(1);
             expect(data.traits).toEqual(["Animal"]);
@@ -265,7 +751,6 @@ describe("import-foundry", () => {
                 verbose: false,
             });
 
-            // Should have creature + embedded items
             expect(result.items.length).toBeGreaterThan(1);
 
             const creature = result.items[0];
@@ -282,12 +767,10 @@ describe("import-foundry", () => {
 
             twoPhaseInsert(db, result.items);
 
-            // Root creature should be findable
             const creatures = getRuleItems(db, "creature");
             expect(creatures).toHaveLength(1);
             const creature = creatures[0];
 
-            // Children should be linked to the creature
             const children = getChildItems(db, creature.id);
             expect(children.length).toBeGreaterThan(0);
             for (const child of children) {
@@ -301,13 +784,9 @@ describe("import-foundry", () => {
                 verbose: false,
             });
 
-            // First import (two-phase)
+            twoPhaseInsert(db, result.items);
             twoPhaseInsert(db, result.items);
 
-            // Second import (same items)
-            twoPhaseInsert(db, result.items);
-
-            // Verify no duplicates (root creatures only)
             const creatures = getRuleItems(db, "creature");
             const bloodseekers = creatures.filter((c) => c.name === "Bloodseeker");
             expect(bloodseekers).toHaveLength(1);
