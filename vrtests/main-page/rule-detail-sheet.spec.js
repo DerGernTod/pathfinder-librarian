@@ -192,6 +192,33 @@ test.describe("rule-detail-sheet visual regression", () => {
     });
 
     /**
+     * Takes a screenshot of the visible Shoelace dialog panel.
+     * The sl-dialog host element renders its visible content in shadow DOM,
+     * so we clip the page screenshot to the panel's actual bounding box.
+     * @param {import("playwright/test").Page} page
+     * @param {string} name
+     * @param {{ maxDiffPixelRatio?: number }} [options]
+     */
+    async function screenshotDialogPanel(page, name, options = {}) {
+        const box = await page.locator("rule-detail-sheet sl-dialog").evaluate((el) => {
+            const panel = /** @type {HTMLElement|null} */ (
+                el.shadowRoot?.querySelector('[part="panel"]')
+            );
+            if (!panel) {
+                return null;
+            }
+            const r = panel.getBoundingClientRect();
+            return { x: r.x, y: r.y, width: r.width, height: r.height };
+        });
+        if (!box) {
+            throw new Error("Dialog panel not found in shadow DOM");
+        }
+        await expect(page).toHaveScreenshot(name, {
+            clip: box,
+            maxDiffPixelRatio: options.maxDiffPixelRatio ?? 0.05,
+        });
+    }
+    /**
      * @param {import("playwright/test").Page} page
      */
     async function navigateToStatBlock(page) {
@@ -203,6 +230,10 @@ test.describe("rule-detail-sheet visual regression", () => {
         await input.fill("Show me a goblin warrior");
         await input.press("Enter");
         await page.waitForSelector("stat-block", { timeout: 5000 });
+        await page.waitForTimeout(500);
+
+        const detailsEl = page.locator("stat-block sl-details").first();
+        await detailsEl.click();
         await page.waitForTimeout(500);
     }
 
@@ -222,13 +253,8 @@ test.describe("rule-detail-sheet visual regression", () => {
         await clickableTag.click();
         await page.waitForTimeout(500);
 
-        // Wait for the dialog to be visible
-        const dialog = page.locator("rule-detail-sheet sl-dialog");
-        await expect(dialog).toBeVisible();
-
-        await expect(dialog).toHaveScreenshot("rule-detail-sheet-condition-open.png", {
-            maxDiffPixelRatio: 0.05,
-        });
+        await page.waitForTimeout(300);
+        await screenshotDialogPanel(page, "rule-detail-sheet-condition-open.png");
     });
 
     test("open dialog from trait click shows trait detail with sub-traits", async ({ page }) => {
@@ -246,12 +272,8 @@ test.describe("rule-detail-sheet visual regression", () => {
         await tags.nth(1).click();
         await page.waitForTimeout(500);
 
-        const dialog = page.locator("rule-detail-sheet sl-dialog");
-        await expect(dialog).toBeVisible();
-
-        await expect(dialog).toHaveScreenshot("rule-detail-sheet-trait-with-traits.png", {
-            maxDiffPixelRatio: 0.05,
-        });
+        await page.waitForTimeout(300);
+        await screenshotDialogPanel(page, "rule-detail-sheet-trait-with-traits.png");
     });
 
     test("rule-detail-sheet phone viewport", async ({ page }) => {
@@ -269,12 +291,8 @@ test.describe("rule-detail-sheet visual regression", () => {
         await clickableTag.click();
         await page.waitForTimeout(500);
 
-        const dialog = page.locator("rule-detail-sheet sl-dialog");
-        await expect(dialog).toBeVisible();
-
-        await expect(dialog).toHaveScreenshot("rule-detail-sheet-phone.png", {
-            maxDiffPixelRatio: 0.05,
-        });
+        await page.waitForTimeout(300);
+        await screenshotDialogPanel(page, "rule-detail-sheet-phone.png");
     });
 
     test("rule-detail-sheet tablet viewport", async ({ page }) => {
@@ -292,12 +310,8 @@ test.describe("rule-detail-sheet visual regression", () => {
         await clickableTag.click();
         await page.waitForTimeout(500);
 
-        const dialog = page.locator("rule-detail-sheet sl-dialog");
-        await expect(dialog).toBeVisible();
-
-        await expect(dialog).toHaveScreenshot("rule-detail-sheet-tablet.png", {
-            maxDiffPixelRatio: 0.05,
-        });
+        await page.waitForTimeout(300);
+        await screenshotDialogPanel(page, "rule-detail-sheet-tablet.png");
     });
 
     test("rule-detail-sheet desktop viewport", async ({ page }) => {
@@ -315,11 +329,7 @@ test.describe("rule-detail-sheet visual regression", () => {
         await clickableTag.click();
         await page.waitForTimeout(500);
 
-        const dialog = page.locator("rule-detail-sheet sl-dialog");
-        await expect(dialog).toBeVisible();
-
-        await expect(dialog).toHaveScreenshot("rule-detail-sheet-desktop.png", {
-            maxDiffPixelRatio: 0.05,
-        });
+        await page.waitForTimeout(300);
+        await screenshotDialogPanel(page, "rule-detail-sheet-desktop.png");
     });
 });
