@@ -2,6 +2,7 @@ import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/card/card
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/details/details.js?deps=lit@3.3.2";
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/tag/tag.js?deps=lit@3.3.2";
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/divider/divider.js?deps=lit@3.3.2";
+import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/tooltip/tooltip.js?deps=lit@3.3.2";
 import { css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
@@ -212,6 +213,13 @@ class StatBlock extends BaseElement {
                 font-size: 0.75rem;
                 color: var(--muted-foreground);
                 margin-left: 0.25rem;
+            }
+            .info-icon {
+                font-size: 0.75rem;
+                color: var(--muted-foreground);
+                cursor: help;
+                margin-left: 0.25rem;
+                vertical-align: middle;
             }
             .blurb {
                 font-size: 0.875rem;
@@ -589,23 +597,43 @@ class StatBlock extends BaseElement {
                     <div class="save save-fort">
                         <span>Fort ${this.formatModifier(attributes.fortitude?.value)}</span>
                         ${attributes.fortitude?.saveDetail
-                            ? html`<span class="stat-details"
-                                  >${attributes.fortitude.saveDetail}</span
+                            ? html`<sl-tooltip
+                                  content="${attributes.fortitude.saveDetail}"
+                                  placement="top"
+                                  ><span
+                                      class="info-icon"
+                                      aria-label="${attributes.fortitude.saveDetail}"
+                                      >ⓘ</span
+                                  ></sl-tooltip
                               >`
                             : ""}
                     </div>
                     <div class="save save-ref">
                         <span>Ref ${this.formatModifier(attributes.reflex?.value)}</span>
                         ${attributes.reflex?.saveDetail
-                            ? html`<span class="stat-details"
-                                  >${attributes.reflex.saveDetail}</span
+                            ? html`<sl-tooltip
+                                  content="${attributes.reflex.saveDetail}"
+                                  placement="top"
+                                  ><span
+                                      class="info-icon"
+                                      aria-label="${attributes.reflex.saveDetail}"
+                                      >ⓘ</span
+                                  ></sl-tooltip
                               >`
                             : ""}
                     </div>
                     <div class="save save-will">
                         <span>Will ${this.formatModifier(attributes.will?.value)}</span>
                         ${attributes.will?.saveDetail
-                            ? html`<span class="stat-details">${attributes.will.saveDetail}</span>`
+                            ? html`<sl-tooltip
+                                  content="${attributes.will.saveDetail}"
+                                  placement="top"
+                                  ><span
+                                      class="info-icon"
+                                      aria-label="${attributes.will.saveDetail}"
+                                      >ⓘ</span
+                                  ></sl-tooltip
+                              >`
                             : ""}
                     </div>
                 </div>

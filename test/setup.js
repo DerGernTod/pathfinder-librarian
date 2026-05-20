@@ -12,6 +12,7 @@ const components = [
     "dropdown/dropdown",
     "tag/tag",
     "divider/divider",
+    "tooltip/tooltip",
     "dialog/dialog",
     "button/button",
     "radio-group/radio-group",
