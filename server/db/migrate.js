@@ -74,6 +74,8 @@ function _migrateRuleItemsConstraint(database) {
         return;
     }
 
+    // If a previous migration was interrupted, rule_items_old may still exist
+    database.run("DROP TABLE IF EXISTS rule_items_old");
     database.run("ALTER TABLE rule_items RENAME TO rule_items_old");
     database.run(`
         CREATE TABLE rule_items (
