@@ -89,8 +89,8 @@ test.describe("rule-detail block visual regression", () => {
     test("inline rule-detail block with description", async ({ page }) => {
         await mockSseWithBlocks(page, [
             {
-                type: "paragraph",
-                text: "The creature is afflicted with a condition.",
+                type: "text",
+                markdown: "The creature is afflicted with a condition.",
             },
             {
                 type: "rule-detail",
@@ -164,8 +164,8 @@ test.describe("rule-detail block visual regression", () => {
 
         await mockSseWithBlocks(page, [
             {
-                type: "paragraph",
-                text: "A condition affects the creature.",
+                type: "text",
+                markdown: "A condition affects the creature.",
             },
             {
                 type: "rule-detail",
@@ -204,8 +204,8 @@ test.describe("rule-detail block visual regression", () => {
 
         await mockSseWithBlocks(page, [
             {
-                type: "paragraph",
-                text: "A condition affects the creature.",
+                type: "text",
+                markdown: "A condition affects the creature.",
             },
             {
                 type: "rule-detail",
@@ -244,8 +244,8 @@ test.describe("rule-detail block visual regression", () => {
 
         await mockSseWithBlocks(page, [
             {
-                type: "paragraph",
-                text: "A condition affects the creature.",
+                type: "text",
+                markdown: "A condition affects the creature.",
             },
             {
                 type: "rule-detail",

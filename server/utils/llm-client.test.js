@@ -45,11 +45,11 @@ describe("llm-client", () => {
             process.env.GOOGLE_AI_API_KEY = "test-key";
             /** @type {import("../../shared/types.js").MessageBlock[]} */
             const blocks = [
-                { type: "paragraph", text: "Hello Pathfinder!" },
+                { type: "text", markdown: "Hello Pathfinder!" },
                 {
                     type: "callout",
                     title: "Key Rule",
-                    segments: [{ text: "critical hit", highlight: true }],
+                    markdown: "**critical hit**",
                 },
             ];
 
@@ -65,7 +65,7 @@ describe("llm-client", () => {
 
         it("sends correct API URL, headers, and request body structure", async () => {
             process.env.GOOGLE_AI_API_KEY = "my-secret-key";
-            const blocks = [{ type: "paragraph", text: "Test" }];
+            const blocks = [{ type: "text", markdown: "Test" }];
 
             /** @type {import("bun:test").Mock<() => Promise<unknown>>} */
             const fetchMock = mock(() => Promise.resolve(geminiResponse(JSON.stringify(blocks))));
@@ -147,23 +147,23 @@ describe("llm-client", () => {
             }
         });
 
-        it("falls back to paragraph block on malformed JSON in response", async () => {
+        it("falls back to text block on malformed JSON in response", async () => {
             process.env.GOOGLE_AI_API_KEY = "test-key";
             mockFetch(() => Promise.resolve(geminiResponse("not valid json {")));
 
             const result = await callGeminiJson("test", "", "player");
 
-            expect(result).toEqual([{ type: "paragraph", text: "not valid json {" }]);
+            expect(result).toEqual([{ type: "text", markdown: "not valid json {" }]);
         });
 
-        it("falls back to paragraph block on Zod validation failure", async () => {
+        it("falls back to text block on Zod validation failure", async () => {
             process.env.GOOGLE_AI_API_KEY = "test-key";
             const invalidBlocks = [{ type: "unknown-type", foo: "bar" }];
             mockFetch(() => Promise.resolve(geminiResponse(JSON.stringify(invalidBlocks))));
 
             const result = await callGeminiJson("test", "", "player");
 
-            expect(result).toEqual([{ type: "paragraph", text: JSON.stringify(invalidBlocks) }]);
+            expect(result).toEqual([{ type: "text", markdown: JSON.stringify(invalidBlocks) }]);
         });
 
         it("throws when API key is missing", async () => {
@@ -176,7 +176,7 @@ describe("llm-client", () => {
 
         it("sends system instruction in request body", async () => {
             process.env.GOOGLE_AI_API_KEY = "test-key";
-            const blocks = [{ type: "paragraph", text: "Test" }];
+            const blocks = [{ type: "text", markdown: "Test" }];
 
             /** @type {import("bun:test").Mock<() => Promise<unknown>>} */
             const fetchMock = mock(() => Promise.resolve(geminiResponse(JSON.stringify(blocks))));
@@ -195,7 +195,7 @@ describe("llm-client", () => {
 
         it("sends mode-aware prompt (player vs gm)", async () => {
             process.env.GOOGLE_AI_API_KEY = "test-key";
-            const blocks = [{ type: "paragraph", text: "Test" }];
+            const blocks = [{ type: "text", markdown: "Test" }];
 
             /** @type {import("bun:test").Mock<() => Promise<unknown>>} */
             const fetchMock = mock(() => Promise.resolve(geminiResponse(JSON.stringify(blocks))));
@@ -225,7 +225,7 @@ describe("llm-client", () => {
             expect(playerPrompt).not.toBe(gmPrompt);
         });
 
-        it("falls back to paragraph block on empty array from Gemini", async () => {
+        it("falls back to text block on empty array from Gemini", async () => {
             process.env.GOOGLE_AI_API_KEY = "test-key";
             mockFetch(() => Promise.resolve(geminiResponse("[]")));
 
@@ -233,8 +233,8 @@ describe("llm-client", () => {
 
             expect(result).toEqual([
                 {
-                    type: "paragraph",
-                    text: "I couldn't generate a response. Please try again.",
+                    type: "text",
+                    markdown: "I couldn't generate a response. Please try again.",
                 },
             ]);
         });
@@ -270,8 +270,8 @@ describe("llm-client", () => {
             process.env.GOOGLE_AI_API_KEY = "test-key";
             /** @type {import("../../shared/types.js").MessageBlock[]} */
             const blocks = [
-                { type: "paragraph", text: "Real response" },
-                { type: "callout", title: "Note", text: "Important" },
+                { type: "text", markdown: "Real response" },
+                { type: "callout", title: "Note", markdown: "Important" },
             ];
             mockFetch(() => Promise.resolve(geminiResponse(JSON.stringify(blocks))));
 
@@ -285,9 +285,8 @@ describe("llm-client", () => {
         it("includes block type descriptions and Pathfinder", () => {
             const prompt = buildSystemPrompt("", "player");
 
-            expect(prompt).toContain("paragraph");
+            expect(prompt).toContain("text");
             expect(prompt).toContain("callout");
-            expect(prompt).toContain("list");
             expect(prompt).toContain("stat-block");
             expect(prompt).toContain("rule-detail");
             expect(prompt).toContain("Pathfinder");
@@ -315,7 +314,7 @@ describe("llm-client", () => {
 
             expect(schema.type).toBe("array");
             expect(schema.items).toBeDefined();
-            expect(items.anyOf).toHaveLength(5);
+            expect(items.anyOf).toHaveLength(4);
         });
 
         it("uses enum for type discriminators (not const)", () => {
@@ -332,13 +331,7 @@ describe("llm-client", () => {
                 },
             );
 
-            expect(typeEnums).toEqual([
-                ["paragraph"],
-                ["callout"],
-                ["list"],
-                ["stat-block"],
-                ["rule-detail"],
-            ]);
+            expect(typeEnums).toEqual([["text"], ["callout"], ["stat-block"], ["rule-detail"]]);
         });
 
         it("includes required fields for each block type", () => {
@@ -346,11 +339,10 @@ describe("llm-client", () => {
             const items = /** @type {{ anyOf: Record<string, unknown>[] }} */ (
                 /** @type {unknown} */ (schema.items)
             );
-            const [para, callout, list, statBlock, ruleDetail] = items.anyOf;
+            const [text, callout, statBlock, ruleDetail] = items.anyOf;
 
-            expect(para.required).toEqual(["type"]);
-            expect(callout.required).toEqual(["type", "title"]);
-            expect(list.required).toEqual(["type", "items"]);
+            expect(text.required).toEqual(["type", "markdown"]);
+            expect(callout.required).toEqual(["type", "title", "markdown"]);
             // title is intentionally NOT required — Gemini sometimes omits it when
             // anyOf schemas share ruleItemId; resolveStatBlock falls back to the DB name.
             expect(statBlock.required).toEqual(["type", "ruleItemId"]);
@@ -362,7 +354,7 @@ describe("llm-client", () => {
             const items = /** @type {{ anyOf: Record<string, unknown>[] }} */ (
                 /** @type {unknown} */ (schema.items)
             );
-            const statBlock = items.anyOf[3];
+            const statBlock = items.anyOf[2];
             const props = /** @type {Record<string, unknown>} */ (statBlock.properties);
 
             expect(props.ruleItemId).toBeDefined();

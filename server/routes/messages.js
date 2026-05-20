@@ -48,8 +48,8 @@ function resolveStatBlock(database, block) {
     const ruleItem = queries.getRuleItemById(database, block.ruleItemId);
     if (!ruleItem) {
         return {
-            type: "paragraph",
-            text: `Creature not found: ${block.title}`,
+            type: "text",
+            markdown: `Creature not found: **${block.title}**`,
         };
     }
 

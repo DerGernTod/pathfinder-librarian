@@ -38,7 +38,7 @@ describe("chat-message", () => {
         const el = createMessage({
             id: "2",
             role: "assistant",
-            blocks: [{ type: "paragraph", text: "Response text" }],
+            blocks: [{ type: "text", markdown: "Response text" }],
         });
         await el.updateComplete;
         const assistantMsg = el.shadowRoot.querySelector("assistant-message");
@@ -46,66 +46,6 @@ describe("chat-message", () => {
         await /** @type {any} */ (assistantMsg).updateComplete;
         expect(getByText(assistantMsg.shadowRoot, "Response text")).toBeTruthy();
         expect(assistantMsg.shadowRoot.querySelector(".assistant-message")).toBeTruthy();
-    });
-
-    it("renders paragraph block", async () => {
-        const el = createMessage({
-            id: "1",
-            role: "assistant",
-            blocks: [{ type: "paragraph", text: "Plain paragraph" }],
-        });
-        await el.updateComplete;
-        const assistantMsg = el.shadowRoot.querySelector("assistant-message");
-        await /** @type {any} */ (assistantMsg).updateComplete;
-        expect(getByText(assistantMsg.shadowRoot, "Plain paragraph")).toBeTruthy();
-    });
-
-    it("renders italic paragraph block", async () => {
-        const el = createMessage({
-            id: "1",
-            role: "assistant",
-            blocks: [{ type: "paragraph", text: "Italic text", italic: true }],
-        });
-        await el.updateComplete;
-        const assistantMsg = el.shadowRoot.querySelector("assistant-message");
-        await /** @type {any} */ (assistantMsg).updateComplete;
-        const p = getByText(assistantMsg.shadowRoot, "Italic text");
-        expect(p.classList.contains("italic")).toBe(true);
-    });
-
-    it("renders callout block with title and text", async () => {
-        const el = createMessage({
-            id: "1",
-            role: "assistant",
-            blocks: [{ type: "callout", title: "Important Note", text: "Details here" }],
-        });
-        await el.updateComplete;
-        const assistantMsg = el.shadowRoot.querySelector("assistant-message");
-        await /** @type {any} */ (assistantMsg).updateComplete;
-        expect(getByText(assistantMsg.shadowRoot, "Important Note")).toBeTruthy();
-        expect(getByText(assistantMsg.shadowRoot, "Details here")).toBeTruthy();
-    });
-
-    it("renders list block with items", async () => {
-        const el = createMessage({
-            id: "1",
-            role: "assistant",
-            blocks: [
-                {
-                    type: "list",
-                    items: [
-                        { title: "Item A:", text: "Detail A" },
-                        { title: "Item B:", text: "Detail B" },
-                    ],
-                },
-            ],
-        });
-        await el.updateComplete;
-        const assistantMsg = el.shadowRoot.querySelector("assistant-message");
-        await /** @type {any} */ (assistantMsg).updateComplete;
-        expect(getByText(assistantMsg.shadowRoot, "Item A:")).toBeTruthy();
-        expect(getByText(assistantMsg.shadowRoot, "Detail A")).toBeTruthy();
-        expect(getByText(assistantMsg.shadowRoot, "Item B:")).toBeTruthy();
     });
 
     it("renders stat-block block as nested element", async () => {

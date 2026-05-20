@@ -1,5 +1,11 @@
 declare module "https://esm.sh/@shoelace-style/shoelace*";
 
+declare module "marked" {
+    export const marked: {
+        parse(md: string, options?: { breaks?: boolean; gfm?: boolean }): string;
+    };
+}
+
 declare module "@lit/context" {
     export function createContext<ValueType>(key: string): {
         __context__: unique symbol;

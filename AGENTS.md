@@ -43,6 +43,15 @@ Full architecture and patterns in `docs/architecture.md`.
 - Zod schemas in `shared/` for reuse
 - Aria labels for elements without visual labels
 
+### ESM imports (no-build)
+
+Client code runs in the browser with no bundler. Any npm package imported in client code MUST resolve at runtime to an `esm.sh` CDN URL. Two patterns:
+
+1. **Import map** (`client/index.html`) — for packages used across multiple files (lit, lit-html, hono). Add entry: `"pkg": "https://esm.sh/pkg@version"`, then `import { x } from "pkg"`.
+2. **Inline URL** — for side-effect-only or single-use imports (Shoelace components): `import "https://esm.sh/pkg@version/..."`.
+
+**Gotcha**: A bare specifier like `import { x } from "marked"` will fail with `Failed to resolve module specifier` unless `marked` is registered in the import map. Always choose one of the two patterns above.
+
 ## Responsive design
 
 Three breakpoints: phone (<768px), tablet (768–1024px), desktop (>1024px). Breakpoint state flows through `uiContext` via `UIState.breakpoint`.

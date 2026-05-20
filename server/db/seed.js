@@ -92,42 +92,25 @@ const MITFLIT_MESSAGES = [
         content: null,
         blocksJson: JSON.stringify([
             {
-                type: "paragraph",
-                segments: [
-                    {
-                        text: "Selling a living, unique creature like a Mitflit King isn't a standard item transaction, so standard \"Sell Items\" rules don't perfectly apply. Here is the best way to adjudicate this using PF2e mechanics:",
-                    },
-                ],
+                type: "text",
+                markdown:
+                    "Selling a living, unique creature like a Mitflit King isn't a standard item transaction, so standard \"Sell Items\" rules don't perfectly apply. Here is the best way to adjudicate this using PF2e mechanics:",
             },
             {
                 type: "callout",
                 title: "1. Earn Income (Diplomacy)",
-                segments: [
-                    {
-                        text: "Treat this as finding a buyer for exotic goods. Have the party face make an ",
-                    },
-                    { text: "Earn Income", highlight: true },
-                    {
-                        text: " check using Diplomacy. The creature is Level 4, so the DC should be ",
-                    },
-                    { text: "19", highlight: true },
-                    {
-                        text: ". The payout should be equivalent to a Level 4 task (approx. 5 gp per day spent arranging the sale).",
-                    },
-                ],
+                markdown:
+                    "Treat this as finding a buyer for exotic goods. Have the party face make an **Earn Income** check using Diplomacy. The creature is Level 4, so the DC should be **19**. The payout should be equivalent to a Level 4 task (approx. 5 gp per day spent arranging the sale).",
             },
             {
                 type: "callout",
                 title: "2. Setting the Scene",
-                text: 'Don\'t just let them click "sell". Make it an event. The settlement\'s guard might demand a "Monster Handling Fee" (1d4 \u00d7 10 gp). The blacksmith might want it for a sick gladiatorial pit, while the town guard wants it executed.',
+                markdown:
+                    'Don\'t just let them click "sell". Make it an event. The settlement\'s guard might demand a "Monster Handling Fee" (1d4 \u00d7 10 gp). The blacksmith might want it for a sick gladiatorial pit, while the town guard wants it executed.',
             },
             {
-                type: "paragraph",
-                segments: [
-                    {
-                        text: "Here is the exact stat block pulled from the system for your reference:",
-                    },
-                ],
+                type: "text",
+                markdown: "Here is the exact stat block pulled from the system for your reference:",
                 italic: true,
             },
             {
@@ -218,31 +201,13 @@ const MITFLIT_MESSAGES = [
         content: null,
         blocksJson: JSON.stringify([
             {
-                type: "paragraph",
-                text: "Here are a few narrative and mechanical hooks for this decision:",
+                type: "text",
+                markdown: "Here are a few narrative and mechanical hooks for this decision:",
             },
             {
-                type: "list",
-                items: [
-                    {
-                        title: "Reputation Shift (Faction):",
-                        text: "If the town is lawful good, selling a sapient creature to a blacksmith for gladiatorial games might lower the party's standing with the Town Guard, but raise it with the local Thieves' Guild or Underworld.",
-                    },
-                    {
-                        title: "The Blacksmith's Debt:",
-                        segments: [
-                            {
-                                text: "The blacksmith might not have liquid cash. He could offer a custom-crafted level 4 magical weapon (like a ",
-                            },
-                            { text: "+1 Striking Warhammer", highlight: true },
-                            { text: ") at a deep discount instead of gold." },
-                        ],
-                    },
-                    {
-                        title: "The Mitflit's Retinue:",
-                        text: "A Mitflit King wouldn't be alone. The party might soon find their base of operations besieged by angry Mitflits trying to rescue their liege.",
-                    },
-                ],
+                type: "text",
+                markdown:
+                    "- **Reputation Shift (Faction):** If the town is lawful good, selling a sapient creature to a blacksmith for gladiatorial games might lower the party's standing with the Town Guard, but raise it with the local Thieves' Guild or Underworld.\n- **The Blacksmith's Debt:** The blacksmith might not have liquid cash. He could offer a custom-crafted level 4 magical weapon (like a **+1 Striking Warhammer**) at a deep discount instead of gold.\n- **The Mitflit's Retinue:** A Mitflit King wouldn't be alone. The party might soon find their base of operations besieged by angry Mitflits trying to rescue their liege.",
             },
         ]),
         createdAt: "2025-01-01T10:04:00Z",
@@ -261,29 +226,20 @@ const MITFLIT_MESSAGES = [
         content: null,
         blocksJson: JSON.stringify([
             {
-                type: "paragraph",
-                segments: [
-                    {
-                        text: "When you have resistance to a damage type, you subtract the resistance value from the total damage dealt after applying any weaknesses or immunities.",
-                    },
-                ],
+                type: "text",
+                markdown:
+                    "When you have resistance to a damage type, you subtract the resistance value from the total damage dealt after applying any weaknesses or immunities.",
             },
             {
                 type: "callout",
                 title: "Resistance Calculation",
-                segments: [
-                    { text: "If the giant scorpion's crit deals " },
-                    { text: "28 slashing damage", highlight: true },
-                    {
-                        text: " and you have resistance 5 to physical, you take 28 - 5 = ",
-                    },
-                    { text: "23 damage", highlight: true },
-                    { text: "." },
-                ],
+                markdown:
+                    "If the giant scorpion's crit deals **28 slashing damage** and you have resistance 5 to physical, you take 28 - 5 = **23 damage**.",
             },
             {
-                type: "paragraph",
-                text: "Note that resistance applies once per hit, not per damage die. If the attack includes multiple damage types (e.g. slashing + poison), resistance only applies to the matching type.",
+                type: "text",
+                markdown:
+                    "Note that resistance applies once per hit, not per damage die. If the attack includes multiple damage types (e.g. slashing + poison), resistance only applies to the matching type.",
             },
         ]),
         createdAt: "2025-01-01T10:06:00Z",
@@ -305,39 +261,19 @@ const CHANDELIER_MESSAGES = [
         content: null,
         blocksJson: JSON.stringify([
             {
-                type: "paragraph",
-                segments: [
-                    {
-                        text: "This is a creative improvised action! Here's how to handle it:",
-                    },
-                ],
+                type: "text",
+                markdown: "This is a creative improvised action! Here's how to handle it:",
             },
             {
                 type: "callout",
                 title: "Skill Checks Needed",
-                segments: [
-                    {
-                        text: "1. ",
-                    },
-                    { text: "Thievery (DC 18)", highlight: true },
-                    {
-                        text: " - to cut or weaken the rope unnoticed",
-                    },
-                    { text: "2. ", highlight: true },
-                    { text: "Stealth (DC 20)", highlight: true },
-                    {
-                        text: " - to position themselves without detection",
-                    },
-                    { text: "3. ", highlight: true },
-                    { text: "Timing check", highlight: true },
-                    {
-                        text: " - a free action to release when the noble is under it",
-                    },
-                ],
+                markdown:
+                    "1. **Thievery (DC 18)** - to cut or weaken the rope unnoticed\n2. **Stealth (DC 20)** - to position themselves without detection\n3. **Timing check** - a free action to release when the noble is under it",
             },
             {
-                type: "paragraph",
-                text: "If all succeed, deal 6d6 bludgeoning damage (DC 20 Reflex for half). If spotted early, guards intervene.",
+                type: "text",
+                markdown:
+                    "If all succeed, deal 6d6 bludgeoning damage (DC 20 Reflex for half). If spotted early, guards intervene.",
             },
         ]),
         createdAt: "2025-01-01T11:02:00Z",
@@ -356,29 +292,13 @@ const CHANDELIER_MESSAGES = [
         content: null,
         blocksJson: JSON.stringify([
             {
-                type: "paragraph",
-                text: "This becomes a dynamic chase scene! Consider these complications:",
+                type: "text",
+                markdown: "This becomes a dynamic chase scene! Consider these complications:",
             },
             {
-                type: "list",
-                items: [
-                    {
-                        title: "Rafter Terrain:",
-                        text: "Narrow, unstable surfaces. Acrobatics DC 15 to move without falling (10 ft fall damage). Guards have -2 to attack.",
-                    },
-                    {
-                        title: "The Chandelier:",
-                        segments: [
-                            { text: "If the rogue cuts it now, they can drop it on " },
-                            { text: "1d4 guards below", highlight: true },
-                            { text: " for the same damage." },
-                        ],
-                    },
-                    {
-                        title: "Escape Options:",
-                        text: "Through a window (Athletics DC 12 to climb out), down a nearby servant's stair, or use a grappling hook to swing to a balcony.",
-                    },
-                ],
+                type: "text",
+                markdown:
+                    "- **Rafter Terrain:** Narrow, unstable surfaces. Acrobatics DC 15 to move without falling (10 ft fall damage). Guards have -2 to attack.\n- **The Chandelier:** If the rogue cuts it now, they can drop it on **1d4 guards below** for the same damage.\n- **Escape Options:** Through a window (Athletics DC 12 to climb out), down a nearby servant's stair, or use a grappling hook to swing to a balcony.",
             },
         ]),
         createdAt: "2025-01-01T11:04:00Z",
@@ -400,47 +320,26 @@ const REAGENTS_MESSAGES = [
         content: null,
         blocksJson: JSON.stringify([
             {
-                type: "paragraph",
-                segments: [
-                    {
-                        text: "Dragon's blood is a rare alchemical reagent. Here's how to handle it in your campaign:",
-                    },
-                ],
+                type: "text",
+                markdown:
+                    "Dragon's blood is a rare alchemical reagent. Here's how to handle it in your campaign:",
             },
             {
                 type: "callout",
                 title: "Availability & Cost",
-                segments: [
-                    {
-                        text: "In a major settlement with a magic district, treat it as ",
-                    },
-                    { text: "Level 5 rare item", highlight: true },
-                    {
-                        text: ". Base cost: 25 gp per vial (enough for 1 potion or 2 scrolls).",
-                    },
-                ],
+                markdown:
+                    "In a major settlement with a magic district, treat it as **Level 5 rare item**. Base cost: 25 gp per vial (enough for 1 potion or 2 scrolls).",
             },
             {
                 type: "callout",
                 title: "Purchase Options",
-                segments: [
-                    {
-                        text: "1. ",
-                    },
-                    { text: "Alchemist's Shop", highlight: true },
-                    {
-                        text: " - DC 22 Diplomacy to find a supplier",
-                    },
-                    { text: "2. ", highlight: true },
-                    { text: "Black Market", highlight: true },
-                    {
-                        text: " - DC 20 Underworld check, but watch for shady dealings",
-                    },
-                ],
+                markdown:
+                    "1. **Alchemist's Shop** - DC 22 Diplomacy to find a supplier\n2. **Black Market** - DC 20 Underworld check, but watch for shady dealings",
             },
             {
-                type: "paragraph",
-                text: "Your GM might require you to hunt a dragon yourself as a quest instead of buying it!",
+                type: "text",
+                markdown:
+                    "Your GM might require you to hunt a dragon yourself as a quest instead of buying it!",
             },
         ]),
         createdAt: "2025-01-01T12:02:00Z",
@@ -458,29 +357,13 @@ const REAGENTS_MESSAGES = [
         content: null,
         blocksJson: JSON.stringify([
             {
-                type: "paragraph",
-                text: "Most dragon blood is usable, but the quality affects potency:",
+                type: "text",
+                markdown: "Most dragon blood is usable, but the quality affects potency:",
             },
             {
-                type: "list",
-                items: [
-                    {
-                        title: "Young or Adult Dragon:",
-                        text: "Standard quality. Good for basic potions and scrolls. Blood harvested after death.",
-                    },
-                    {
-                        title: "Ancient Dragon:",
-                        segments: [
-                            { text: "Superior quality. Grants a " },
-                            { text: "+1 item bonus", highlight: true },
-                            { text: " on crafting checks using this reagent." },
-                        ],
-                    },
-                    {
-                        title: "Extraction Method:",
-                        text: "Non-lethal extraction is possible (Athletics or Medicine DC equal to dragon's Fortitude save) but yields 50% less blood and the dragon remembers...",
-                    },
-                ],
+                type: "text",
+                markdown:
+                    "- **Young or Adult Dragon:** Standard quality. Good for basic potions and scrolls. Blood harvested after death.\n- **Ancient Dragon:** Superior quality. Grants a **+1 item bonus** on crafting checks using this reagent.\n- **Extraction Method:** Non-lethal extraction is possible (Athletics or Medicine DC equal to dragon's Fortitude save) but yields 50% less blood and the dragon remembers...",
             },
         ]),
         createdAt: "2025-01-01T12:04:00Z",

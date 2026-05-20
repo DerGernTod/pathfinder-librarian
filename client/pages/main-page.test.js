@@ -222,7 +222,7 @@ describe("main-page", () => {
             role: "assistant",
             mode: "player",
             createdAt: new Date().toISOString(),
-            blocks: [{ type: "paragraph", text: "Mock response" }],
+            blocks: [{ type: "text", markdown: "Mock response" }],
         };
 
         // Mock the RPC client
@@ -267,7 +267,7 @@ describe("main-page", () => {
         expect(element._msgState.messages[2].role).toBe("assistant");
         // We check the blocks property directly
         expect(element._msgState.messages[2].blocks).toEqual([
-            { type: "paragraph", text: "Mock response" },
+            { type: "text", markdown: "Mock response" },
         ]);
     });
 
@@ -296,7 +296,7 @@ describe("main-page", () => {
             role: "assistant",
             mode: "player",
             createdAt: new Date().toISOString(),
-            blocksJson: JSON.stringify([{ type: "paragraph", text: "Response" }]),
+            blocksJson: JSON.stringify([{ type: "text", markdown: "Response" }]),
         };
 
         const mockResponse = {
@@ -593,7 +593,7 @@ describe("main-page", () => {
                 role: "assistant",
                 mode: "player",
                 createdAt: new Date().toISOString(),
-                blocks: [{ type: "paragraph", text: "Response" }],
+                blocks: [{ type: "text", markdown: "Response" }],
             };
 
             // @ts-expect-error - override global fetch with our mock
@@ -646,7 +646,7 @@ describe("main-page", () => {
                 role: "assistant",
                 mode: "player",
                 createdAt: new Date().toISOString(),
-                blocks: [{ type: "paragraph", text: "Hi there!" }],
+                blocks: [{ type: "text", markdown: "Hi there!" }],
             };
 
             let callCount = 0;
@@ -1091,7 +1091,7 @@ describe("main-page", () => {
                 role: "assistant",
                 mode: "player",
                 createdAt: new Date().toISOString(),
-                blocks: [{ type: "paragraph", text: "Response" }],
+                blocks: [{ type: "text", markdown: "Response" }],
             };
 
             let callCount = 0;
@@ -1163,7 +1163,7 @@ describe("main-page", () => {
                 role: "assistant",
                 mode: "player",
                 createdAt: new Date().toISOString(),
-                blocks: [{ type: "paragraph", text: "Response" }],
+                blocks: [{ type: "text", markdown: "Response" }],
             };
 
             // @ts-expect-error - override global fetch with our mock

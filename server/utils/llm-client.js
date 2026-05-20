@@ -14,33 +14,19 @@ export class RetryableError extends Error {
  * @typedef {import("../../shared/types.js").MessageBlock} MessageBlock
  */
 
-/** Segment schema shared across block types */
-const segmentItems = {
-    type: "array",
-    items: {
-        type: "object",
-        properties: {
-            text: { type: "string" },
-            highlight: { type: "boolean" },
-        },
-        required: ["text"],
-    },
-};
-
 /**
  * Builds the Gemini response schema matching the MessageBlock union.
  * @returns {Record<string, unknown>}
  */
 export function buildGeminiResponseSchema() {
-    const paragraphBlock = {
+    const textBlock = {
         type: "object",
         properties: {
-            type: { type: "string", enum: ["paragraph"] },
-            text: { type: "string" },
-            segments: segmentItems,
+            type: { type: "string", enum: ["text"] },
+            markdown: { type: "string" },
             italic: { type: "boolean" },
         },
-        required: ["type"],
+        required: ["type", "markdown"],
     };
 
     const calloutBlock = {
@@ -48,30 +34,9 @@ export function buildGeminiResponseSchema() {
         properties: {
             type: { type: "string", enum: ["callout"] },
             title: { type: "string" },
-            text: { type: "string" },
-            segments: segmentItems,
+            markdown: { type: "string" },
         },
-        required: ["type", "title"],
-    };
-
-    const listBlock = {
-        type: "object",
-        properties: {
-            type: { type: "string", enum: ["list"] },
-            items: {
-                type: "array",
-                items: {
-                    type: "object",
-                    properties: {
-                        title: { type: "string" },
-                        text: { type: "string" },
-                        segments: segmentItems,
-                    },
-                    required: ["title"],
-                },
-            },
-        },
-        required: ["type", "items"],
+        required: ["type", "title", "markdown"],
     };
 
     const statBlockMessage = {
@@ -98,7 +63,7 @@ export function buildGeminiResponseSchema() {
     return {
         type: "array",
         items: {
-            anyOf: [paragraphBlock, calloutBlock, listBlock, statBlockMessage, ruleDetailBlock],
+            anyOf: [textBlock, calloutBlock, statBlockMessage, ruleDetailBlock],
         },
     };
 }
@@ -124,18 +89,19 @@ You MUST respond with a JSON array of message blocks. Do NOT include any text ou
 
 ## Block Types
 
-### paragraph
-Freeform text for narrative, explanations, or answers. Use the "text" field for plain text, or "segments" array for structured text with highlighted portions. Use "italic: true" for in-character dialogue or flavor text.
-- Example: { "type": "paragraph", "text": "Some explanatory text here." }
-- Example with segments: { "type": "paragraph", "segments": [{ "text": "You deal ", "highlight": false }, { "text": "2d6 fire damage", "highlight": true }] }
+### text
+Freeform markdown for narrative, explanations, or bullet lists. Use standard markdown formatting:
+- **bold** for emphasis, *italic* for flavor text
+- \`code\` for game terms like \`DC 15\`
+- - Bullet lists for enumerations
+- 1. Numbered lists for sequences
+- > Blockquotes for quoted rules
+Use "italic: true" for in-character dialogue or flavor text.
+- Example: { "type": "text", "markdown": "You deal **2d6 fire damage** to the target. The creature must succeed at a **DC 15** Fortitude save." }
 
 ### callout
-Important rules, key mechanics, or highlighted information. "title" is the heading. Use "segments" or "text" for the body. Use "highlight: true" on critical values.
-- Example: { "type": "callout", "title": "Key Rule", "segments": [{ "text": "When you critically hit, ", "highlight": false }, { "text": "double the damage dice", "highlight": true }] }
-
-### list
-Enumerations, options, features, or bullet-point information. Each item has a "title" (bold label) and optional "text" or "segments" for details.
-- Example: { "type": "list", "items": [{ "title": "Stride", "text": "Move up to your Speed" }, { "title": "Strike", "text": "Make a melee or ranged attack" }] }
+Important rules, key mechanics, or highlighted information. "title" is the heading. "markdown" body supports same formatting as text blocks.
+- Example: { "type": "callout", "title": "Critical Success", "markdown": "When you **critically succeed** on a saving throw, you take **no damage** from effects that would deal half damage on a success." }
 
 ### stat-block
 Creature stat block. Use when the reference data contains a creature entry. Reference the creature by the ruleItemId shown in its [ID: ...] header.
@@ -155,9 +121,8 @@ A non-creature rule item (trait, condition, feat, etc.) that has its OWN dedicat
 - Speak directly and confidently as a Pathfinder 2e expert
 - When the reference data contains a creature entry, ALWAYS emit a "stat-block" block using the creature's ruleItemId — never reconstruct stats manually or use rule-detail for a creature
 - Use rule-detail ONLY for items that have their own independent [ID: ...] header in the reference data (e.g. a trait entry, a condition entry) — not for traits listed inside another item's data
-- Combine blocks to give a complete answer: a paragraph for context, stat-block for the creature, rule-detail only for independently-listed items
-- Use "segments" with "highlight: true" sparingly — only for critical numbers, DCs, and key terms
-- For creative or explanatory text, use the plain "text" field in paragraphs
+- Combine blocks to give a complete answer: a text block for context, stat-block for the creature, rule-detail only for independently-listed items
+- Use markdown formatting: **bold** for key values (DCs, damage dice, critical terms), \`code\` for game terms, bullet lists for enumerations
 - Each response should typically have 2-5 blocks
 - Respond directly and concisely as a helpful RPG assistant${ragSection}`;
 }
@@ -217,21 +182,21 @@ export async function callGeminiJson(userMessage, ragContext, mode) {
     try {
         parsed = JSON.parse(rawText);
     } catch {
-        return [{ type: "paragraph", text: rawText }];
+        return [{ type: "text", markdown: rawText }];
     }
 
     let blocks;
     try {
         blocks = messageBlocksArraySchema.parse(parsed);
     } catch {
-        return [{ type: "paragraph", text: rawText }];
+        return [{ type: "text", markdown: rawText }];
     }
 
     if (blocks.length === 0) {
         return [
             {
-                type: "paragraph",
-                text: "I couldn't generate a response. Please try again.",
+                type: "text",
+                markdown: "I couldn't generate a response. Please try again.",
             },
         ];
     }
