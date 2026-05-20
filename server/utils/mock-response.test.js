@@ -11,7 +11,7 @@ describe("getMockResponse", () => {
 
     it("each block has a valid type property", () => {
         const response = getMockResponse();
-        const validTypes = ["paragraph", "callout", "list", "stat-block", "rule-detail"];
+        const validTypes = ["text", "callout", "stat-block", "rule-detail"];
 
         for (const block of response) {
             expect(block).toHaveProperty("type");
@@ -37,40 +37,16 @@ describe("getMockResponse", () => {
         for (const block of response) {
             expect(block).toHaveProperty("type");
 
-            if (block.type === "paragraph") {
-                // Paragraph blocks should have either text OR segments
-                const hasText = "text" in block && typeof block.text === "string";
-                const hasSegments =
-                    "segments" in block &&
-                    Array.isArray(block.segments) &&
-                    block.segments.every(
-                        (s) => typeof s.text === "string" && typeof s.highlight === "boolean",
-                    );
-                expect(hasText || hasSegments).toBe(true);
+            if (block.type === "text") {
+                // Text blocks must have a markdown string
+                const hasMarkdown = "markdown" in block && typeof block.markdown === "string";
+                expect(hasMarkdown).toBe(true);
             } else if (block.type === "callout") {
                 expect(block).toHaveProperty("title");
                 expect(typeof block.title).toBe("string");
-
-                // Callouts should have either text OR segments
-                const hasText = "text" in block && typeof block.text === "string";
-                const hasSegments =
-                    "segments" in block &&
-                    Array.isArray(block.segments) &&
-                    block.segments.every(
-                        (s) =>
-                            typeof s.text === "string" &&
-                            (typeof s.highlight === "boolean" ||
-                                typeof s.highlight === "undefined"),
-                    );
-                expect(hasText || hasSegments).toBe(true);
-            } else if (block.type === "list") {
-                expect(block).toHaveProperty("items");
-                expect(Array.isArray(block.items)).toBe(true);
-
-                for (const item of block.items) {
-                    expect(item).toHaveProperty("title");
-                    expect(typeof item.title).toBe("string");
-                }
+                // Callout blocks must have a markdown string
+                const hasMarkdown = "markdown" in block && typeof block.markdown === "string";
+                expect(hasMarkdown).toBe(true);
             } else if (block.type === "stat-block") {
                 expect(block).toHaveProperty("title");
                 expect(block).toHaveProperty("data");
@@ -81,34 +57,27 @@ describe("getMockResponse", () => {
         }
     });
 
-    it("paragraph blocks can have italic property", () => {
+    it("text blocks can have italic property", () => {
         const response = getMockResponse();
-        const paragraphBlocks = response.filter((b) => b.type === "paragraph");
+        const textBlocks = response.filter((b) => b.type === "text");
 
-        // Check that at least one paragraph block exists
-        expect(paragraphBlocks.length).toBeGreaterThan(0);
+        // Check that at least one text block exists
+        expect(textBlocks.length).toBeGreaterThan(0);
 
-        // Some paragraphs may have italic property (optional)
-        for (const block of paragraphBlocks) {
+        // Some text blocks may have italic property (optional)
+        for (const block of textBlocks) {
             if ("italic" in block) {
                 expect(typeof block.italic).toBe("boolean");
             }
         }
     });
 
-    it("list items can have optional text or segments", () => {
+    it("callout blocks have markdown as string type", () => {
         const response = getMockResponse();
-        const listBlocks = response.filter((b) => b.type === "list");
+        const calloutBlocks = response.filter((b) => b.type === "callout");
 
-        for (const block of listBlocks) {
-            for (const item of block.items) {
-                if ("text" in item) {
-                    expect(typeof item.text).toBe("string");
-                }
-                if ("segments" in item) {
-                    expect(Array.isArray(item.segments)).toBe(true);
-                }
-            }
+        for (const block of calloutBlocks) {
+            expect(typeof block.markdown).toBe("string");
         }
     });
 });

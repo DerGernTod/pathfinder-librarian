@@ -131,8 +131,8 @@ test.describe("landing page visual regression", () => {
                         createdAt: new Date().toISOString(),
                         blocks: [
                             {
-                                type: "paragraph",
-                                text: "Hi there! Welcome to Pathfinder Librarian.",
+                                type: "text",
+                                markdown: "Hi there! Welcome to Pathfinder Librarian.",
                             },
                         ],
                     },

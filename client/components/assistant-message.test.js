@@ -21,56 +21,54 @@ describe("assistant-message", () => {
         const el = createAssistantMessage({
             id: "1",
             role: "assistant",
-            blocks: [{ type: "paragraph", text: "Hello" }],
+            blocks: [{ type: "text", markdown: "Hello" }],
         });
         await el.updateComplete;
         expect(el.shadowRoot.querySelector(".assistant-avatar")).toBeTruthy();
         expect(getByText(el.shadowRoot, "🤖")).toBeTruthy();
     });
 
-    it("renders paragraph block", async () => {
+    it("renders text block with markdown", async () => {
         const el = createAssistantMessage({
             id: "1",
             role: "assistant",
-            blocks: [{ type: "paragraph", text: "Plain paragraph" }],
+            blocks: [{ type: "text", markdown: "Plain text" }],
         });
         await el.updateComplete;
-        expect(getByText(el.shadowRoot, "Plain paragraph")).toBeTruthy();
+        expect(getByText(el.shadowRoot, "Plain text")).toBeTruthy();
     });
 
-    it("renders italic paragraph block", async () => {
+    it("renders italic text block", async () => {
         const el = createAssistantMessage({
             id: "1",
             role: "assistant",
-            blocks: [{ type: "paragraph", text: "Italic text", italic: true }],
+            blocks: [{ type: "text", markdown: "Italic text", italic: true }],
         });
         await el.updateComplete;
-        const p = getByText(el.shadowRoot, "Italic text");
-        expect(p.classList.contains("italic")).toBe(true);
+        const italicDiv = el.shadowRoot.querySelector("div.italic");
+        expect(italicDiv).toBeTruthy();
+        expect(getByText(italicDiv, "Italic text")).toBeTruthy();
     });
 
-    it("renders callout block with title and text", async () => {
+    it("renders callout block with title and markdown", async () => {
         const el = createAssistantMessage({
             id: "1",
             role: "assistant",
-            blocks: [{ type: "callout", title: "Important Note", text: "Details here" }],
+            blocks: [{ type: "callout", title: "Important Note", markdown: "Details here" }],
         });
         await el.updateComplete;
         expect(getByText(el.shadowRoot, "Important Note")).toBeTruthy();
         expect(getByText(el.shadowRoot, "Details here")).toBeTruthy();
     });
 
-    it("renders list block with items", async () => {
+    it("renders markdown list in text block", async () => {
         const el = createAssistantMessage({
             id: "1",
             role: "assistant",
             blocks: [
                 {
-                    type: "list",
-                    items: [
-                        { title: "Item A:", text: "Detail A" },
-                        { title: "Item B:", text: "Detail B" },
-                    ],
+                    type: "text",
+                    markdown: "- **Item A:** Detail A\n- **Item B:** Detail B",
                 },
             ],
         });
@@ -92,23 +90,19 @@ describe("assistant-message", () => {
         expect(nested.title).toBe("Orc");
     });
 
-    it("renders inline segments with highlights", async () => {
+    it("renders bold text via markdown", async () => {
         const el = createAssistantMessage({
             id: "1",
             role: "assistant",
             blocks: [
                 {
-                    type: "paragraph",
-                    segments: [
-                        { text: "Normal text " },
-                        { text: "highlighted", highlight: true },
-                        { text: " more text" },
-                    ],
+                    type: "text",
+                    markdown: "Normal text **highlighted** more text",
                 },
             ],
         });
         await el.updateComplete;
-        const strong = el.shadowRoot.querySelector(".highlight");
+        const strong = el.shadowRoot.querySelector(".markdown-body strong");
         expect(strong).toBeTruthy();
         expect(strong.textContent).toBe("highlighted");
     });
@@ -168,7 +162,7 @@ describe("assistant-message", () => {
         const el = createAssistantMessage({
             id: "1",
             role: "assistant",
-            blocks: [{ type: "paragraph", text: "Hello" }],
+            blocks: [{ type: "text", markdown: "Hello" }],
         });
         await el.updateComplete;
         const sheet = el.shadowRoot.querySelector("rule-detail-sheet");
@@ -180,10 +174,22 @@ describe("assistant-message", () => {
             id: "1",
             role: "assistant",
             mode: "player",
-            blocks: [{ type: "paragraph", text: "Test" }],
+            blocks: [{ type: "text", markdown: "Test" }],
         });
         await el.updateComplete;
         const container = el.shadowRoot.querySelector(".assistant-message");
         expect(container.getAttribute("data-mode")).toBe("player");
+    });
+
+    it("renders code blocks via markdown", async () => {
+        const el = createAssistantMessage({
+            id: "1",
+            role: "assistant",
+            blocks: [{ type: "text", markdown: "Use `DC 15` for the check." }],
+        });
+        await el.updateComplete;
+        const code = el.shadowRoot.querySelector(".markdown-body code");
+        expect(code).toBeTruthy();
+        expect(code.textContent).toBe("DC 15");
     });
 });

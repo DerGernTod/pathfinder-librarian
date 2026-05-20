@@ -115,11 +115,11 @@ describe("queries", () => {
         it("creates and returns assistant message with blocks", () => {
             const conversations = queries.getAllConversations(db);
             const blocks = [
-                { type: "paragraph", text: "Test paragraph" },
+                { type: "text", markdown: "Test text" },
                 {
                     type: "callout",
                     title: "Test",
-                    segments: [{ text: "Test segment", highlight: false }],
+                    markdown: "Test markdown content",
                 },
             ];
 
@@ -142,8 +142,8 @@ describe("queries", () => {
                 );
             expect(assistantMsg.blocks).not.toBeNull();
             expect(assistantMsg.blocks?.[0]).toEqual({
-                type: "paragraph",
-                text: "Test paragraph",
+                type: "text",
+                markdown: "Test text",
             });
         });
 

@@ -171,34 +171,16 @@ const vectorChunkResultSchema = z.object({
 
 // --- MessageBlock schemas for LLM output validation ---
 
-const segmentSchema = z.object({
-    text: z.string(),
-    highlight: z.boolean().optional(),
-});
-
-const paragraphBlockSchema = z.object({
-    type: z.literal("paragraph"),
-    text: z.string().optional(),
-    segments: z.array(segmentSchema).optional(),
+const textBlockSchema = z.object({
+    type: z.literal("text"),
+    markdown: z.string(),
     italic: z.boolean().optional(),
 });
 
 const calloutBlockSchema = z.object({
     type: z.literal("callout"),
     title: z.string(),
-    text: z.string().optional(),
-    segments: z.array(segmentSchema).optional(),
-});
-
-const listItemSchema = z.object({
-    title: z.string(),
-    text: z.string().optional(),
-    segments: z.array(segmentSchema).optional(),
-});
-
-const listBlockSchema = z.object({
-    type: z.literal("list"),
-    items: z.array(listItemSchema),
+    markdown: z.string(),
 });
 
 const statBlockMessageSchema = z.object({
@@ -215,9 +197,8 @@ const ruleDetailBlockSchema = z.object({
 });
 
 const messageBlockSchema = z.union([
-    paragraphBlockSchema,
+    textBlockSchema,
     calloutBlockSchema,
-    listBlockSchema,
     statBlockMessageSchema,
     ruleDetailBlockSchema,
 ]);
@@ -245,11 +226,8 @@ export {
     updateUserSchema,
     ensureTestUserSchema,
     vectorChunkResultSchema,
-    segmentSchema,
-    paragraphBlockSchema,
+    textBlockSchema,
     calloutBlockSchema,
-    listItemSchema,
-    listBlockSchema,
     statBlockMessageSchema,
     ruleDetailBlockSchema,
     messageBlockSchema,

@@ -12,11 +12,9 @@
 
 /** @typedef {{ id: string, userId: string, publicKey: string, counter: number, deviceType: string, backedUp: boolean, transports: string[] | null, aaguid: string, createdAt: string }} Credential */
 
-/** @typedef {{ text: string, highlight?: boolean }} Segment */
+/** @typedef {{ type: "text", markdown: string, italic?: boolean }} TextBlock */
 
-/** @typedef {{ type: "paragraph", text?: string, segments?: Segment[], italic?: boolean }} ParagraphBlock */
-
-/** @typedef {{ type: "callout", title: string, text?: string, segments?: Segment[] }} CalloutBlock */
+/** @typedef {{ type: "callout", title: string, markdown: string }} CalloutBlock */
 
 /** @typedef {{ mod: number }} AbilityMod */
 /** @typedef {{ value: number, details?: string }} AcValue */
@@ -70,17 +68,11 @@
 
 /** @typedef {{ type: "stat-block", title?: string, data?: CreatureData, ruleItemId?: string }} StatBlockMessageBlock */
 
-/** @typedef {{ type: "list", items: Array<ListItem> }} ListBlock */
-
-/** @typedef {{ title: string, text?: string, segments?: Segment[] }} ListItem */
-
 /** @typedef {{ type: "rule-detail", ruleItemId?: string, title?: string, category?: string, description?: string, traits?: string[] }} RuleDetailBlock */
 
 /** @typedef {{ name: string, ruleItemId?: string }} TraitRef */
 
-/** @typedef {{ text: string, ruleItemId?: string, ruleItemType?: string }} RuleRefSegment */
-
-/** @typedef {ParagraphBlock | CalloutBlock | StatBlockMessageBlock | ListBlock | RuleDetailBlock} MessageBlock */
+/** @typedef {TextBlock | CalloutBlock | StatBlockMessageBlock | RuleDetailBlock} MessageBlock */
 
 /** @typedef {{ id: string, type: string, name: string, compendiumSource: string, dataJson: string, parentId?: string, linkedSource?: string, itemRefs?: string[] }} ImportableRuleItem */
 
