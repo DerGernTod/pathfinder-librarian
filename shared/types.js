@@ -19,7 +19,7 @@
 /** @typedef {{ mod: number }} AbilityMod */
 /** @typedef {{ value: number, details?: string }} AcValue */
 /** @typedef {{ value: number, max: number, details?: string }} HpValue */
-/** @typedef {{ value: number }} SaveValue */
+/** @typedef {{ value: number, saveDetail?: string }} SaveValue */
 /** @typedef {{ value: number, ability?: string }} SkillValue */
 
 /** @typedef {{ name: string, attack: string, damage: string, damageType?: string, compendiumSource?: string, traits?: string[], traitRefs?: Array<{ name: string, ruleItemId?: string }> }} MeleeEntry */
@@ -39,6 +39,11 @@
  *   traits: string[],
  *   perception?: number,
  *   languages?: { value: string[], details?: string },
+ *   initiative?: string,
+ *   size?: string,
+ *   blurb?: string,
+ *   publication?: { license?: string, remaster?: boolean, title?: string },
+ *   privateNotes?: string,
  *   attributes?: {
  *     ac?: AcValue,
  *     hp?: HpValue,

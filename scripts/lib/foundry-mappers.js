@@ -245,6 +245,42 @@ export function extractEmbeddedItems(items, creatureSource) {
                 }),
             });
             itemRefs.push(itemSource);
+        } else if (typed.type === "consumable") {
+            embeddedItems.push({
+                type: "consumable",
+                name: typed.name ?? "Unnamed Consumable",
+                compendiumSource: itemSource,
+                parentId: creatureSource,
+                dataJson: JSON.stringify({
+                    name: typed.name ?? "Unnamed Consumable",
+                    compendiumSource: itemSource,
+                }),
+            });
+            itemRefs.push(itemSource);
+        } else if (typed.type === "ammo") {
+            embeddedItems.push({
+                type: "ammo",
+                name: typed.name ?? "Unnamed Ammo",
+                compendiumSource: itemSource,
+                parentId: creatureSource,
+                dataJson: JSON.stringify({
+                    name: typed.name ?? "Unnamed Ammo",
+                    compendiumSource: itemSource,
+                }),
+            });
+            itemRefs.push(itemSource);
+        } else if (typed.type === "shield") {
+            embeddedItems.push({
+                type: "shield",
+                name: typed.name ?? "Unnamed Shield",
+                compendiumSource: itemSource,
+                parentId: creatureSource,
+                dataJson: JSON.stringify({
+                    name: typed.name ?? "Unnamed Shield",
+                    compendiumSource: itemSource,
+                }),
+            });
+            itemRefs.push(itemSource);
         }
         // Skip other types (effect, etc.)
     }
@@ -283,14 +319,29 @@ export function mapCreature(rawJson, packName) {
     const pubNotes = /** @type {string | undefined } */ (
         typeof details.publicNotes === "string" ? details.publicNotes : undefined
     );
-    const saves = /** @type {Record<string, { value?: number }>} */ ({
-        fortitude: /** @type {{ value?: number } | undefined } */ (attributes.fortitude),
-        reflex: /** @type {{ value?: number } | undefined } */ (attributes.reflex),
-        will: /** @type {{ value?: number } | undefined } */ (attributes.will),
-    });
+    const savesRaw = /** @type {Record<string, { value?: number, saveDetail?: string }>} */ (
+        sys.saves ?? {}
+    );
     const perception = /** @type {{ mod?: number } | undefined } */ (sys.perception);
     const skills = /** @type {Record<string, { base?: number }>} */ (sys.skills ?? {});
-    const traits = /** @type {{ value?: string[], rarity?: string } | undefined } */ (sys.traits);
+    const traits =
+        /** @type {{ value?: string[], rarity?: string, size?: { value?: string } } | undefined } */ (
+            sys.traits
+        );
+    const initiative = /** @type {{ statistic?: string } | undefined } */ (sys.initiative);
+    const sizeRaw = /** @type {{ value?: string } | undefined } */ (traits?.size);
+    const blurb = /** @type {string | undefined } */ (
+        typeof details.blurb === "string" ? details.blurb : undefined
+    );
+    const publication =
+        /** @type {{ license?: string, remaster?: boolean, title?: string } | undefined } */ (
+            typeof details.publication === "object" && details.publication !== null
+                ? details.publication
+                : undefined
+        );
+    const privateNotes = /** @type {string | undefined } */ (
+        typeof details.privateNotes === "string" ? details.privateNotes : undefined
+    );
 
     const compendiumSource = buildCompendiumSource(packName, raw._id ?? "");
 
@@ -327,9 +378,18 @@ export function mapCreature(rawJson, packName) {
         attributes: {
             ac: ac ? { value: ac.value ?? 0, details: ac.details } : undefined,
             hp: hp ? { value: hp.max ?? 0, max: hp.max ?? 0, details: hp.details } : undefined,
-            fortitude: saves.fortitude ? { value: saves.fortitude.value ?? 0 } : undefined,
-            reflex: saves.reflex ? { value: saves.reflex.value ?? 0 } : undefined,
-            will: saves.will ? { value: saves.will.value ?? 0 } : undefined,
+            fortitude: savesRaw.fortitude
+                ? {
+                      value: savesRaw.fortitude.value ?? 0,
+                      saveDetail: savesRaw.fortitude.saveDetail,
+                  }
+                : undefined,
+            reflex: savesRaw.reflex
+                ? { value: savesRaw.reflex.value ?? 0, saveDetail: savesRaw.reflex.saveDetail }
+                : undefined,
+            will: savesRaw.will
+                ? { value: savesRaw.will.value ?? 0, saveDetail: savesRaw.will.saveDetail }
+                : undefined,
             speed: speedStr || undefined,
         },
         abilities: {
@@ -341,6 +401,11 @@ export function mapCreature(rawJson, packName) {
             cha: abilities.cha ? { mod: abilities.cha.mod } : undefined,
         },
         skills: Object.keys(mappedSkills).length > 0 ? mappedSkills : undefined,
+        initiative: initiative?.statistic,
+        size: sizeRaw?.value,
+        blurb: blurb || undefined,
+        publication: publication,
+        privateNotes: privateNotes ? stripHtml(privateNotes) : undefined,
         description: pubNotes ? stripHtml(pubNotes) : undefined,
         compendiumSource,
         itemRefs,

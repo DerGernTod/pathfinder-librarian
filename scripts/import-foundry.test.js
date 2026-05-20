@@ -644,7 +644,7 @@ describe("import-foundry-core", () => {
                 verbose: false,
             });
 
-            expect(result.inserted).toBeLessThanOrEqual(4);
+            expect(result.inserted).toBeLessThanOrEqual(5);
         });
 
         it("creates parent-child relationships for creature embedded items", async () => {

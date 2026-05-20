@@ -11,6 +11,15 @@ import { tokens } from "../styles/tokens.js";
 import { BaseElement } from "./base-element.js";
 import "./pf-description.js";
 
+const SIZE_LABELS = {
+    tiny: "Tiny",
+    sm: "Small",
+    med: "Medium",
+    lg: "Large",
+    huge: "Huge",
+    grg: "Gargantuan",
+};
+
 /** @typedef {number | "reaction" | "free"} ActionType */
 /** @typedef {{ name: string; description: string; actionType?: ActionType; traits?: string[]; traitRefs?: Array<{ name: string; ruleItemId?: string }>; descriptionSegments?: Array<{ text: string; ruleItemId?: string }> }} Action */
 /** @typedef {{ name: string; attack: string; damage: string; damageType?: string; traits?: string[]; traitRefs?: Array<{ name: string; ruleItemId?: string }> }} MeleeEntry */
@@ -28,9 +37,9 @@ import "./pf-description.js";
  *     attributes?: {
  *         ac?: number | { value: number; details?: string };
  *         hp?: number | { value: number; max: number; details?: string };
- *         fortitude?: string | { value: number };
- *         reflex?: string | { value: number };
- *         will?: string | { value: number };
+ *         fortitude?: string | { value: number; saveDetail?: string };
+ *         reflex?: string | { value: number; saveDetail?: string };
+ *         will?: string | { value: number; saveDetail?: string };
  *         speed?: string;
  *     };
  *     skills?: Record<string, string | { value: number }>;
@@ -46,6 +55,10 @@ import "./pf-description.js";
  *     spellcasting?: SpellcastingEntry[];
  *     spells?: { name: string; description: string; tradition?: string; rank?: number; dc?: number }[];
  *     traitRefs?: Array<{ name: string; ruleItemId?: string }>;
+ *     initiative?: string;
+ *     size?: string;
+ *     blurb?: string;
+ *     description?: string;
  * }} StatBlockData
  */
 
@@ -61,9 +74,9 @@ import "./pf-description.js";
  *     attributes?: {
  *         ac?: { value: number; details?: string };
  *         hp?: { value: number; max: number; details?: string };
- *         fortitude?: { value: number };
- *         reflex?: { value: number };
- *         will?: { value: number };
+ *         fortitude?: { value: number; saveDetail?: string };
+ *         reflex?: { value: number; saveDetail?: string };
+ *         will?: { value: number; saveDetail?: string };
  *         speed?: string;
  *     };
  *     abilities?: {
@@ -80,6 +93,9 @@ import "./pf-description.js";
  *     actions?: Action[];
  *     description?: string;
  *     traitRefs?: Array<{ name: string; ruleItemId?: string }>;
+ *     initiative?: string;
+ *     size?: string;
+ *     blurb?: string;
  * }} NormalizedCreatureData
  */
 
@@ -196,6 +212,16 @@ class StatBlock extends BaseElement {
                 font-size: 0.75rem;
                 color: var(--muted-foreground);
                 margin-left: 0.25rem;
+            }
+            .blurb {
+                font-size: 0.875rem;
+                color: var(--muted-foreground);
+                font-style: italic;
+                margin-bottom: 0.25rem;
+            }
+            .initiative {
+                font-size: 0.875rem;
+                color: var(--muted-foreground);
             }
             .secondary-stats {
                 margin-bottom: 1rem;
@@ -384,6 +410,10 @@ class StatBlock extends BaseElement {
                       }))
                     : undefined,
                 traitRefs: raw.traitRefs,
+                initiative: raw.initiative,
+                size: raw.size,
+                blurb: raw.blurb,
+                description: raw.description,
             };
             return result;
         }
@@ -454,6 +484,9 @@ class StatBlock extends BaseElement {
                       },
                   ]
                 : undefined,
+            initiative: undefined,
+            size: undefined,
+            blurb: undefined,
         };
     }
 
@@ -493,8 +526,13 @@ class StatBlock extends BaseElement {
         return html`
             <div class="header">
                 <h3>${name || "Unknown"}</h3>
+                ${data.blurb ? html`<div class="blurb">${data.blurb}</div>` : ""}
                 <div class="type-level">
                     ${rarity ? html`<sl-tag size="small" variant="warning">${rarity}</sl-tag>` : ""}
+                    ${data.size
+                        ? (SIZE_LABELS[/** @type {keyof typeof SIZE_LABELS} */ (data.size)] ??
+                          data.size)
+                        : ""}
                     ${type || ""} ${level !== undefined ? level : ""}
                 </div>
                 <div class="traits">
@@ -550,16 +588,35 @@ class StatBlock extends BaseElement {
                 <div class="saves-grid">
                     <div class="save save-fort">
                         <span>Fort ${this.formatModifier(attributes.fortitude?.value)}</span>
+                        ${attributes.fortitude?.saveDetail
+                            ? html`<span class="stat-details"
+                                  >${attributes.fortitude.saveDetail}</span
+                              >`
+                            : ""}
                     </div>
                     <div class="save save-ref">
                         <span>Ref ${this.formatModifier(attributes.reflex?.value)}</span>
+                        ${attributes.reflex?.saveDetail
+                            ? html`<span class="stat-details"
+                                  >${attributes.reflex.saveDetail}</span
+                              >`
+                            : ""}
                     </div>
                     <div class="save save-will">
                         <span>Will ${this.formatModifier(attributes.will?.value)}</span>
+                        ${attributes.will?.saveDetail
+                            ? html`<span class="stat-details">${attributes.will.saveDetail}</span>`
+                            : ""}
                     </div>
                 </div>
                 <div class="perception-languages">
                     <div class="perception">Perception ${this.formatModifier(perception)}</div>
+                    ${data.initiative
+                        ? html`<div class="initiative">
+                              Initiative ${this.formatModifier(perception)}
+                              (${this.formatInitiativeStat(data.initiative)})
+                          </div>`
+                        : ""}
                     ${attributes.speed
                         ? html`<div class="speed">Speed ${attributes.speed}</div>`
                         : ""}
@@ -785,6 +842,14 @@ class StatBlock extends BaseElement {
                 composed: true,
             }),
         );
+    }
+
+    /**
+     * @param {string} statistic
+     * @returns {string}
+     */
+    formatInitiativeStat(statistic) {
+        return statistic.charAt(0).toUpperCase() + statistic.slice(1);
     }
 
     /**

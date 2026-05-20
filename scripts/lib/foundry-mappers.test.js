@@ -241,6 +241,84 @@ describe("foundry-mappers", () => {
                 expect(item.parentId).toBe(creatureSource);
             }
         });
+
+        it("maps saves from system.saves path", () => {
+            const raw = loadFixture("creature-simple.json");
+            const [creature] = mapCreature(raw, "pathfinder-bestiary");
+            const data = JSON.parse(creature.dataJson);
+
+            expect(data.attributes.fortitude.value).toBe(6);
+            expect(data.attributes.reflex.value).toBe(10);
+            expect(data.attributes.will.value).toBe(3);
+        });
+
+        it("maps initiative from system.initiative.statistic", () => {
+            const raw = loadFixture("creature-simple.json");
+            const [creature] = mapCreature(raw, "pathfinder-bestiary");
+            const data = JSON.parse(creature.dataJson);
+            expect(data.initiative).toBe("perception");
+        });
+
+        it("maps size from system.traits.size.value", () => {
+            const raw = loadFixture("creature-simple.json");
+            const [creature] = mapCreature(raw, "pathfinder-bestiary");
+            const data = JSON.parse(creature.dataJson);
+            expect(data.size).toBe("med");
+        });
+
+        it("maps blurb from system.details.blurb", () => {
+            const raw = loadFixture("creature-simple.json");
+            const [creature] = mapCreature(raw, "pathfinder-bestiary");
+            const data = JSON.parse(creature.dataJson);
+            expect(data.blurb).toBe("Male giant mosquito");
+        });
+
+        it("maps publication from system.details.publication", () => {
+            const raw = loadFixture("creature-simple.json");
+            const [creature] = mapCreature(raw, "pathfinder-bestiary");
+            const data = JSON.parse(creature.dataJson);
+            expect(data.publication).toEqual({
+                license: "OGL",
+                remaster: false,
+                title: "Pathfinder Bestiary",
+            });
+        });
+
+        it("handles creature without system.saves gracefully", () => {
+            const raw = {
+                _id: "nosaves001",
+                name: "No Saves Creature",
+                type: "npc",
+                system: {
+                    abilities: {
+                        str: { mod: 0 },
+                        dex: { mod: 0 },
+                        con: { mod: 0 },
+                        int: { mod: 0 },
+                        wis: { mod: 0 },
+                        cha: { mod: 0 },
+                    },
+                    attributes: {
+                        ac: { value: 10 },
+                        hp: { value: 5, max: 5 },
+                        speed: { value: 25 },
+                    },
+                    details: { level: { value: 0 } },
+                    perception: { mod: 0 },
+                    skills: {},
+                    traits: { value: [], rarity: "common" },
+                },
+                items: [],
+            };
+            const [creature] = mapCreature(raw, "test-pack");
+            const data = JSON.parse(creature.dataJson);
+
+            expect(data.attributes.fortitude).toBeUndefined();
+            expect(data.attributes.reflex).toBeUndefined();
+            expect(data.attributes.will).toBeUndefined();
+            expect(data.initiative).toBeUndefined();
+            expect(data.size).toBeUndefined();
+        });
     });
 
     describe("extractEmbeddedItems", () => {
@@ -331,8 +409,19 @@ describe("foundry-mappers", () => {
             const creatureSource = buildCompendiumSource("pathfinder-bestiary", raw._id);
             const { itemRefs } = extractEmbeddedItems(raw.items, creatureSource);
 
-            expect(itemRefs).toHaveLength(3);
+            expect(itemRefs).toHaveLength(4);
             expect(itemRefs[0]).toContain("melee001");
+        });
+
+        it("extracts consumable embedded items", () => {
+            const raw = loadFixture("creature-simple.json");
+            const creatureSource = buildCompendiumSource("pathfinder-bestiary", raw._id);
+            const { embeddedItems } = extractEmbeddedItems(raw.items, creatureSource);
+
+            const consumables = embeddedItems.filter((i) => i.type === "consumable");
+            expect(consumables).toHaveLength(1);
+            expect(consumables[0].name).toBe("Healing Potion (Minor)");
+            expect(consumables[0].parentId).toBe(creatureSource);
         });
     });
 
