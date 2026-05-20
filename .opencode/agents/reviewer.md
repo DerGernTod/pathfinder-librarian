@@ -18,11 +18,15 @@ Verify the implementation through automated checks and logic review. You MUST NO
 
 1. **Test Execution:** Run all test suites:
     - `bun run test` — unit/integration tests
-    - `bun run e2e` — visual regression tests
-    - All must pass
-2. **Verification:**
-    - If task involved UI changes, verify visual regression tests exist in `vrtests/`
+    - `bunx oxlint .` — lint
+    - `bunx oxfmt . --check` — format check
+    - `bun run check` — TypeScript typecheck
+    - `bun run e2e` — Playwright visual regression tests (**REQUIRED** — must run, not just check file existence)
+    - All must pass. If any fail: `STATUS: FAIL` with error logs.
+2. **VR Test Existence & Quality:**
+    - If task involved UI changes, verify visual regression tests exist in `vrtests/` for **all 3 viewports** (phone 375×812, tablet 768×1024, desktop 1280×800)
     - If UI changed without visual tests: `STATUS: FAIL` with missing tests
+    - If new VR tests added but `bun run e2e` was not run by implementor: `STATUS: FAIL`
 3. **Commit Relevance:**
     - Verify all commits on current branch relate to task requirements
     - Flag unrelated changes (CI, config, lock files, other features)
