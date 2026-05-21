@@ -327,3 +327,188 @@ describe("messages routes — player mode redaction", () => {
         }
     });
 });
+
+describe("messages routes — cost metadata", () => {
+    /** @type {Hono<any>} */
+    let app;
+    /** @type {ReturnType<typeof createDb>} */
+    let db;
+    /** @type {string} */
+    let sessionToken;
+    /** @type {string} */
+    let SEED_USER_ID;
+    /** @type {string} */
+    let convId;
+
+    beforeEach(async () => {
+        const { seedIfNeeded, SEED_IDS: seedIds } = await import("../db/seed.js");
+        SEED_USER_ID = seedIds.USER_DEFAULT;
+
+        db = createDb(":memory:");
+        seedIfNeeded(db);
+
+        const { conversationsRouter } = await import("./conversations.js");
+        const { sessionMiddleware } = await import("../middleware/session.js");
+        const { databaseMiddleware } = await import("../middleware/database.js");
+        const { createSession, createConversation } = await import("../db/queries.js");
+
+        app = new Hono()
+            .use("/api/*", databaseMiddleware({ database: db }))
+            .use("/api/conversations/*", sessionMiddleware({ database: db }))
+            .route("/api/conversations", conversationsRouter);
+
+        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        const session = createSession(db, {
+            userId: SEED_USER_ID,
+            token: crypto.randomUUID(),
+            expiresAt,
+        });
+        sessionToken = session.token;
+
+        const conv = createConversation(db, {
+            title: "Cost Test",
+            userId: SEED_USER_ID,
+        });
+        convId = conv.id;
+    });
+
+    afterEach(() => {
+        if (db) {
+            db.close();
+        }
+    });
+
+    it("assistantComplete SSE event includes ragMeta.usage when Gemini returns usage", async () => {
+        // Mock the LLM to return usage data
+        const originalFetch = globalThis.fetch;
+        const { mock } = await import("bun:test");
+
+        /** @type {import("bun:test").Mock<() => Promise<unknown>>} */
+        const fetchMock = mock(() => {
+            // Check if this is the Gemini API call
+            const url = /** @type {string[]} */ (fetchMock.mock.calls.at(-1))?.[0];
+            if (typeof url === "string" && url.includes("generateContent")) {
+                return Promise.resolve({
+                    ok: true,
+                    json: () =>
+                        Promise.resolve({
+                            candidates: [
+                                {
+                                    content: {
+                                        parts: [
+                                            {
+                                                text: JSON.stringify([
+                                                    {
+                                                        type: "text",
+                                                        markdown: "Mocked LLM response",
+                                                    },
+                                                ]),
+                                            },
+                                        ],
+                                    },
+                                },
+                            ],
+                            usageMetadata: {
+                                promptTokenCount: 200,
+                                candidatesTokenCount: 80,
+                                totalTokenCount: 280,
+                            },
+                        }),
+                });
+            }
+            const lastCall = fetchMock.mock.calls.at(-1);
+            if (lastCall) {
+                return originalFetch(
+                    .../** @type {[string | Request | URL, RequestInit | undefined]} */ (
+                        /** @type {unknown} */ (lastCall)
+                    ),
+                );
+            }
+            return originalFetch("");
+        });
+        globalThis.fetch = /** @type {typeof fetch} */ (/** @type {unknown} */ (fetchMock));
+
+        process.env.GOOGLE_AI_API_KEY = "test-key";
+
+        try {
+            const res = await app.request(`/api/conversations/${convId}/messages`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-session-token": sessionToken,
+                },
+                body: JSON.stringify({ content: "Tell me about goblins", mode: "gm" }),
+            });
+
+            const text = await res.text();
+            const events = parseSse(text);
+            const completeEvent = events.find((e) => e.type === "assistantComplete");
+            expect(completeEvent).toBeDefined();
+            if (!completeEvent) {
+                return;
+            }
+
+            const data =
+                /** @type {{ ragMeta: { resultCount: number, usage?: { promptTokenCount?: number, candidatesTokenCount?: number, totalTokenCount?: number }, embeddingTokens?: number } }} */ (
+                    completeEvent.data
+                );
+            expect(data.ragMeta).toBeDefined();
+            expect(data.ragMeta.usage).toBeDefined();
+            expect(data.ragMeta.usage?.promptTokenCount).toBe(200);
+            expect(data.ragMeta.usage?.candidatesTokenCount).toBe(80);
+            expect(data.ragMeta.usage?.totalTokenCount).toBe(280);
+        } finally {
+            globalThis.fetch = originalFetch;
+            delete process.env.GOOGLE_AI_API_KEY;
+            mock.restore();
+        }
+    });
+
+    it("assistantComplete SSE event includes ragMeta.embeddingTokens", async () => {
+        // No vector DB → embeddingTokens should be 0
+        const res = await app.request(`/api/conversations/${convId}/messages`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-session-token": sessionToken,
+            },
+            body: JSON.stringify({ content: "Hello", mode: "gm" }),
+        });
+
+        const text = await res.text();
+        const events = parseSse(text);
+        const completeEvent = events.find((e) => e.type === "assistantComplete");
+        expect(completeEvent).toBeDefined();
+        if (!completeEvent) {
+            return;
+        }
+
+        const data = /** @type {{ ragMeta: { embeddingTokens?: number } }} */ (completeEvent.data);
+        expect(data.ragMeta).toBeDefined();
+        expect(typeof data.ragMeta.embeddingTokens).toBe("number");
+    });
+
+    it("assistantComplete SSE event has undefined usage when LLM falls back to mock", async () => {
+        // No API key → LLM falls back to mock → usage should be undefined
+        const res = await app.request(`/api/conversations/${convId}/messages`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-session-token": sessionToken,
+            },
+            body: JSON.stringify({ content: "Hello", mode: "gm" }),
+        });
+
+        const text = await res.text();
+        const events = parseSse(text);
+        const completeEvent = events.find((e) => e.type === "assistantComplete");
+        expect(completeEvent).toBeDefined();
+        if (!completeEvent) {
+            return;
+        }
+
+        const data = /** @type {{ ragMeta: { usage?: unknown } }} */ (completeEvent.data);
+        expect(data.ragMeta).toBeDefined();
+        expect(data.ragMeta.usage).toBeUndefined();
+    });
+});

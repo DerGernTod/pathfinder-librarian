@@ -154,7 +154,7 @@ A non-creature rule item (trait, condition, feat, etc.) that has its OWN dedicat
  * @param {string} ragContext - RAG-retrieved context (empty string if none)
  * @param {string} mode - "player" or "gm"
  * @param {boolean} [ungrounded=false] - When true, adjusts system prompt for ungrounded responses
- * @returns {Promise<MessageBlock[]>}
+ * @returns {Promise<{ blocks: import("../../shared/types.js").MessageBlock[], usage?: import("../../shared/types.js").UsageMeta }>}
  */
 export async function callGeminiJson(contents, ragContext, mode, ungrounded) {
     const apiKey = process.env.GOOGLE_AI_API_KEY;
@@ -193,6 +193,13 @@ export async function callGeminiJson(contents, ragContext, mode, ungrounded) {
     }
 
     const responseData = geminiResponseSchema.parse(await response.json());
+    const usage = responseData.usageMetadata
+        ? {
+              promptTokenCount: responseData.usageMetadata.promptTokenCount,
+              candidatesTokenCount: responseData.usageMetadata.candidatesTokenCount,
+              totalTokenCount: responseData.usageMetadata.totalTokenCount,
+          }
+        : undefined;
     /** @type {string} */
     const rawText = responseData.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 
@@ -201,26 +208,29 @@ export async function callGeminiJson(contents, ragContext, mode, ungrounded) {
     try {
         parsed = JSON.parse(rawText);
     } catch {
-        return [{ type: "text", markdown: rawText }];
+        return { blocks: [{ type: "text", markdown: rawText }], usage: undefined };
     }
 
     let blocks;
     try {
         blocks = messageBlocksArraySchema.parse(parsed);
     } catch {
-        return [{ type: "text", markdown: rawText }];
+        return { blocks: [{ type: "text", markdown: rawText }], usage: undefined };
     }
 
     if (blocks.length === 0) {
-        return [
-            {
-                type: "text",
-                markdown: "I couldn't generate a response. Please try again.",
-            },
-        ];
+        return {
+            blocks: [
+                {
+                    type: "text",
+                    markdown: "I couldn't generate a response. Please try again.",
+                },
+            ],
+            usage: undefined,
+        };
     }
 
-    return blocks;
+    return { blocks, usage };
 }
 
 /**
@@ -230,7 +240,7 @@ export async function callGeminiJson(contents, ragContext, mode, ungrounded) {
  * @param {string} mode - "player" or "gm"
  * @param {string} [userId]
  * @param {boolean} [ungrounded=false] - When true, adjusts system prompt for ungrounded responses
- * @returns {Promise<MessageBlock[]>}
+ * @returns {Promise<{ blocks: import("../../shared/types.js").MessageBlock[], usage?: import("../../shared/types.js").UsageMeta }>}
  */
 export async function getLlmResponse(contents, ragContext, mode, userId, ungrounded) {
     try {
@@ -241,7 +251,7 @@ export async function getLlmResponse(contents, ragContext, mode, userId, ungroun
         }
         // oxlint-disable-next-line no-console
         console.warn("LLM client error, falling back to mock:", error);
-        return getMockResponse(userId);
+        return { blocks: getMockResponse(userId), usage: undefined };
     }
 }
 

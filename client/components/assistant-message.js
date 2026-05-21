@@ -14,6 +14,13 @@ import { BaseElement } from "./base-element.js";
 /** @typedef {import("../../shared/types.js").AssistantMessage} AssistantMessageType */
 /** @typedef {import("../../shared/types.js").MessageBlock} MessageBlock */
 
+// Pricing tied to GEMINI_MODEL (gemini-2.5-flash) in shared/constants.js
+const PRICING = {
+    INPUT_PER_M_TOKENS: 0.15,
+    OUTPUT_PER_M_TOKENS: 0.6,
+    EMBED_PER_M_TOKENS: 0.002,
+};
+
 /**
  * @customElement assistant-message
  * @property {AssistantMessageType} message - The assistant message to display.
@@ -174,6 +181,19 @@ class AssistantMessage extends BaseElement {
             .assistant-bubble.ungrounded .callout-card::part(base) {
                 border-color: hsl(45, 93%, 47%);
             }
+            .cost-indicator {
+                display: flex;
+                gap: 0.5rem;
+                align-items: center;
+                font-size: 0.6875rem;
+                color: var(--muted-foreground);
+                padding-left: 0.25rem;
+                margin-top: 0.25rem;
+                opacity: 0.7;
+            }
+            .cost-value {
+                font-family: ui-monospace, monospace;
+            }
             @media (max-width: 767px) {
                 .assistant-content {
                     max-width: 92%;
@@ -210,9 +230,33 @@ class AssistantMessage extends BaseElement {
                             ${blocks.map((block) => this.renderBlock(block))}
                         </div>
                     </div>
+                    ${this.renderCostIndicator()}
                 </div>
             </div>
             <rule-detail-sheet></rule-detail-sheet>
+        `;
+    }
+
+    renderCostIndicator() {
+        const meta = this.message?.ragMeta;
+        if (meta?.usage?.totalTokenCount === null || meta?.usage?.totalTokenCount === undefined) {
+            return nothing;
+        }
+        const { promptTokenCount = 0, candidatesTokenCount = 0 } = meta.usage;
+        const embedTokens = meta.embeddingTokens ?? 0;
+        const inputCost = (promptTokenCount * PRICING.INPUT_PER_M_TOKENS) / 1_000_000;
+        const outputCost = (candidatesTokenCount * PRICING.OUTPUT_PER_M_TOKENS) / 1_000_000;
+        const embedCost = (embedTokens * PRICING.EMBED_PER_M_TOKENS) / 1_000_000;
+        const totalCost = inputCost + outputCost + embedCost;
+        // Format to appropriate precision
+        const costStr = totalCost < 0.001 ? "<$0.001" : `$${totalCost.toFixed(4)}`;
+        return html`
+            <div class="cost-indicator" aria-label="Estimated generation cost">
+                <span class="cost-label"
+                    >${promptTokenCount + embedTokens} in → ${candidatesTokenCount} out</span
+                >
+                <span class="cost-value">${costStr}</span>
+            </div>
         `;
     }
 

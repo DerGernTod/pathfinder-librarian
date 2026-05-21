@@ -283,7 +283,7 @@ function resolveConversation(convId, db, userId) {
  * (signals client disconnection).
  * @param {{ contents: Array<{role: string, parts: Array<{text: string}>}>, contextText: string, mode: string, userId: string, ungrounded: boolean }} params
  * @param {(event: object) => boolean} notify
- * @returns {Promise<import("../../shared/types.js").MessageBlock[] | undefined>}
+ * @returns {Promise<{ blocks: import("../../shared/types.js").MessageBlock[], usage?: import("../../shared/types.js").UsageMeta } | undefined>}
  */
 async function getLlmResponseWithRetry(
     { contents, contextText, mode, userId, ungrounded },
@@ -353,6 +353,10 @@ async function runResponseStream(controller, ctx) {
     const blocks = [];
     /** @type {number} */
     let ragResultCount = 0;
+    /** @type {import("../../shared/types.js").UsageMeta | undefined} */
+    let usage;
+    /** @type {number} */
+    let embeddingTokens = 0;
     try {
         const ragContext = await queryRagContext(data.content, {
             db,
@@ -362,6 +366,7 @@ async function runResponseStream(controller, ctx) {
             mode: data.mode,
         });
         ragResultCount = ragContext.sources.length;
+        embeddingTokens = ragContext.embeddingTokens ?? 0;
         const isUngrounded = ragResultCount === 0;
 
         const llmContents = formatConversationForLlm(db, actualConvId);
@@ -382,7 +387,7 @@ async function runResponseStream(controller, ctx) {
             }
         }
 
-        const llmBlocks = await getLlmResponseWithRetry(
+        const llmResult = await getLlmResponseWithRetry(
             {
                 contents: llmContents,
                 contextText: ragContext.contextText,
@@ -393,8 +398,11 @@ async function runResponseStream(controller, ctx) {
             (event) => tryEnqueue(controller, event),
         );
 
+        const llmBlocks = llmResult?.blocks ?? [];
+        usage = llmResult?.usage;
+
         /** @type {import("../../shared/types.js").MessageBlock[]} */
-        const resolvedBlocks = resolveBlocks(db, llmBlocks ?? [], data.mode);
+        const resolvedBlocks = resolveBlocks(db, llmBlocks, data.mode);
 
         if (isUngrounded) {
             const disclaimerCallout = {
@@ -424,7 +432,10 @@ async function runResponseStream(controller, ctx) {
         });
         tryEnqueue(controller, {
             type: "assistantComplete",
-            data: { ...assistantMsg, ragMeta: { resultCount: ragResultCount } },
+            data: {
+                ...assistantMsg,
+                ragMeta: { resultCount: ragResultCount, usage, embeddingTokens },
+            },
         });
         try {
             controller.close();

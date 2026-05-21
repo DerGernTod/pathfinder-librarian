@@ -222,6 +222,14 @@ const messageBlocksArraySchema = z.array(messageBlockSchema);
 
 // --- Gemini API response schema for summarization validation ---
 
+const usageMetadataSchema = z
+    .object({
+        promptTokenCount: z.number().optional(),
+        candidatesTokenCount: z.number().optional(),
+        totalTokenCount: z.number().optional(),
+    })
+    .optional();
+
 const geminiResponseSchema = z.object({
     candidates: z
         .array(
@@ -238,6 +246,7 @@ const geminiResponseSchema = z.object({
             }),
         )
         .optional(),
+    usageMetadata: usageMetadataSchema,
 });
 
 export {
