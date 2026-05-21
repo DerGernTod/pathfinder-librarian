@@ -71,7 +71,7 @@
  * }} CreatureData
  */
 
-/** @typedef {{ type: "stat-block", title?: string, data?: CreatureData, ruleItemId?: string }} StatBlockMessageBlock */
+/** @typedef {{ type: "stat-block", title?: string, data?: CreatureData, ruleItemId?: string, redacted?: boolean }} StatBlockMessageBlock */
 
 /** @typedef {{ type: "rule-detail", ruleItemId?: string, title?: string, category?: string, description?: string, traits?: string[] }} RuleDetailBlock */
 

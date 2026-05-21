@@ -1,6 +1,7 @@
 import { createEmbeddings } from "../../scripts/lib/google-ai-client.js";
 import { RAG_CONFIG } from "../../shared/constants.js";
 import { getParentItem, getRuleItemById } from "../db/queries.js";
+import { redactRagCreatureSection } from "./data-redaction.js";
 import { cosineSimilarity, getAllChunkEmbeddings } from "./vector-store.js";
 
 /**
@@ -54,7 +55,7 @@ export async function createSingleEmbedding(prompt, apiKey, model) {
  * Orchestrates the full RAG pipeline: embed → search → deduplicate → format.
  *
  * @param {string} userPrompt - The user's question.
- * @param {{ vectorDb?: import("bun:sqlite").Database | null, db?: import("bun:sqlite").Database | null, topN?: number, threshold?: number, apiKey?: string, model?: string }} options
+ * @param {{ vectorDb?: import("bun:sqlite").Database | null, db?: import("bun:sqlite").Database | null, topN?: number, threshold?: number, apiKey?: string, model?: string, mode?: string }} options
  * @returns {Promise<RagContext>}
  */
 export async function queryRagContext(userPrompt, options = {}) {
@@ -64,6 +65,7 @@ export async function queryRagContext(userPrompt, options = {}) {
     const threshold = options.threshold ?? RAG_CONFIG.SIMILARITY_THRESHOLD;
     const apiKey = options.apiKey ?? process.env.GOOGLE_AI_API_KEY ?? "";
     const model = options.model ?? RAG_CONFIG.EMBEDDING_MODEL;
+    const mode = options.mode ?? "gm";
 
     // Graceful degradation: no vector DB or no API key
     if (!vectorDb) {
@@ -149,6 +151,15 @@ export async function queryRagContext(userPrompt, options = {}) {
 
             return parts.join("\n");
         });
+
+        // Redact creature sections in player mode
+        if (mode === "player") {
+            for (let i = 0; i < topResults.length; i++) {
+                if (topResults[i].chunk.ruleItemType === "creature") {
+                    contextParts[i] = redactRagCreatureSection(contextParts[i]);
+                }
+            }
+        }
 
         const contextText =
             `<retrieved-context>\n` + contextParts.join("\n\n") + `\n</retrieved-context>`;

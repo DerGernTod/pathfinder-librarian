@@ -307,6 +307,22 @@ class StatBlock extends BaseElement {
                 text-decoration: underline;
                 cursor: pointer;
             }
+            .redacted-callout {
+                background: rgba(251, 191, 36, 0.08);
+                border: 1px solid rgba(251, 191, 36, 0.25);
+                border-radius: 0.375rem;
+                padding: 0.625rem 0.75rem;
+                margin-top: 0.75rem;
+                font-size: 0.8125rem;
+                color: var(--muted-foreground);
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+            .redacted-callout-icon {
+                flex-shrink: 0;
+                font-size: 1rem;
+            }
             @media (max-width: 767px) {
                 .ability-scores {
                     grid-template-columns: repeat(3, 1fr);
@@ -325,6 +341,7 @@ class StatBlock extends BaseElement {
         title: { type: String },
         data: { type: Object },
         ruleItemId: { type: String },
+        redacted: { type: Boolean },
     };
 
     constructor() {
@@ -333,10 +350,30 @@ class StatBlock extends BaseElement {
         this.title = "";
         /** @type {StatBlockData} */
         this.data = {};
+        /** @type {boolean} */
+        this.redacted = false;
     }
 
     render() {
         const data = this.normalizeCreatureData(this.data);
+        if (this.redacted) {
+            return html`
+                <sl-details summary="View ${this.title}">
+                    <sl-card style="width: 100%;">
+                        ${this.renderHeader(data)}
+                        <sl-divider></sl-divider>
+                        <div
+                            class="redacted-callout"
+                            role="note"
+                            aria-label="Limited information available"
+                        >
+                            <span class="redacted-callout-icon">🔒</span>
+                            <span>Limited information — detailed stats available in GM Mode</span>
+                        </div>
+                    </sl-card>
+                </sl-details>
+            `;
+        }
         return html`
             <sl-details summary="View ${this.title} Stat Block">
                 <sl-card style="width: 100%;">

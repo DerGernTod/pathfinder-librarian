@@ -203,6 +203,7 @@ const statBlockMessageSchema = z.object({
     // ruleItemId. resolveStatBlock falls back to the creature name from the DB.
     title: z.string().optional(),
     ruleItemId: z.string(),
+    redacted: z.boolean().optional(),
 });
 
 const ruleDetailBlockSchema = z.object({
