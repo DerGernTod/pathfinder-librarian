@@ -87,11 +87,13 @@
 
 /** @typedef {{ contextText: string, sources: Array<RagSource> }} RagContext */
 
+/** @typedef {{ resultCount: number }} RagMeta */
+
 /** @typedef {{ inserted: number, updated: number, skipped: number, errors: number }} ImportResult */
 
 /** @typedef {{ id: string, role: "user", content: string, blocks?: never, mode: Mode, conversationId: string, createdAt: string }} UserMessage */
 
-/** @typedef {{ id: string, role: "assistant", blocks: MessageBlock[] | null, blocksJson?: string, mode: Mode, conversationId: string, content: null, createdAt: string }} AssistantMessage */
+/** @typedef {{ id: string, role: "assistant", blocks: MessageBlock[] | null, blocksJson?: string, mode: Mode, conversationId: string, content: null, createdAt: string, ragMeta?: RagMeta }} AssistantMessage */
 
 /** @typedef {UserMessage | AssistantMessage} Message */
 

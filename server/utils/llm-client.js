@@ -72,15 +72,26 @@ export function buildGeminiResponseSchema() {
  * Builds a system prompt for the Gemini API call.
  * @param {string} ragContext - RAG-retrieved text chunks (empty string if none)
  * @param {string} mode - "player" or "gm" — adjusts prompt tone and focus
+ * @param {boolean} [ungrounded=false] - When true, appends instructions for ungrounded responses
  * @returns {string}
  */
-export function buildSystemPrompt(ragContext, mode) {
+export function buildSystemPrompt(ragContext, mode, ungrounded) {
     const roleGuidance =
         mode === "gm"
             ? "You are advising a Game Master. Focus on encounter building, rules arbitration, NPC management, and running engaging games."
             : "You are advising a player. Focus on character options, combat tactics, spell selection, and understanding rules.";
 
     const ragSection = ragContext.length > 0 ? `\n\n## Reference Data\n${ragContext}` : "";
+
+    const ungroundedSection =
+        ungrounded === true
+            ? `\n\n## IMPORTANT — No Reference Data Available
+The database search returned NO matching results for the user's question. You must:
+1. Begin your response with a text block that says: "I don't have specific data in my database about this topic, but here's what I can share based on general Pathfinder 2e knowledge:"
+2. Clearly indicate throughout your response that this information is from general knowledge, not verified database entries.
+3. Avoid presenting speculation as fact. If you're genuinely unsure, say so.
+4. NEVER emit stat-block or rule-detail blocks — you have no verified data to reference.`
+            : "";
 
     return `You are a Pathfinder 2e RPG assistant. ${roleGuidance}
 
@@ -124,7 +135,7 @@ A non-creature rule item (trait, condition, feat, etc.) that has its OWN dedicat
 - Combine blocks to give a complete answer: a text block for context, stat-block for the creature, rule-detail only for independently-listed items
 - Use markdown formatting: **bold** for key values (DCs, damage dice, critical terms), \`code\` for game terms, bullet lists for enumerations
 - Each response should typically have 2-5 blocks
-- Respond directly and concisely as a helpful RPG assistant${ragSection}`;
+- Respond directly and concisely as a helpful RPG assistant${ragSection}${ungroundedSection}`;
 }
 
 /**
@@ -132,9 +143,10 @@ A non-creature rule item (trait, condition, feat, etc.) that has its OWN dedicat
  * @param {Array<{role: string, parts: Array<{text: string}>}>} contents - Full conversation turns
  * @param {string} ragContext - RAG-retrieved context (empty string if none)
  * @param {string} mode - "player" or "gm"
+ * @param {boolean} [ungrounded=false] - When true, adjusts system prompt for ungrounded responses
  * @returns {Promise<MessageBlock[]>}
  */
-export async function callGeminiJson(contents, ragContext, mode) {
+export async function callGeminiJson(contents, ragContext, mode, ungrounded) {
     const apiKey = process.env.GOOGLE_AI_API_KEY;
     if (!apiKey) {
         throw new Error("GOOGLE_AI_API_KEY environment variable is not set");
@@ -145,7 +157,7 @@ export async function callGeminiJson(contents, ragContext, mode) {
     const requestBody = {
         contents: contents,
         systemInstruction: {
-            parts: [{ text: buildSystemPrompt(ragContext, mode) }],
+            parts: [{ text: buildSystemPrompt(ragContext, mode, ungrounded) }],
         },
         generationConfig: {
             responseMimeType: "application/json",
@@ -207,11 +219,12 @@ export async function callGeminiJson(contents, ragContext, mode) {
  * @param {string} ragContext - RAG-retrieved context (empty string if none)
  * @param {string} mode - "player" or "gm"
  * @param {string} [userId]
+ * @param {boolean} [ungrounded=false] - When true, adjusts system prompt for ungrounded responses
  * @returns {Promise<MessageBlock[]>}
  */
-export async function getLlmResponse(contents, ragContext, mode, userId) {
+export async function getLlmResponse(contents, ragContext, mode, userId, ungrounded) {
     try {
-        return await callGeminiJson(contents, ragContext, mode);
+        return await callGeminiJson(contents, ragContext, mode, ungrounded);
     } catch (error) {
         if (error instanceof RetryableError) {
             throw error;

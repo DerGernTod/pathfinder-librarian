@@ -192,4 +192,48 @@ describe("assistant-message", () => {
         expect(code).toBeTruthy();
         expect(code.textContent).toBe("DC 15");
     });
+
+    describe("ungrounded styling", () => {
+        it("applies ungrounded class when ragMeta.resultCount is 0", async () => {
+            const el = createAssistantMessage({
+                id: "1",
+                role: "assistant",
+                blocks: [
+                    {
+                        type: "callout",
+                        title: "⚠ No Database Match",
+                        markdown: "This answer is based on general knowledge.",
+                    },
+                    { type: "text", markdown: "Some answer" },
+                ],
+                ragMeta: { resultCount: 0 },
+            });
+            await el.updateComplete;
+            const bubble = el.shadowRoot.querySelector(".assistant-bubble");
+            expect(bubble.classList.contains("ungrounded")).toBe(true);
+        });
+
+        it("does NOT apply ungrounded class when ragMeta is undefined", async () => {
+            const el = createAssistantMessage({
+                id: "1",
+                role: "assistant",
+                blocks: [{ type: "text", markdown: "Normal answer" }],
+            });
+            await el.updateComplete;
+            const bubble = el.shadowRoot.querySelector(".assistant-bubble");
+            expect(bubble.classList.contains("ungrounded")).toBe(false);
+        });
+
+        it("does NOT apply ungrounded class when ragMeta.resultCount > 0", async () => {
+            const el = createAssistantMessage({
+                id: "1",
+                role: "assistant",
+                blocks: [{ type: "text", markdown: "Grounded answer" }],
+                ragMeta: { resultCount: 3 },
+            });
+            await el.updateComplete;
+            const bubble = el.shadowRoot.querySelector(".assistant-bubble");
+            expect(bubble.classList.contains("ungrounded")).toBe(false);
+        });
+    });
 });
