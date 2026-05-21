@@ -90,6 +90,64 @@ describe("assistant-message", () => {
         expect(nested.title).toBe("Orc");
     });
 
+    it("passes redacted flag to stat-block component", async () => {
+        const el = createAssistantMessage({
+            id: "1",
+            role: "assistant",
+            blocks: [
+                {
+                    type: "stat-block",
+                    title: "Orc",
+                    data: { name: "Orc" },
+                    redacted: true,
+                },
+            ],
+        });
+        await el.updateComplete;
+        const nested = el.shadowRoot.querySelector("stat-block");
+        expect(nested).toBeTruthy();
+        expect(nested.redacted).toBe(true);
+    });
+
+    it("stat-block defaults redacted to false when not provided", async () => {
+        const el = createAssistantMessage({
+            id: "1",
+            role: "assistant",
+            blocks: [
+                {
+                    type: "stat-block",
+                    title: "Orc",
+                    data: { name: "Orc" },
+                },
+            ],
+        });
+        await el.updateComplete;
+        const nested = el.shadowRoot.querySelector("stat-block");
+        expect(nested).toBeTruthy();
+        expect(nested.redacted).toBe(false);
+    });
+
+    it("redacted stat-block renders limited view", async () => {
+        const el = createAssistantMessage({
+            id: "1",
+            role: "assistant",
+            blocks: [
+                {
+                    type: "stat-block",
+                    title: "Orc",
+                    data: { name: "Orc Warrior", traits: ["Orc"] },
+                    redacted: true,
+                },
+            ],
+        });
+        await el.updateComplete;
+        const nested = el.shadowRoot.querySelector("stat-block");
+        await nested.updateComplete;
+        const callout = nested.shadowRoot.querySelector(".redacted-callout");
+        expect(callout).toBeTruthy();
+        expect(callout.textContent).toContain("Limited information");
+    });
+
     it("renders bold text via markdown", async () => {
         const el = createAssistantMessage({
             id: "1",

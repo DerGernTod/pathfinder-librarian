@@ -371,6 +371,21 @@ describe("llm-client", () => {
 
             expect(prompt).not.toContain("No Reference Data Available");
         });
+
+        it("includes player restrictions when mode is player", () => {
+            const prompt = buildSystemPrompt("", "player");
+
+            expect(prompt).toContain("Player Mode Restrictions");
+            expect(prompt).toContain("NEVER reveal creature mechanics");
+            expect(prompt).toContain("Ask your GM");
+        });
+
+        it("omits player restrictions when mode is gm", () => {
+            const prompt = buildSystemPrompt("", "gm");
+
+            expect(prompt).not.toContain("Player Mode Restrictions");
+            expect(prompt).not.toContain("NEVER reveal creature mechanics");
+        });
     });
 
     describe("callGeminiForSummarization", () => {

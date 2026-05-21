@@ -93,7 +93,17 @@ The database search returned NO matching results for the user's question. You mu
 4. NEVER emit stat-block or rule-detail blocks — you have no verified data to reference.`
             : "";
 
-    return `You are a Pathfinder 2e RPG assistant. ${roleGuidance}
+    const playerRestrictions = `
+
+## Player Mode Restrictions
+You are responding to a PLAYER, not the Game Master. You must protect confidential game information:
+- NEVER reveal creature mechanics: AC, HP, saves, ability scores, skill modifiers, attack bonuses, damage dice, DCs, or spell details
+- Describe creatures narratively: appearance, size, observable traits, general behavior — what a character would see, not stat numbers
+- If the reference data contains a creature, you MAY emit a stat-block but only observable info will be shown to the player
+- For lore questions, share only what is commonly known in the game world — preserve mysteries and secrets for the GM to reveal
+- When in doubt, err on the side of revealing less. Suggest "Ask your GM for more details" when appropriate`;
+
+    return `You are a Pathfinder 2e RPG assistant. ${roleGuidance}${mode === "player" ? playerRestrictions : ""}
 
 ## Output Format
 You MUST respond with a JSON array of message blocks. Do NOT include any text outside the JSON array. Do NOT wrap the output in markdown code fences.

@@ -691,6 +691,78 @@ describe("stat-block", () => {
         });
     });
 
+    describe("redacted mode", () => {
+        it("renders header with name when redacted", async () => {
+            const el = createStatBlock("Orc Warrior", fullCreatureData);
+            el.redacted = true;
+            await el.updateComplete;
+            const h3 = el.shadowRoot.querySelector("h3");
+            expect(h3).toBeTruthy();
+            expect(h3.textContent).toBe("Mitflit King");
+        });
+
+        it("renders redacted callout when redacted is true", async () => {
+            const el = createStatBlock("Test", fullCreatureData);
+            el.redacted = true;
+            await el.updateComplete;
+            const callout = el.shadowRoot.querySelector(".redacted-callout");
+            expect(callout).toBeTruthy();
+            expect(callout.textContent).toContain("Limited information");
+            expect(callout.textContent).toContain("GM Mode");
+        });
+
+        it("does not render primary stats when redacted", async () => {
+            const el = createStatBlock("Test", fullCreatureData);
+            el.redacted = true;
+            await el.updateComplete;
+            const primaryStats = el.shadowRoot.querySelector(".primary-stats");
+            expect(primaryStats).toBeFalsy();
+        });
+
+        it("does not render secondary stats when redacted", async () => {
+            const el = createStatBlock("Test", fullCreatureData);
+            el.redacted = true;
+            await el.updateComplete;
+            const secondaryStats = el.shadowRoot.querySelector(".secondary-stats");
+            expect(secondaryStats).toBeFalsy();
+        });
+
+        it("does not render drill-downs when redacted", async () => {
+            const el = createStatBlock("Test", fullCreatureData);
+            el.redacted = true;
+            await el.updateComplete;
+            const drillDowns = el.shadowRoot.querySelector(".drill-downs");
+            expect(drillDowns).toBeFalsy();
+        });
+
+        it("renders full stats when redacted is false (regression)", async () => {
+            const el = createStatBlock("Test", fullCreatureData);
+            el.redacted = false;
+            await el.updateComplete;
+            expect(el.shadowRoot.querySelector(".primary-stats")).toBeTruthy();
+            expect(el.shadowRoot.querySelector(".secondary-stats")).toBeTruthy();
+            expect(el.shadowRoot.querySelector(".drill-downs")).toBeTruthy();
+            expect(el.shadowRoot.querySelector(".redacted-callout")).toBeFalsy();
+        });
+
+        it("renders full stats when redacted is undefined (regression)", async () => {
+            const el = createStatBlock("Test", fullCreatureData);
+            await el.updateComplete;
+            expect(el.shadowRoot.querySelector(".primary-stats")).toBeTruthy();
+            expect(el.shadowRoot.querySelector(".redacted-callout")).toBeFalsy();
+        });
+
+        it("redacted callout has aria-label for accessibility", async () => {
+            const el = createStatBlock("Test", fullCreatureData);
+            el.redacted = true;
+            await el.updateComplete;
+            const callout = el.shadowRoot.querySelector(".redacted-callout");
+            expect(callout).toBeTruthy();
+            expect(callout.getAttribute("role")).toBe("note");
+            expect(callout.getAttribute("aria-label")).toContain("Limited information");
+        });
+    });
+
     describe("edge cases", () => {
         it("renders with minimal creature data (no melee/spellcasting/actions)", async () => {
             const minimalData = {

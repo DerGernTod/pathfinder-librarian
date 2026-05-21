@@ -235,7 +235,13 @@ class AssistantMessage extends BaseElement {
                     </sl-card>
                 `;
             case "stat-block":
-                return html` <stat-block .title=${block.title} .data=${block.data}></stat-block> `;
+                return html`
+                    <stat-block
+                        .title=${block.title}
+                        .data=${block.data}
+                        .redacted=${block.redacted ?? false}
+                    ></stat-block>
+                `;
             case "rule-detail":
                 return html`
                     <div class="rule-detail-block">

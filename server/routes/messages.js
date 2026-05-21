@@ -6,6 +6,7 @@ import * as queries from "../db/queries.js";
 import { compactConversation } from "../utils/compaction.js";
 import { getDb, getUserId, getVectorDb } from "../utils/context.js";
 import { formatConversationForLlm, shouldCompact } from "../utils/conversation-history.js";
+import { redactCreatureDataForPlayer } from "../utils/data-redaction.js";
 import { resolveLocalizeRefs, resolveUuidRefs, loadLocalizations } from "../utils/foundry-refs.js";
 import { RetryableError, getLlmResponse } from "../utils/llm-client.js";
 import { queryRagContext } from "../utils/rag-query.js";
@@ -44,9 +45,10 @@ function tryEnqueue(controller, event) {
  * Resolves a stat-block with ruleItemId to one with full creature data.
  * @param {import("bun:sqlite").Database} database
  * @param {{ type: "stat-block", title: string, ruleItemId: string }} block
+ * @param {string} mode - "player" or "gm"
  * @returns {import("../../shared/types.js").MessageBlock}
  */
-function resolveStatBlock(database, block) {
+function resolveStatBlock(database, block, mode) {
     const ruleItem = queries.getRuleItemById(database, block.ruleItemId);
     if (!ruleItem) {
         return {
@@ -158,6 +160,17 @@ function resolveStatBlock(database, block) {
 
     const { ruleItemId: _id, title: blockTitle, ...blockWithoutId } = block;
     // Fall back to the creature's name from the DB if the LLM omitted the title.
+
+    if (mode === "player") {
+        const redactedData = redactCreatureDataForPlayer(data);
+        return {
+            ...blockWithoutId,
+            title: blockTitle ?? ruleItem.name,
+            data: redactedData,
+            redacted: true,
+        };
+    }
+
     return { ...blockWithoutId, title: blockTitle ?? ruleItem.name, data };
 }
 
@@ -211,9 +224,10 @@ function resolveRuleDetail(db, block) {
  * rather than emitting empty cards.
  * @param {import("bun:sqlite").Database} db
  * @param {import("../../shared/types.js").MessageBlock[]} llmBlocks
+ * @param {string} mode - "player" or "gm"
  * @returns {import("../../shared/types.js").MessageBlock[]}
  */
-function resolveBlocks(db, llmBlocks) {
+function resolveBlocks(db, llmBlocks, mode) {
     /** @type {import("../../shared/types.js").MessageBlock[]} */
     const result = [];
     for (const block of llmBlocks) {
@@ -224,6 +238,7 @@ function resolveBlocks(db, llmBlocks) {
                     /** @type {{ type: "stat-block", title: string, ruleItemId: string }} */ (
                         block
                     ),
+                    mode,
                 ),
             );
         } else if (block.type === "rule-detail" && "ruleItemId" in block && block.ruleItemId) {
@@ -344,6 +359,7 @@ async function runResponseStream(controller, ctx) {
             vectorDb,
             topN: 5,
             threshold: 0.3,
+            mode: data.mode,
         });
         ragResultCount = ragContext.sources.length;
         const isUngrounded = ragResultCount === 0;
@@ -378,7 +394,7 @@ async function runResponseStream(controller, ctx) {
         );
 
         /** @type {import("../../shared/types.js").MessageBlock[]} */
-        const resolvedBlocks = resolveBlocks(db, llmBlocks ?? []);
+        const resolvedBlocks = resolveBlocks(db, llmBlocks ?? [], data.mode);
 
         if (isUngrounded) {
             const disclaimerCallout = {

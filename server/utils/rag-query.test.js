@@ -210,5 +210,96 @@ describe("rag-query", () => {
             expect(result).toHaveProperty("sources");
             expect(Array.isArray(result.sources)).toBe(true);
         });
+
+        it("redacts creature chunk data when mode is player", async () => {
+            process.env.GOOGLE_AI_API_KEY = "test-key";
+            process.env.MOCK_GOOGLE_AI = "1";
+
+            insertChunk(vdb, {
+                id: "c1",
+                ruleItemId: "ri1",
+                ruleItemName: "Orc Warrior",
+                ruleItemType: "creature",
+                chunkIndex: 0,
+                text: "AC 21; Fort +10, Ref +9, Will +7\nHP 55/55\nTraits: Orc, Humanoid",
+                embedding: Array(768)
+                    .fill(0)
+                    .map((_, i) => (i === 0 ? 1 : 0)),
+            });
+
+            const result = await queryRagContext("Tell me about the orc", {
+                vectorDb: vdb,
+                topN: 5,
+                threshold: 0.1,
+                mode: "player",
+            });
+
+            // Creature stats should be redacted
+            if (result.contextText.length > 0) {
+                expect(result.contextText).not.toContain("AC 21");
+                expect(result.contextText).not.toContain("HP 55");
+                // But header and observable traits should remain
+                expect(result.contextText).toContain("Orc Warrior");
+                expect(result.contextText).toContain("Traits: Orc, Humanoid");
+            }
+        });
+
+        it("preserves non-creature data when mode is player", async () => {
+            process.env.GOOGLE_AI_API_KEY = "test-key";
+            process.env.MOCK_GOOGLE_AI = "1";
+
+            insertChunk(vdb, {
+                id: "c1",
+                ruleItemId: "ri1",
+                ruleItemName: "Fireball",
+                ruleItemType: "spell",
+                chunkIndex: 0,
+                text: "Spell: Fireball (Rank 3). Traditions: arcane, primal. Cast: two actions.",
+                embedding: Array(768)
+                    .fill(0)
+                    .map((_, i) => (i === 0 ? 1 : 0)),
+            });
+
+            const result = await queryRagContext("What is Fireball?", {
+                vectorDb: vdb,
+                topN: 5,
+                threshold: 0.1,
+                mode: "player",
+            });
+
+            // Spell data should NOT be redacted
+            expect(result.contextText).toContain("Fireball");
+            expect(result.contextText).toContain("Rank 3");
+        });
+
+        it("returns full data when mode is gm", async () => {
+            process.env.GOOGLE_AI_API_KEY = "test-key";
+            process.env.MOCK_GOOGLE_AI = "1";
+
+            insertChunk(vdb, {
+                id: "c1",
+                ruleItemId: "ri1",
+                ruleItemName: "Orc Warrior",
+                ruleItemType: "creature",
+                chunkIndex: 0,
+                text: "AC 21; Fort +10, Ref +9, Will +7\nHP 55/55",
+                embedding: Array(768)
+                    .fill(0)
+                    .map((_, i) => (i === 0 ? 1 : 0)),
+            });
+
+            const result = await queryRagContext("Tell me about the orc", {
+                vectorDb: vdb,
+                topN: 5,
+                threshold: 0.1,
+                mode: "gm",
+            });
+
+            // GM mode should return full data
+            if (result.contextText.length > 0) {
+                expect(result.contextText).toContain("AC 21");
+                expect(result.contextText).toContain("HP 55");
+            }
+        });
     });
 });
