@@ -15,6 +15,13 @@ export const RAG_CONFIG = {
 export const GEMINI_MODEL = "gemini-2.5-flash";
 export const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
+/** Conversation history configuration */
+export const CONVERSATION_CONFIG = {
+    MAX_HISTORY_TURNS: 20,
+    COMPACTION_THRESHOLD_TOKENS: 500000,
+    COMPACTION_KEEP_RECENT_TURNS: 10,
+};
+
 /** Deterministic UUIDs for seed data — stable across restarts, usable in tests */
 export const SEED_IDS = {
     USER_DEFAULT: "00000000-0000-4000-8000-000000000001",

@@ -129,12 +129,12 @@ A non-creature rule item (trait, condition, feat, etc.) that has its OWN dedicat
 
 /**
  * Calls the Gemini API with JSON mode to get a structured response.
- * @param {string} userMessage - The user's chat message
+ * @param {Array<{role: string, parts: Array<{text: string}>}>} contents - Full conversation turns
  * @param {string} ragContext - RAG-retrieved context (empty string if none)
  * @param {string} mode - "player" or "gm"
  * @returns {Promise<MessageBlock[]>}
  */
-export async function callGeminiJson(userMessage, ragContext, mode) {
+export async function callGeminiJson(contents, ragContext, mode) {
     const apiKey = process.env.GOOGLE_AI_API_KEY;
     if (!apiKey) {
         throw new Error("GOOGLE_AI_API_KEY environment variable is not set");
@@ -143,7 +143,7 @@ export async function callGeminiJson(userMessage, ragContext, mode) {
     const url = `${GEMINI_API_BASE}/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
 
     const requestBody = {
-        contents: [{ role: "user", parts: [{ text: userMessage }] }],
+        contents: contents,
         systemInstruction: {
             parts: [{ text: buildSystemPrompt(ragContext, mode) }],
         },
@@ -206,15 +206,15 @@ export async function callGeminiJson(userMessage, ragContext, mode) {
 
 /**
  * Gets an LLM response, falling back to mock on any error.
- * @param {string} userMessage - The user's chat message
+ * @param {Array<{role: string, parts: Array<{text: string}>}>} contents - Full conversation turns
  * @param {string} ragContext - RAG-retrieved context (empty string if none)
  * @param {string} mode - "player" or "gm"
  * @param {string} [userId]
  * @returns {Promise<MessageBlock[]>}
  */
-export async function getLlmResponse(userMessage, ragContext, mode, userId) {
+export async function getLlmResponse(contents, ragContext, mode, userId) {
     try {
-        return await callGeminiJson(userMessage, ragContext, mode);
+        return await callGeminiJson(contents, ragContext, mode);
     } catch (error) {
         if (error instanceof RetryableError) {
             throw error;
@@ -223,4 +223,58 @@ export async function getLlmResponse(userMessage, ragContext, mode, userId) {
         console.warn("LLM client error, falling back to mock:", error);
         return getMockResponse(userId);
     }
+}
+
+/**
+ * Calls the Gemini API to produce a plain-text summary of conversation messages.
+ * Used for compaction — no JSON mode, no structured schema.
+ * @param {string} messagesText - Serialized conversation messages to summarize
+ * @returns {Promise<string>}
+ */
+export async function callGeminiForSummarization(messagesText) {
+    const apiKey = process.env.GOOGLE_AI_API_KEY;
+    if (!apiKey) {
+        throw new Error("GOOGLE_AI_API_KEY environment variable is not set");
+    }
+
+    const url = `${GEMINI_API_BASE}/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+
+    const systemPrompt =
+        "You are summarizing a Pathfinder 2e RPG conversation. " +
+        "Produce a concise but comprehensive summary preserving all key facts, " +
+        "rules discussed, creatures mentioned, decisions made, and any ongoing " +
+        "questions or tasks. Write in plain text, not JSON.";
+
+    const requestBody = {
+        contents: [
+            {
+                role: "user",
+                parts: [
+                    {
+                        text: `Please summarize the following conversation:\n\n${messagesText}`,
+                    },
+                ],
+            },
+        ],
+        systemInstruction: {
+            parts: [{ text: systemPrompt }],
+        },
+    };
+
+    const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Gemini summarization API error: ${response.status} ${errorText}`);
+    }
+
+    const responseData =
+        /** @type {{ candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }} */ (
+            await response.json()
+        );
+    return responseData.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 }

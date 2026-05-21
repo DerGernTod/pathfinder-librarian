@@ -9,12 +9,14 @@ const ConversationSchema = z
         title: z.string(),
         user_id: z.string(),
         created_at: z.string(),
+        compacted_summary: z.string().nullable().optional(),
     })
     .transform((row) => ({
         id: row.id,
         title: row.title,
         userId: row.user_id,
         createdAt: row.created_at,
+        compactedSummary: row.compacted_summary ?? null,
     }));
 
 const ConversationListSchema = z.array(ConversationSchema);
@@ -168,7 +170,9 @@ export function getAllConversations(database = db) {
 export function getConversationById(database, id) {
     /** @type {unknown} */
     const row = database
-        .query("SELECT id, title, user_id, created_at FROM conversations WHERE id = ?")
+        .query(
+            "SELECT id, title, user_id, created_at, compacted_summary FROM conversations WHERE id = ?",
+        )
         .get(id);
     if (!row) {
         return null;
@@ -832,4 +836,17 @@ export function getRuleItemsByTypeAndNames(database, type, names) {
         map.set(row.name, row);
     }
     return map;
+}
+
+/**
+ * Updates the compacted summary for a conversation.
+ * @param {import("bun:sqlite").Database} database - The database instance
+ * @param {string} conversationId - The conversation ID
+ * @param {string} summary - The summary text
+ */
+export function updateCompactedSummary(database, conversationId, summary) {
+    database.run("UPDATE conversations SET compacted_summary = ? WHERE id = ?", [
+        summary,
+        conversationId,
+    ]);
 }
