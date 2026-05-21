@@ -3,7 +3,9 @@ import { Hono } from "hono";
 
 import { createMessageSchema } from "../../shared/schemas.js";
 import * as queries from "../db/queries.js";
+import { compactConversation } from "../utils/compaction.js";
 import { getDb, getUserId, getVectorDb } from "../utils/context.js";
+import { formatConversationForLlm, shouldCompact } from "../utils/conversation-history.js";
 import { resolveLocalizeRefs, resolveUuidRefs, loadLocalizations } from "../utils/foundry-refs.js";
 import { RetryableError, getLlmResponse } from "../utils/llm-client.js";
 import { queryRagContext } from "../utils/rag-query.js";
@@ -264,14 +266,14 @@ function resolveConversation(convId, db, userId) {
  * Calls getLlmResponse with automatic retries on RetryableError.
  * Notifies the stream of retry events via `notify`; returns false from notify to abort retrying
  * (signals client disconnection).
- * @param {{ content: string, contextText: string, mode: string, userId: string }} params
+ * @param {{ contents: Array<{role: string, parts: Array<{text: string}>}>, contextText: string, mode: string, userId: string }} params
  * @param {(event: object) => boolean} notify
  * @returns {Promise<import("../../shared/types.js").MessageBlock[] | undefined>}
  */
-async function getLlmResponseWithRetry({ content, contextText, mode, userId }, notify) {
+async function getLlmResponseWithRetry({ contents, contextText, mode, userId }, notify) {
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
         try {
-            return await getLlmResponse(content, contextText, mode, userId);
+            return await getLlmResponse(contents, contextText, mode, userId);
         } catch (error) {
             if (!(error instanceof RetryableError)) {
                 throw error;
@@ -339,9 +341,27 @@ async function runResponseStream(controller, ctx) {
             threshold: 0.3,
         });
 
+        const llmContents = formatConversationForLlm(db, actualConvId);
+
+        try {
+            await compactConversation(db, actualConvId, llmContents);
+        } catch (compactionError) {
+            // oxlint-disable-next-line no-console
+            console.error("Compaction failed:", compactionError);
+            if (shouldCompact(llmContents)) {
+                tryEnqueue(controller, {
+                    type: "compactionWarning",
+                    data: {
+                        message:
+                            "This conversation is getting long. If the AI can't respond, try starting a new conversation.",
+                    },
+                });
+            }
+        }
+
         const llmBlocks = await getLlmResponseWithRetry(
             {
-                content: data.content,
+                contents: llmContents,
                 contextText: ragContext.contextText,
                 mode: data.mode,
                 userId,

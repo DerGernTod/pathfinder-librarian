@@ -5,6 +5,7 @@ import {
     RetryableError,
     buildGeminiResponseSchema,
     buildSystemPrompt,
+    callGeminiForSummarization,
     callGeminiJson,
     getLlmResponse,
 } from "./llm-client.js";
@@ -57,7 +58,11 @@ describe("llm-client", () => {
             const fetchMock = mock(() => Promise.resolve(geminiResponse(JSON.stringify(blocks))));
             globalThis.fetch = /** @type {typeof fetch} */ (/** @type {unknown} */ (fetchMock));
 
-            const result = await callGeminiJson("Tell me about crits", "", "player");
+            const result = await callGeminiJson(
+                [{ role: "user", parts: [{ text: "Tell me about crits" }] }],
+                "",
+                "player",
+            );
 
             expect(result).toEqual(blocks);
             expect(fetchMock).toHaveBeenCalled();
@@ -71,7 +76,11 @@ describe("llm-client", () => {
             const fetchMock = mock(() => Promise.resolve(geminiResponse(JSON.stringify(blocks))));
             globalThis.fetch = /** @type {typeof fetch} */ (/** @type {unknown} */ (fetchMock));
 
-            await callGeminiJson("test message", "some context", "gm");
+            await callGeminiJson(
+                [{ role: "user", parts: [{ text: "test message" }] }],
+                "some context",
+                "gm",
+            );
 
             const calls = /** @type {[string, RequestInit][]} */ (
                 /** @type {unknown} */ (fetchMock.mock.calls)
@@ -106,9 +115,9 @@ describe("llm-client", () => {
                 }),
             );
 
-            expect(callGeminiJson("test", "", "player")).rejects.toThrow(
-                "Gemini API error: 500 Internal Server Error",
-            );
+            expect(
+                callGeminiJson([{ role: "user", parts: [{ text: "test" }] }], "", "player"),
+            ).rejects.toThrow("Gemini API error: 500 Internal Server Error");
         });
 
         it("throws with rate limit message on 429", async () => {
@@ -121,9 +130,9 @@ describe("llm-client", () => {
                 }),
             );
 
-            expect(callGeminiJson("test", "", "player")).rejects.toThrow(
-                "Gemini API rate limit exceeded",
-            );
+            expect(
+                callGeminiJson([{ role: "user", parts: [{ text: "test" }] }], "", "player"),
+            ).rejects.toThrow("Gemini API rate limit exceeded");
         });
 
         it("throws RetryableError on 503", async () => {
@@ -137,7 +146,7 @@ describe("llm-client", () => {
             );
 
             try {
-                await callGeminiJson("test", "", "player");
+                await callGeminiJson([{ role: "user", parts: [{ text: "test" }] }], "", "player");
                 expect.unreachable("Should have thrown");
             } catch (error) {
                 expect(error).toBeInstanceOf(RetryableError);
@@ -151,7 +160,11 @@ describe("llm-client", () => {
             process.env.GOOGLE_AI_API_KEY = "test-key";
             mockFetch(() => Promise.resolve(geminiResponse("not valid json {")));
 
-            const result = await callGeminiJson("test", "", "player");
+            const result = await callGeminiJson(
+                [{ role: "user", parts: [{ text: "test" }] }],
+                "",
+                "player",
+            );
 
             expect(result).toEqual([{ type: "text", markdown: "not valid json {" }]);
         });
@@ -161,7 +174,11 @@ describe("llm-client", () => {
             const invalidBlocks = [{ type: "unknown-type", foo: "bar" }];
             mockFetch(() => Promise.resolve(geminiResponse(JSON.stringify(invalidBlocks))));
 
-            const result = await callGeminiJson("test", "", "player");
+            const result = await callGeminiJson(
+                [{ role: "user", parts: [{ text: "test" }] }],
+                "",
+                "player",
+            );
 
             expect(result).toEqual([{ type: "text", markdown: JSON.stringify(invalidBlocks) }]);
         });
@@ -169,9 +186,9 @@ describe("llm-client", () => {
         it("throws when API key is missing", async () => {
             delete process.env.GOOGLE_AI_API_KEY;
 
-            expect(callGeminiJson("test", "", "player")).rejects.toThrow(
-                "GOOGLE_AI_API_KEY environment variable is not set",
-            );
+            expect(
+                callGeminiJson([{ role: "user", parts: [{ text: "test" }] }], "", "player"),
+            ).rejects.toThrow("GOOGLE_AI_API_KEY environment variable is not set");
         });
 
         it("sends system instruction in request body", async () => {
@@ -182,7 +199,7 @@ describe("llm-client", () => {
             const fetchMock = mock(() => Promise.resolve(geminiResponse(JSON.stringify(blocks))));
             globalThis.fetch = /** @type {typeof fetch} */ (/** @type {unknown} */ (fetchMock));
 
-            await callGeminiJson("test", "", "player");
+            await callGeminiJson([{ role: "user", parts: [{ text: "test" }] }], "", "player");
 
             const calls = /** @type {[string, RequestInit][]} */ (
                 /** @type {unknown} */ (fetchMock.mock.calls)
@@ -201,7 +218,7 @@ describe("llm-client", () => {
             const fetchMock = mock(() => Promise.resolve(geminiResponse(JSON.stringify(blocks))));
             globalThis.fetch = /** @type {typeof fetch} */ (/** @type {unknown} */ (fetchMock));
 
-            await callGeminiJson("test", "", "player");
+            await callGeminiJson([{ role: "user", parts: [{ text: "test" }] }], "", "player");
             const playerCalls = /** @type {[string, RequestInit][]} */ (
                 /** @type {unknown} */ (fetchMock.mock.calls)
             );
@@ -213,7 +230,7 @@ describe("llm-client", () => {
             const fetchMock2 = mock(() => Promise.resolve(geminiResponse(JSON.stringify(blocks))));
             globalThis.fetch = /** @type {typeof fetch} */ (/** @type {unknown} */ (fetchMock2));
 
-            await callGeminiJson("test", "", "gm");
+            await callGeminiJson([{ role: "user", parts: [{ text: "test" }] }], "", "gm");
             const gmCalls = /** @type {[string, RequestInit][]} */ (
                 /** @type {unknown} */ (fetchMock2.mock.calls)
             );
@@ -229,7 +246,11 @@ describe("llm-client", () => {
             process.env.GOOGLE_AI_API_KEY = "test-key";
             mockFetch(() => Promise.resolve(geminiResponse("[]")));
 
-            const result = await callGeminiJson("test", "", "player");
+            const result = await callGeminiJson(
+                [{ role: "user", parts: [{ text: "test" }] }],
+                "",
+                "player",
+            );
 
             expect(result).toEqual([
                 {
@@ -242,7 +263,11 @@ describe("llm-client", () => {
 
     describe("getLlmResponse", () => {
         it("falls back to mock response on error", async () => {
-            const result = await getLlmResponse("test", "", "player");
+            const result = await getLlmResponse(
+                [{ role: "user", parts: [{ text: "test" }] }],
+                "",
+                "player",
+            );
 
             expect(Array.isArray(result)).toBe(true);
             expect(result.length).toBeGreaterThan(0);
@@ -259,7 +284,7 @@ describe("llm-client", () => {
             );
 
             try {
-                await getLlmResponse("test", "", "player");
+                await getLlmResponse([{ role: "user", parts: [{ text: "test" }] }], "", "player");
                 expect.unreachable("Should have thrown");
             } catch (error) {
                 expect(error).toBeInstanceOf(RetryableError);
@@ -275,7 +300,11 @@ describe("llm-client", () => {
             ];
             mockFetch(() => Promise.resolve(geminiResponse(JSON.stringify(blocks))));
 
-            const result = await getLlmResponse("test", "", "player");
+            const result = await getLlmResponse(
+                [{ role: "user", parts: [{ text: "test" }] }],
+                "",
+                "player",
+            );
 
             expect(result).toEqual(blocks);
         });
@@ -302,6 +331,60 @@ describe("llm-client", () => {
             const prompt = buildSystemPrompt("", "player");
 
             expect(prompt).not.toContain("retrieved-context");
+        });
+    });
+
+    describe("callGeminiForSummarization", () => {
+        it("returns summary text on success", async () => {
+            process.env.GOOGLE_AI_API_KEY = "test-key";
+            mockFetch(() => Promise.resolve(geminiResponse("Summary of the conversation.")));
+
+            const result = await callGeminiForSummarization("Some messages text");
+
+            expect(result).toBe("Summary of the conversation.");
+        });
+
+        it("sends summarization prompt in request", async () => {
+            process.env.GOOGLE_AI_API_KEY = "test-key";
+
+            /** @type {import("bun:test").Mock<() => Promise<unknown>>} */
+            const fetchMock = mock(() => Promise.resolve(geminiResponse("Summary")));
+            globalThis.fetch = /** @type {typeof fetch} */ (/** @type {unknown} */ (fetchMock));
+
+            await callGeminiForSummarization("messages");
+
+            const calls = /** @type {[string, RequestInit][]} */ (
+                /** @type {unknown} */ (fetchMock.mock.calls)
+            );
+            const body = JSON.parse(/** @type {string} */ (calls[0][1].body));
+
+            expect(body.systemInstruction).toBeDefined();
+            expect(body.systemInstruction.parts[0].text).toContain("Pathfinder");
+            expect(body.contents[0].parts[0].text).toContain("messages");
+            expect(body.generationConfig).toBeUndefined();
+        });
+
+        it("throws on API error", async () => {
+            process.env.GOOGLE_AI_API_KEY = "test-key";
+            mockFetch(() =>
+                Promise.resolve({
+                    ok: false,
+                    status: 500,
+                    text: () => Promise.resolve("Server Error"),
+                }),
+            );
+
+            expect(callGeminiForSummarization("text")).rejects.toThrow(
+                "Gemini summarization API error",
+            );
+        });
+
+        it("throws when API key is missing", async () => {
+            delete process.env.GOOGLE_AI_API_KEY;
+
+            expect(callGeminiForSummarization("text")).rejects.toThrow(
+                "GOOGLE_AI_API_KEY environment variable is not set",
+            );
         });
     });
 

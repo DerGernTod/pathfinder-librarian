@@ -51,6 +51,15 @@ export function migrateDb(database) {
     // Migration: monster → creature type rename
     database.run("UPDATE rule_items SET type = 'creature' WHERE type = 'monster'");
 
+    const convColumns = database
+        .query("PRAGMA table_info(conversations)")
+        .all()
+        .map((col) => col.name);
+
+    if (!convColumns.includes("compacted_summary")) {
+        database.run("ALTER TABLE conversations ADD COLUMN compacted_summary TEXT");
+    }
+
     // Clean up expired challenges (older than 5 minutes)
     database.run("DELETE FROM challenges WHERE created_at < datetime('now', '-5 minutes')");
 }

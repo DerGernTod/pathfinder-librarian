@@ -219,6 +219,26 @@ const messageBlockSchema = z.union([
 
 const messageBlocksArraySchema = z.array(messageBlockSchema);
 
+// --- Gemini API response schema for summarization validation ---
+
+const geminiResponseSchema = z.object({
+    candidates: z
+        .array(
+            z.object({
+                content: z
+                    .object({
+                        parts: z.array(
+                            z.object({
+                                text: z.string().optional(),
+                            }),
+                        ),
+                    })
+                    .optional(),
+            }),
+        )
+        .optional(),
+});
+
 export {
     uuidSchema,
     conversationIdSchema,
@@ -246,4 +266,5 @@ export {
     ruleDetailBlockSchema,
     messageBlockSchema,
     messageBlocksArraySchema,
+    geminiResponseSchema,
 };
