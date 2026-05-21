@@ -346,16 +346,22 @@ describe("rag-query", () => {
         });
 
         it("returns embeddingTokens: 0 in error catch path", async () => {
-            // Force an error by using a broken embedding function
             process.env.GOOGLE_AI_API_KEY = "test-key";
-            process.env.MOCK_GOOGLE_AI = "0"; // Non-mock mode but no real API
+            process.env.MOCK_GOOGLE_AI = "1";
+
+            // Use a fake VDB that throws to deterministically trigger the catch block
+            const fakeVdb = /** @type {import("bun:sqlite").Database} */ (
+                /** @type {unknown} */ ({
+                    query: () => {
+                        throw new Error("simulated DB failure");
+                    },
+                })
+            );
 
             const result = await queryRagContext("test", {
-                vectorDb: vdb,
-                apiKey: "bad-key",
+                vectorDb: fakeVdb,
             });
 
-            // The function should catch the error and return embeddingTokens: 0
             expect(result.embeddingTokens).toBe(0);
             expect(result.contextText).toContain("Error in queryRagContext");
         });
