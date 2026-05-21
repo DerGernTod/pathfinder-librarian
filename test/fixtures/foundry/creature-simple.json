@@ -14,15 +14,21 @@
         "attributes": {
             "ac": { "value": 16 },
             "hp": { "value": 20, "max": 20 },
-            "speed": { "value": 25, "otherSpeeds": [] },
-            "fortitude": { "value": 6 },
-            "reflex": { "value": 10 },
-            "will": { "value": 3 }
+            "speed": { "value": 25, "otherSpeeds": [] }
         },
+        "saves": {
+            "fortitude": { "value": 6, "saveDetail": "" },
+            "reflex": { "value": 10, "saveDetail": "" },
+            "will": { "value": 3, "saveDetail": "" }
+        },
+        "initiative": { "statistic": "perception" },
         "details": {
             "level": { "value": 1 },
             "languages": { "value": [], "details": "" },
-            "publicNotes": "<p>A large <strong>mosquito</strong>-like creature.</p>"
+            "publicNotes": "<p>A large <strong>mosquito</strong>-like creature.</p>",
+            "blurb": "Male giant mosquito",
+            "publication": { "license": "OGL", "remaster": false, "title": "Pathfinder Bestiary" },
+            "privateNotes": ""
         },
         "perception": { "mod": 6 },
         "skills": {
@@ -31,7 +37,8 @@
         },
         "traits": {
             "value": ["animal"],
-            "rarity": "common"
+            "rarity": "common",
+            "size": { "value": "med" }
         }
     },
     "items": [
@@ -67,6 +74,19 @@
                 "actions": { "value": 0 },
                 "description": { "value": "<p>Deals damage automatically.</p>" },
                 "traits": { "value": [] }
+            }
+        },
+        {
+            "_id": "consumable001",
+            "name": "Healing Potion (Minor)",
+            "type": "consumable",
+            "system": {
+                "description": { "value": "<p>A basic healing potion.</p>" },
+                "level": { "value": 1 },
+                "traits": { "value": ["consumable", "healing", "magical", "potion"] },
+                "category": "potion",
+                "bulk": 0.1,
+                "usage": "held in one hand"
             }
         }
     ]

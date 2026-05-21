@@ -14,15 +14,25 @@
         "attributes": {
             "ac": { "value": 15 },
             "hp": { "value": 30, "max": 30 },
-            "speed": { "value": 25, "otherSpeeds": [{ "type": "fly", "value": 20 }] },
-            "fortitude": { "value": 6 },
-            "reflex": { "value": 5 },
-            "will": { "value": 9 }
+            "speed": { "value": 25, "otherSpeeds": [{ "type": "fly", "value": 20 }] }
         },
+        "saves": {
+            "fortitude": { "value": 6, "saveDetail": "" },
+            "reflex": { "value": 5, "saveDetail": "" },
+            "will": { "value": 9, "saveDetail": "" }
+        },
+        "initiative": { "statistic": "perception" },
         "details": {
             "level": { "value": 2 },
             "languages": { "value": ["Common", "Infernal"], "details": "celestial scripts" },
-            "publicNotes": "<p>A fanatical cult devotee.</p>"
+            "publicNotes": "<p>A fanatical cult devotee.</p>",
+            "blurb": "Cult fanatic",
+            "publication": {
+                "license": "OGL",
+                "remaster": false,
+                "title": "Pathfinder Bestiary 2"
+            },
+            "privateNotes": ""
         },
         "perception": { "mod": 5 },
         "skills": {
@@ -32,7 +42,8 @@
         },
         "traits": {
             "value": ["human", "humanoid"],
-            "rarity": "uncommon"
+            "rarity": "uncommon",
+            "size": { "value": "med" }
         }
     },
     "items": [

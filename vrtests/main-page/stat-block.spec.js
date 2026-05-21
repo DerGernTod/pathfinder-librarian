@@ -46,7 +46,7 @@ test.describe("stat block visual regression", () => {
                 attributes: {
                     ac: { value: 15 },
                     hp: { value: 23, max: 23 },
-                    fortitude: { value: 9 },
+                    fortitude: { value: 9, saveDetail: "bonus from Orc Ferocity" },
                     reflex: { value: 8 },
                     will: { value: 6 },
                     speed: "20 feet",
@@ -60,6 +60,9 @@ test.describe("stat block visual regression", () => {
                     cha: { mod: 0 },
                 },
                 skills: { Athletics: { value: 12 }, Intimidation: { value: 8 } },
+                size: "med",
+                blurb: "Fierce tribal warrior",
+                initiative: "perception",
                 melee: [
                     {
                         name: "Greataxe",
@@ -280,6 +283,104 @@ test.describe("stat block visual regression", () => {
 
         await page.waitForTimeout(300);
         await expect(statBlock).toHaveScreenshot("stat-block-desktop.png", {
+            maxDiffPixelRatio: 0.05,
+        });
+    });
+
+    test("stat block with no saves or new fields", async ({ page }) => {
+        // Override SSE mock to return a creature without saves, no initiative, no size
+        await page.route("**/api/conversations/*/messages*", async (route) => {
+            if (route.request().method() === "POST") {
+                const body = route.request().postDataJSON();
+                const content = body.content || "";
+                const now = new Date().toISOString();
+
+                const block = {
+                    type: "stat-block",
+                    title: "Shadow Wisp",
+                    data: {
+                        name: "Shadow Wisp",
+                        type: "Elemental",
+                        level: 0,
+                        traits: ["Elemental"],
+                        perception: 3,
+                        languages: { value: [] },
+                        attributes: {
+                            ac: { value: 12 },
+                            hp: { value: 8, max: 8 },
+                        },
+                        abilities: {
+                            str: { mod: -2 },
+                            dex: { mod: 2 },
+                            con: { mod: 0 },
+                            int: { mod: -4 },
+                            wis: { mod: 1 },
+                            cha: { mod: -1 },
+                        },
+                    },
+                };
+
+                const userMessage = {
+                    type: "userMessage",
+                    data: {
+                        id: "um-nosaves",
+                        conversationId: "conv-1",
+                        role: "user",
+                        content,
+                        mode: body.mode || "gm",
+                        createdAt: now,
+                    },
+                };
+                const assistantComplete = {
+                    type: "assistantComplete",
+                    data: {
+                        id: "am-nosaves",
+                        conversationId: "conv-1",
+                        role: "assistant",
+                        content: null,
+                        mode: body.mode || "gm",
+                        createdAt: now,
+                        blocks: [block],
+                    },
+                };
+
+                await route.fulfill({
+                    status: 200,
+                    contentType: "text/event-stream",
+                    body:
+                        JSON.stringify(userMessage) +
+                        "\n" +
+                        JSON.stringify(assistantComplete) +
+                        "\n",
+                });
+            } else if (route.request().method() === "GET") {
+                await route.fulfill({
+                    status: 200,
+                    contentType: "application/json",
+                    body: JSON.stringify({ result: "success", data: [] }),
+                });
+            } else {
+                await route.continue();
+            }
+        });
+
+        await page.goto("/");
+        await page.waitForSelector("main-page");
+        await page.waitForTimeout(1000);
+
+        const input = page.locator("[data-test='landing-input']");
+        await input.fill("Show me a wisp");
+        await input.press("Enter");
+        await page.waitForSelector("stat-block", { timeout: 5000 });
+        await page.waitForTimeout(500);
+
+        const statBlock = page.locator("stat-block").first();
+        const details = statBlock.locator("sl-details");
+        await details.first().click();
+        await expect(details.first()).toHaveAttribute("open", "");
+
+        await page.waitForTimeout(300);
+        await expect(statBlock).toHaveScreenshot("stat-block-no-saves.png", {
             maxDiffPixelRatio: 0.05,
         });
     });

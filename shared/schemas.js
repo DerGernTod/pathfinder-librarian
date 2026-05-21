@@ -32,7 +32,10 @@ const ruleItemTypeSchema = z.enum([
 
 const abilityModSchema = z.object({ mod: z.number() });
 
-const saveSchema = z.object({ value: z.number() });
+const saveSchema = z.object({
+    value: z.number(),
+    saveDetail: z.string().optional(),
+});
 
 const skillSchema = z.object({
     value: z.number(),
@@ -99,6 +102,17 @@ const creatureDataSchema = z.object({
             details: z.string().optional(),
         })
         .optional(),
+    initiative: z.string().optional(),
+    size: z.string().optional(),
+    blurb: z.string().optional(),
+    publication: z
+        .object({
+            license: z.string().optional(),
+            remaster: z.boolean().optional(),
+            title: z.string().optional(),
+        })
+        .optional(),
+    privateNotes: z.string().optional(),
     attributes: z.object({
         ac: acSchema.optional(),
         hp: hpSchema.optional(),
