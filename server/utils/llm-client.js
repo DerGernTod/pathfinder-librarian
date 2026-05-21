@@ -1,5 +1,5 @@
 import { GEMINI_API_BASE, GEMINI_MODEL } from "../../shared/constants.js";
-import { messageBlocksArraySchema } from "../../shared/schemas.js";
+import { geminiResponseSchema, messageBlocksArraySchema } from "../../shared/schemas.js";
 import { getMockResponse } from "./mock-response.js";
 
 export class RetryableError extends Error {
@@ -170,10 +170,7 @@ export async function callGeminiJson(contents, ragContext, mode) {
         throw new Error(`Gemini API error: ${response.status} ${errorText}`);
     }
 
-    const responseData =
-        /** @type {{ candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }} */ (
-            await response.json()
-        );
+    const responseData = geminiResponseSchema.parse(await response.json());
     /** @type {string} */
     const rawText = responseData.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 
@@ -272,9 +269,6 @@ export async function callGeminiForSummarization(messagesText) {
         throw new Error(`Gemini summarization API error: ${response.status} ${errorText}`);
     }
 
-    const responseData =
-        /** @type {{ candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }} */ (
-            await response.json()
-        );
+    const responseData = geminiResponseSchema.parse(await response.json());
     return responseData.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 }

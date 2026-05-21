@@ -5,7 +5,7 @@ import { createMessageSchema } from "../../shared/schemas.js";
 import * as queries from "../db/queries.js";
 import { compactConversation } from "../utils/compaction.js";
 import { getDb, getUserId, getVectorDb } from "../utils/context.js";
-import { formatConversationForLlm } from "../utils/conversation-history.js";
+import { formatConversationForLlm, shouldCompact } from "../utils/conversation-history.js";
 import { resolveLocalizeRefs, resolveUuidRefs, loadLocalizations } from "../utils/foundry-refs.js";
 import { RetryableError, getLlmResponse } from "../utils/llm-client.js";
 import { queryRagContext } from "../utils/rag-query.js";
@@ -345,8 +345,18 @@ async function runResponseStream(controller, ctx) {
 
         try {
             await compactConversation(db, actualConvId, llmContents);
-        } catch {
-            // Compaction failure is non-fatal
+        } catch (compactionError) {
+            // oxlint-disable-next-line no-console
+            console.error("Compaction failed:", compactionError);
+            if (shouldCompact(llmContents)) {
+                tryEnqueue(controller, {
+                    type: "compactionWarning",
+                    data: {
+                        message:
+                            "This conversation is getting long. If the AI can't respond, try starting a new conversation.",
+                    },
+                });
+            }
         }
 
         const llmBlocks = await getLlmResponseWithRetry(

@@ -5,7 +5,8 @@ import { callGeminiForSummarization } from "./llm-client.js";
 
 /**
  * Orchestrate summarization and storage of old conversation messages.
- * Returns the summary text, or null if compaction was not needed or failed.
+ * Returns the summary text, or null if compaction was not needed.
+ * Throws if summarization API call fails.
  * @param {import("bun:sqlite").Database} db
  * @param {string} conversationId
  * @param {Array<{ role: string, parts: Array<{ text: string }> }>} contents
@@ -32,13 +33,9 @@ export async function compactConversation(db, conversationId, contents, threshol
         .map((turn) => `${turn.role}: ${turn.parts.map((p) => p.text).join("\n")}`)
         .join("\n\n");
 
-    try {
-        const summary = await callGeminiForSummarization(messagesText);
-        if (summary) {
-            updateCompactedSummary(db, conversationId, summary);
-        }
-        return summary;
-    } catch {
-        return null;
+    const summary = await callGeminiForSummarization(messagesText);
+    if (summary) {
+        updateCompactedSummary(db, conversationId, summary);
     }
+    return summary;
 }

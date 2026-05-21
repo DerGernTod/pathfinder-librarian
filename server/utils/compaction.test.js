@@ -88,7 +88,7 @@ describe("compaction", () => {
             expect(conv?.compactedSummary).toBe(summaryText);
         });
 
-        it("returns null on summarization failure", async () => {
+        it("throws on summarization failure instead of returning null", async () => {
             process.env.GOOGLE_AI_API_KEY = "test-key";
 
             globalThis.fetch = /** @type {typeof fetch} */ (
@@ -108,9 +108,9 @@ describe("compaction", () => {
                 parts: [{ text: `x`.repeat(1000) }],
             }));
 
-            const result = await compactConversation(db, convId, oldTurns, 100);
-
-            expect(result).toBeNull();
+            expect(compactConversation(db, convId, oldTurns, 100)).rejects.toThrow(
+                "Gemini summarization API error",
+            );
 
             const conv = getConversationById(db, convId);
             expect(conv?.compactedSummary).toBeNull();
