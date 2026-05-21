@@ -96,6 +96,7 @@ describe("rag-query", () => {
 
             expect(result.contextText).toBe("");
             expect(result.sources).toEqual([]);
+            expect(result.embeddingTokens).toBe(0);
         });
 
         it("returns empty context when no API key is set", async () => {
@@ -107,6 +108,7 @@ describe("rag-query", () => {
 
             expect(result.contextText).toBe("");
             expect(result.sources).toEqual([]);
+            expect(result.embeddingTokens).toBe(0);
         });
 
         it("returns formatted context with matched chunks", async () => {
@@ -300,6 +302,95 @@ describe("rag-query", () => {
                 expect(result.contextText).toContain("AC 21");
                 expect(result.contextText).toContain("HP 55");
             }
+        });
+
+        it("returns estimated embeddingTokens in RagContext on success", async () => {
+            process.env.GOOGLE_AI_API_KEY = "test-key";
+            process.env.MOCK_GOOGLE_AI = "1";
+
+            insertChunk(vdb, {
+                id: "c1",
+                ruleItemId: "ri1",
+                ruleItemName: "Fireball",
+                ruleItemType: "spell",
+                chunkIndex: 0,
+                text: "Spell: Fireball.",
+                embedding: Array(768)
+                    .fill(0)
+                    .map((_, i) => (i === 0 ? 1 : 0)),
+            });
+
+            const prompt = "What is Fireball?";
+            const result = await queryRagContext(prompt, {
+                vectorDb: vdb,
+                topN: 5,
+                threshold: 0.1,
+            });
+
+            expect(result.embeddingTokens).toBe(Math.ceil(prompt.length / 4));
+        });
+
+        it("returns embeddingTokens when no results above threshold", async () => {
+            process.env.GOOGLE_AI_API_KEY = "test-key";
+            process.env.MOCK_GOOGLE_AI = "1";
+
+            // Empty vector DB — no chunks to match
+            const prompt = "A very specific and unique query about xyz";
+            const result = await queryRagContext(prompt, {
+                vectorDb: vdb,
+                topN: 5,
+                threshold: 0.99,
+            });
+
+            expect(result.embeddingTokens).toBe(Math.ceil(prompt.length / 4));
+        });
+
+        it("returns embeddingTokens: 0 in error catch path", async () => {
+            process.env.GOOGLE_AI_API_KEY = "test-key";
+            process.env.MOCK_GOOGLE_AI = "1";
+
+            // Use a fake VDB that throws to deterministically trigger the catch block
+            const fakeVdb = /** @type {import("bun:sqlite").Database} */ (
+                /** @type {unknown} */ ({
+                    query: () => {
+                        throw new Error("simulated DB failure");
+                    },
+                })
+            );
+
+            const result = await queryRagContext("test", {
+                vectorDb: fakeVdb,
+            });
+
+            expect(result.embeddingTokens).toBe(0);
+            expect(result.contextText).toContain("Error in queryRagContext");
+        });
+
+        it("estimate formula matches Math.ceil(prompt.length / 4)", async () => {
+            process.env.GOOGLE_AI_API_KEY = "test-key";
+            process.env.MOCK_GOOGLE_AI = "1";
+
+            insertChunk(vdb, {
+                id: "c1",
+                ruleItemId: "ri1",
+                ruleItemName: "Test",
+                ruleItemType: "spell",
+                chunkIndex: 0,
+                text: "Test text",
+                embedding: Array(768)
+                    .fill(0)
+                    .map((_, i) => (i === 0 ? 1 : 0)),
+            });
+
+            const shortPrompt = "Hi";
+            const result = await queryRagContext(shortPrompt, {
+                vectorDb: vdb,
+                topN: 5,
+                threshold: 0.0,
+            });
+
+            expect(result.embeddingTokens).toBe(Math.ceil("Hi".length / 4));
+            expect(result.embeddingTokens).toBe(1);
         });
     });
 });

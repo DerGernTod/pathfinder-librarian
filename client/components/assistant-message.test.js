@@ -294,4 +294,213 @@ describe("assistant-message", () => {
             expect(bubble.classList.contains("ungrounded")).toBe(false);
         });
     });
+
+    describe("cost indicator", () => {
+        it("renders cost indicator when ragMeta.usage is present with totalTokenCount > 0", async () => {
+            const el = createAssistantMessage({
+                id: "1",
+                role: "assistant",
+                blocks: [{ type: "text", markdown: "Response" }],
+                ragMeta: {
+                    resultCount: 2,
+                    usage: {
+                        promptTokenCount: 500,
+                        candidatesTokenCount: 200,
+                        totalTokenCount: 700,
+                    },
+                    embeddingTokens: 50,
+                },
+            });
+            await el.updateComplete;
+            const indicator = el.shadowRoot.querySelector(".cost-indicator");
+            expect(indicator).toBeTruthy();
+            expect(indicator.textContent).toContain("550 in → 200 out");
+        });
+
+        it("renders no cost indicator when ragMeta.usage is undefined", async () => {
+            const el = createAssistantMessage({
+                id: "1",
+                role: "assistant",
+                blocks: [{ type: "text", markdown: "Response" }],
+                ragMeta: { resultCount: 2 },
+            });
+            await el.updateComplete;
+            const indicator = el.shadowRoot.querySelector(".cost-indicator");
+            expect(indicator).toBeNull();
+        });
+
+        it("renders no cost indicator when ragMeta is undefined", async () => {
+            const el = createAssistantMessage({
+                id: "1",
+                role: "assistant",
+                blocks: [{ type: "text", markdown: "Response" }],
+            });
+            await el.updateComplete;
+            const indicator = el.shadowRoot.querySelector(".cost-indicator");
+            expect(indicator).toBeNull();
+        });
+
+        it("renders no cost indicator when totalTokenCount is null", async () => {
+            const el = createAssistantMessage({
+                id: "1",
+                role: "assistant",
+                blocks: [{ type: "text", markdown: "Response" }],
+                ragMeta: {
+                    resultCount: 1,
+                    usage: {
+                        promptTokenCount: 100,
+                        candidatesTokenCount: 50,
+                        totalTokenCount: null,
+                    },
+                },
+            });
+            await el.updateComplete;
+            const indicator = el.shadowRoot.querySelector(".cost-indicator");
+            expect(indicator).toBeNull();
+        });
+
+        it("renders no cost indicator when totalTokenCount is undefined", async () => {
+            const el = createAssistantMessage({
+                id: "1",
+                role: "assistant",
+                blocks: [{ type: "text", markdown: "Response" }],
+                ragMeta: {
+                    resultCount: 1,
+                    usage: { promptTokenCount: 100, candidatesTokenCount: 50 },
+                },
+            });
+            await el.updateComplete;
+            const indicator = el.shadowRoot.querySelector(".cost-indicator");
+            expect(indicator).toBeNull();
+        });
+
+        it("renders cost indicator when totalTokenCount is 0", async () => {
+            const el = createAssistantMessage({
+                id: "1",
+                role: "assistant",
+                blocks: [{ type: "text", markdown: "Response" }],
+                ragMeta: {
+                    resultCount: 1,
+                    usage: { promptTokenCount: 0, candidatesTokenCount: 0, totalTokenCount: 0 },
+                    embeddingTokens: 0,
+                },
+            });
+            await el.updateComplete;
+            const indicator = el.shadowRoot.querySelector(".cost-indicator");
+            expect(indicator).toBeTruthy();
+            expect(indicator.textContent).toContain("0 in → 0 out");
+        });
+
+        it("formats cost correctly for small values (<$0.001)", async () => {
+            const el = createAssistantMessage({
+                id: "1",
+                role: "assistant",
+                blocks: [{ type: "text", markdown: "Response" }],
+                ragMeta: {
+                    resultCount: 1,
+                    usage: { promptTokenCount: 10, candidatesTokenCount: 5, totalTokenCount: 15 },
+                },
+            });
+            await el.updateComplete;
+            const costValue = el.shadowRoot.querySelector(".cost-value");
+            expect(costValue).toBeTruthy();
+            expect(costValue.textContent).toContain("<$0.001");
+        });
+
+        it("formats cost correctly for larger values", async () => {
+            const el = createAssistantMessage({
+                id: "1",
+                role: "assistant",
+                blocks: [{ type: "text", markdown: "Response" }],
+                ragMeta: {
+                    resultCount: 3,
+                    usage: {
+                        promptTokenCount: 5000,
+                        candidatesTokenCount: 2000,
+                        totalTokenCount: 7000,
+                    },
+                },
+            });
+            await el.updateComplete;
+            const costValue = el.shadowRoot.querySelector(".cost-value");
+            expect(costValue).toBeTruthy();
+            // inputCost = 5000 * 0.15 / 1M = 0.00075
+            // outputCost = 2000 * 0.60 / 1M = 0.0012
+            // total = 0.00195 → "$0.0019"
+            expect(costValue.textContent).toContain("$0.0019");
+        });
+
+        it("shows token counts in cost label", async () => {
+            const el = createAssistantMessage({
+                id: "1",
+                role: "assistant",
+                blocks: [{ type: "text", markdown: "Response" }],
+                ragMeta: {
+                    resultCount: 2,
+                    usage: {
+                        promptTokenCount: 100,
+                        candidatesTokenCount: 50,
+                        totalTokenCount: 150,
+                    },
+                    embeddingTokens: 25,
+                },
+            });
+            await el.updateComplete;
+            const costLabel = el.shadowRoot.querySelector(".cost-label");
+            expect(costLabel).toBeTruthy();
+            expect(costLabel.textContent).toContain("125 in → 50 out");
+        });
+
+        it("cost indicator is not shown for mock responses (no usage data)", async () => {
+            const el = createAssistantMessage({
+                id: "1",
+                role: "assistant",
+                blocks: [{ type: "text", markdown: "Mock response" }],
+                ragMeta: { resultCount: 0 },
+            });
+            await el.updateComplete;
+            const indicator = el.shadowRoot.querySelector(".cost-indicator");
+            expect(indicator).toBeNull();
+        });
+
+        it("cost indicator includes embedding tokens in input count", async () => {
+            const el = createAssistantMessage({
+                id: "1",
+                role: "assistant",
+                blocks: [{ type: "text", markdown: "Response" }],
+                ragMeta: {
+                    resultCount: 1,
+                    usage: {
+                        promptTokenCount: 200,
+                        candidatesTokenCount: 100,
+                        totalTokenCount: 300,
+                    },
+                    embeddingTokens: 75,
+                },
+            });
+            await el.updateComplete;
+            const costLabel = el.shadowRoot.querySelector(".cost-label");
+            expect(costLabel.textContent).toContain("275 in → 100 out");
+        });
+
+        it("cost indicator has aria-label for accessibility", async () => {
+            const el = createAssistantMessage({
+                id: "1",
+                role: "assistant",
+                blocks: [{ type: "text", markdown: "Response" }],
+                ragMeta: {
+                    resultCount: 1,
+                    usage: {
+                        promptTokenCount: 100,
+                        candidatesTokenCount: 50,
+                        totalTokenCount: 150,
+                    },
+                },
+            });
+            await el.updateComplete;
+            const indicator = el.shadowRoot.querySelector(".cost-indicator");
+            expect(indicator).toBeTruthy();
+            expect(indicator.getAttribute("aria-label")).toBe("Estimated generation cost");
+        });
+    });
 });

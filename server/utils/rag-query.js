@@ -59,6 +59,7 @@ export async function createSingleEmbedding(prompt, apiKey, model) {
  * @returns {Promise<RagContext>}
  */
 export async function queryRagContext(userPrompt, options = {}) {
+    const embeddingTokens = Math.ceil(userPrompt.length / 4);
     const vectorDb = options.vectorDb ?? null;
     const mainDb = options.db ?? null;
     const topN = options.topN ?? RAG_CONFIG.TOP_N;
@@ -69,10 +70,10 @@ export async function queryRagContext(userPrompt, options = {}) {
 
     // Graceful degradation: no vector DB or no API key
     if (!vectorDb) {
-        return { contextText: "", sources: [] };
+        return { contextText: "", sources: [], embeddingTokens: 0 };
     }
     if (!apiKey) {
-        return { contextText: "", sources: [] };
+        return { contextText: "", sources: [], embeddingTokens: 0 };
     }
 
     try {
@@ -108,7 +109,7 @@ export async function queryRagContext(userPrompt, options = {}) {
         const topResults = [...deduped.values()].slice(0, topN);
 
         if (topResults.length === 0) {
-            return { contextText: "", sources: [] };
+            return { contextText: "", sources: [], embeddingTokens };
         }
 
         // Step 4: Build context text enriched with rule item data
@@ -172,8 +173,12 @@ export async function queryRagContext(userPrompt, options = {}) {
             score: entry.score,
         }));
 
-        return { contextText, sources };
+        return { contextText, sources, embeddingTokens };
     } catch (error) {
-        return { contextText: `Error in queryRagContext: ${String(error)}`, sources: [] };
+        return {
+            contextText: `Error in queryRagContext: ${String(error)}`,
+            sources: [],
+            embeddingTokens: 0,
+        };
     }
 }

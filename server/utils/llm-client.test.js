@@ -17,9 +17,11 @@ function mockFetch(fn) {
     globalThis.fetch = /** @type {typeof fetch} */ (/** @type {unknown} */ (mock(fn)));
 }
 
-/** Helper to build a valid Gemini API response wrapping the given JSON text */
-/** @param {string} jsonText */
-function geminiResponse(jsonText) {
+/** Helper to build a valid Gemini API response wrapping the given JSON text
+ * @param {string} jsonText
+ * @param {{ promptTokenCount?: number, candidatesTokenCount?: number, totalTokenCount?: number }} [usage]
+ */
+function geminiResponse(jsonText, usage) {
     return {
         ok: true,
         json: () =>
@@ -31,6 +33,7 @@ function geminiResponse(jsonText) {
                         },
                     },
                 ],
+                ...(usage ? { usageMetadata: usage } : {}),
             }),
     };
 }
@@ -64,7 +67,8 @@ describe("llm-client", () => {
                 "player",
             );
 
-            expect(result).toEqual(blocks);
+            expect(result.blocks).toEqual(blocks);
+            expect(result.usage).toBeUndefined();
             expect(fetchMock).toHaveBeenCalled();
         });
 
@@ -166,7 +170,10 @@ describe("llm-client", () => {
                 "player",
             );
 
-            expect(result).toEqual([{ type: "text", markdown: "not valid json {" }]);
+            expect(result).toEqual({
+                blocks: [{ type: "text", markdown: "not valid json {" }],
+                usage: undefined,
+            });
         });
 
         it("falls back to text block on Zod validation failure", async () => {
@@ -180,7 +187,10 @@ describe("llm-client", () => {
                 "player",
             );
 
-            expect(result).toEqual([{ type: "text", markdown: JSON.stringify(invalidBlocks) }]);
+            expect(result).toEqual({
+                blocks: [{ type: "text", markdown: JSON.stringify(invalidBlocks) }],
+                usage: undefined,
+            });
         });
 
         it("throws when API key is missing", async () => {
@@ -271,12 +281,62 @@ describe("llm-client", () => {
                 "player",
             );
 
-            expect(result).toEqual([
-                {
-                    type: "text",
-                    markdown: "I couldn't generate a response. Please try again.",
-                },
-            ]);
+            expect(result).toEqual({
+                blocks: [
+                    {
+                        type: "text",
+                        markdown: "I couldn't generate a response. Please try again.",
+                    },
+                ],
+                usage: undefined,
+            });
+        });
+
+        it("returns usage metadata from Gemini response", async () => {
+            process.env.GOOGLE_AI_API_KEY = "test-key";
+            /** @type {import("../../shared/types.js").MessageBlock[]} */
+            const blocks = [{ type: "text", markdown: "Test" }];
+            const usageMeta = {
+                promptTokenCount: 100,
+                candidatesTokenCount: 50,
+                totalTokenCount: 150,
+            };
+
+            /** @type {import("bun:test").Mock<() => Promise<unknown>>} */
+            const fetchMock = mock(() =>
+                Promise.resolve(geminiResponse(JSON.stringify(blocks), usageMeta)),
+            );
+            globalThis.fetch = /** @type {typeof fetch} */ (/** @type {unknown} */ (fetchMock));
+
+            const result = await callGeminiJson(
+                [{ role: "user", parts: [{ text: "test" }] }],
+                "",
+                "player",
+            );
+
+            expect(result.blocks).toEqual(blocks);
+            expect(result.usage).toEqual({
+                promptTokenCount: 100,
+                candidatesTokenCount: 50,
+                totalTokenCount: 150,
+            });
+        });
+
+        it("returns usage undefined when usageMetadata missing from response", async () => {
+            process.env.GOOGLE_AI_API_KEY = "test-key";
+            /** @type {import("../../shared/types.js").MessageBlock[]} */
+            const blocks = [{ type: "text", markdown: "Test" }];
+
+            mockFetch(() => Promise.resolve(geminiResponse(JSON.stringify(blocks))));
+
+            const result = await callGeminiJson(
+                [{ role: "user", parts: [{ text: "test" }] }],
+                "",
+                "player",
+            );
+
+            expect(result.blocks).toEqual(blocks);
+            expect(result.usage).toBeUndefined();
         });
     });
 
@@ -288,8 +348,10 @@ describe("llm-client", () => {
                 "player",
             );
 
-            expect(Array.isArray(result)).toBe(true);
-            expect(result.length).toBeGreaterThan(0);
+            expect(result.blocks).toBeDefined();
+            expect(Array.isArray(result.blocks)).toBe(true);
+            expect(result.blocks.length).toBeGreaterThan(0);
+            expect(result.usage).toBeUndefined();
         });
 
         it("propagates RetryableError instead of falling back to mock", async () => {
@@ -325,7 +387,8 @@ describe("llm-client", () => {
                 "player",
             );
 
-            expect(result).toEqual(blocks);
+            expect(result.blocks).toEqual(blocks);
+            expect(result.usage).toBeUndefined();
         });
     });
 

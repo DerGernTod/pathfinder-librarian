@@ -85,9 +85,11 @@
 
 /** @typedef {{ name: string, type: string, score: number }} RagSource */
 
-/** @typedef {{ contextText: string, sources: Array<RagSource> }} RagContext */
+/** @typedef {{ contextText: string, sources: Array<RagSource>, embeddingTokens?: number }} RagContext */
 
-/** @typedef {{ resultCount: number }} RagMeta */
+/** @typedef {{ promptTokenCount?: number, candidatesTokenCount?: number, totalTokenCount?: number }} UsageMeta */
+
+/** @typedef {{ resultCount: number, usage?: UsageMeta, embeddingTokens?: number }} RagMeta */
 
 /** @typedef {{ inserted: number, updated: number, skipped: number, errors: number }} ImportResult */
 
