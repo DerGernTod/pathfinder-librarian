@@ -1,5 +1,7 @@
 import { mock } from "bun:test";
 
+delete process.env.GOOGLE_AI_API_KEY;
+
 const components = [
     "card/card",
     "details/details",

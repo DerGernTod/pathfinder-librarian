@@ -1,5 +1,6 @@
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
+import { stream } from "hono/streaming";
 
 import { createMessageSchema } from "../../shared/schemas.js";
 import * as queries from "../db/queries.js";
@@ -25,21 +26,6 @@ const CHUNK_DELAY_MS = 100;
  * @returns {Promise<void>}
  */
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-/**
- * Serialises and enqueues an event. Returns false if the client has already disconnected.
- * @param {ReadableStreamDefaultController} controller
- * @param {object} event
- * @returns {boolean}
- */
-function tryEnqueue(controller, event) {
-    try {
-        controller.enqueue(JSON.stringify(event) + "\n");
-        return true;
-    } catch {
-        return false;
-    }
-}
 
 /**
  * Resolves a stat-block with ruleItemId to one with full creature data.
@@ -282,7 +268,7 @@ function resolveConversation(convId, db, userId) {
  * Notifies the stream of retry events via `notify`; returns false from notify to abort retrying
  * (signals client disconnection).
  * @param {{ contents: Array<{role: string, parts: Array<{text: string}>}>, contextText: string, mode: string, userId: string, ungrounded: boolean }} params
- * @param {(event: object) => boolean} notify
+ * @param {(event: object) => Promise<boolean>} notify // Notice the Promise type here
  * @returns {Promise<{ blocks: import("../../shared/types.js").MessageBlock[], usage?: import("../../shared/types.js").UsageMeta } | undefined>}
  */
 async function getLlmResponseWithRetry(
@@ -297,7 +283,8 @@ async function getLlmResponseWithRetry(
                 throw error;
             }
             if (attempt < MAX_RETRIES - 1) {
-                const connected = notify({
+                // Await the asynchronous notification to know if write succeeded
+                const connected = await notify({
                     type: "retryScheduled",
                     data: {
                         delay: 30,
@@ -305,12 +292,13 @@ async function getLlmResponseWithRetry(
                         maxAttempts: MAX_RETRIES,
                     },
                 });
+
                 if (!connected) {
                     break;
                 }
                 await delay(RETRY_DELAY_MS);
             } else {
-                notify({
+                await notify({
                     type: "retryFailed",
                     data: {
                         message:
@@ -337,27 +325,30 @@ async function getLlmResponseWithRetry(
  */
 
 /**
- * Orchestrates the full SSE-style streaming response: sends the conversation (if newly created),
- * the user message, assistant chunks, and finally the persisted assistant message.
- * @param {ReadableStreamDefaultController} controller
+ * @param {import("hono/utils/stream").StreamingApi} honoStream
  * @param {StreamContext} ctx
  */
-async function runResponseStream(controller, ctx) {
+async function runResponseStream(honoStream, ctx) {
     const { db, vectorDb, userMsg, actualConvId, newConv, data, userId } = ctx;
+    const encoder = new TextEncoder();
+
+    const sendEvent = (/** @type {object | string} */ obj) => {
+        const payload = typeof obj === "string" ? obj : JSON.stringify(obj) + "\n";
+        return honoStream.write(encoder.encode(payload));
+    };
 
     if (newConv) {
-        tryEnqueue(controller, { type: "conversation", data: newConv });
+        await sendEvent({ type: "conversation", data: newConv });
     }
-    tryEnqueue(controller, { type: "userMessage", data: userMsg });
+    await sendEvent({ type: "userMessage", data: userMsg });
 
     const blocks = [];
-    /** @type {number} */
     let ragResultCount = 0;
-    /** @type {import("../../shared/types.js").UsageMeta | undefined} */
     let usage;
-    /** @type {number} */
     let embeddingTokens = 0;
+
     try {
+        // Long running async operation
         const ragContext = await queryRagContext(data.content, {
             db,
             vectorDb,
@@ -374,15 +365,12 @@ async function runResponseStream(controller, ctx) {
         try {
             await compactConversation(db, actualConvId, llmContents);
         } catch (compactionError) {
-            // oxlint-disable-next-line no-console
+            // oxlint-disable-next-line no-console -- just log and continue; compaction failure shouldn't block the user response
             console.error("Compaction failed:", compactionError);
             if (shouldCompact(llmContents)) {
-                tryEnqueue(controller, {
+                await sendEvent({
                     type: "compactionWarning",
-                    data: {
-                        message:
-                            "This conversation is getting long. If the AI can't respond, try starting a new conversation.",
-                    },
+                    data: { message: "This conversation is getting long..." },
                 });
             }
         }
@@ -395,32 +383,39 @@ async function runResponseStream(controller, ctx) {
                 userId,
                 ungrounded: isUngrounded,
             },
-            (event) => tryEnqueue(controller, event),
+            async (event) => {
+                try {
+                    await sendEvent(event);
+                    // If the write succeeds, the network socket is still open
+                    return true;
+                } catch (e) {
+                    // oxlint-disable-next-line no-console -- if the write fails, the socket is likely closed (client disconnected), so we signal to abort retries
+                    console.error("Failed to notify retry event, connection dropped: ", e);
+                    return false;
+                }
+            },
         );
 
         const llmBlocks = llmResult?.blocks ?? [];
         usage = llmResult?.usage;
 
-        /** @type {import("../../shared/types.js").MessageBlock[]} */
         const resolvedBlocks = resolveBlocks(db, llmBlocks, data.mode);
 
         if (isUngrounded) {
-            const disclaimerCallout = {
-                type: /** @type {const} */ ("callout"),
+            resolvedBlocks.unshift({
+                type: "callout",
                 title: "⚠ No Database Match",
-                markdown:
-                    "This answer is based on general knowledge — no matching rules data was found in the database. Details may be inaccurate for Pathfinder 2e.",
-            };
-            resolvedBlocks.unshift(disclaimerCallout);
+                markdown: "This answer is based on general knowledge...",
+            });
         }
 
         for (const resolved of resolvedBlocks) {
             blocks.push(resolved);
-            tryEnqueue(controller, { type: "assistantChunk", data: resolved });
-            await delay(CHUNK_DELAY_MS);
+            await sendEvent({ type: "assistantChunk", data: resolved });
+            await honoStream.sleep(CHUNK_DELAY_MS);
         }
     } catch (error) {
-        // oxlint-disable-next-line no-console
+        // oxlint-disable-next-line no-console -- just log and continue; streaming failure shouldn't block the user response
         console.error("Error streaming assistant response:", error);
     } finally {
         const assistantMsg = queries.createMessage(db, {
@@ -430,18 +425,16 @@ async function runResponseStream(controller, ctx) {
             content: null,
             blocksJson: JSON.stringify(blocks),
         });
-        tryEnqueue(controller, {
+
+        await sendEvent({
             type: "assistantComplete",
             data: {
                 ...assistantMsg,
                 ragMeta: { resultCount: ragResultCount, usage, embeddingTokens },
             },
         });
-        try {
-            controller.close();
-        } catch {
-            // Controller might already be closed if the client disconnected
-        }
+
+        // When this outer execution block drops out of scope, Hono cleanly sends the 0-byte end chunk.
     }
 }
 
@@ -500,10 +493,18 @@ export const messagesRouter = new Hono()
             userId,
         };
 
-        return new Response(
-            new ReadableStream({
-                start: (controller) => runResponseStream(controller, streamCtx),
-            }),
-            { headers: { "Content-Type": "text/plain" } },
-        );
+        // Set correct headers explicitly before handing off to the streaming context
+        c.header("Content-Type", "text/plain");
+        c.header("Transfer-Encoding", "chunked");
+        c.header("X-Content-Type-Options", "nosniff");
+
+        return stream(c, async (honoStream) => {
+            honoStream.onAbort(() => {
+                // oxlint-disable-next-line no-console -- Safe cleanup if client leaves mid-way
+                console.log("Stream context aborted by client.");
+            });
+
+            // Awaiting this makes Hono keep the network socket alive until processing completes
+            await runResponseStream(honoStream, streamCtx);
+        });
     });

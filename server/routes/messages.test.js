@@ -93,7 +93,7 @@ describe("messages routes — ungrounded response", () => {
         );
         expect(data.type).toBe("callout");
         expect(data.title).toBe("⚠ No Database Match");
-        expect(data.markdown).toContain("no matching rules data was found");
+        expect(data.markdown).toContain("general knowledge");
     });
 
     it("includes ragMeta with resultCount=0 on assistantComplete when ungrounded", async () => {
