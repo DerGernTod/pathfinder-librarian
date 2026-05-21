@@ -266,14 +266,17 @@ function resolveConversation(convId, db, userId) {
  * Calls getLlmResponse with automatic retries on RetryableError.
  * Notifies the stream of retry events via `notify`; returns false from notify to abort retrying
  * (signals client disconnection).
- * @param {{ contents: Array<{role: string, parts: Array<{text: string}>}>, contextText: string, mode: string, userId: string }} params
+ * @param {{ contents: Array<{role: string, parts: Array<{text: string}>}>, contextText: string, mode: string, userId: string, ungrounded: boolean }} params
  * @param {(event: object) => boolean} notify
  * @returns {Promise<import("../../shared/types.js").MessageBlock[] | undefined>}
  */
-async function getLlmResponseWithRetry({ contents, contextText, mode, userId }, notify) {
+async function getLlmResponseWithRetry(
+    { contents, contextText, mode, userId, ungrounded },
+    notify,
+) {
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
         try {
-            return await getLlmResponse(contents, contextText, mode, userId);
+            return await getLlmResponse(contents, contextText, mode, userId, ungrounded);
         } catch (error) {
             if (!(error instanceof RetryableError)) {
                 throw error;
@@ -333,6 +336,8 @@ async function runResponseStream(controller, ctx) {
     tryEnqueue(controller, { type: "userMessage", data: userMsg });
 
     const blocks = [];
+    /** @type {number} */
+    let ragResultCount = 0;
     try {
         const ragContext = await queryRagContext(data.content, {
             db,
@@ -340,6 +345,8 @@ async function runResponseStream(controller, ctx) {
             topN: 5,
             threshold: 0.3,
         });
+        ragResultCount = ragContext.sources.length;
+        const isUngrounded = ragResultCount === 0;
 
         const llmContents = formatConversationForLlm(db, actualConvId);
 
@@ -365,11 +372,25 @@ async function runResponseStream(controller, ctx) {
                 contextText: ragContext.contextText,
                 mode: data.mode,
                 userId,
+                ungrounded: isUngrounded,
             },
             (event) => tryEnqueue(controller, event),
         );
 
-        for (const resolved of resolveBlocks(db, llmBlocks ?? [])) {
+        /** @type {import("../../shared/types.js").MessageBlock[]} */
+        const resolvedBlocks = resolveBlocks(db, llmBlocks ?? []);
+
+        if (isUngrounded) {
+            const disclaimerCallout = {
+                type: /** @type {const} */ ("callout"),
+                title: "⚠ No Database Match",
+                markdown:
+                    "This answer is based on general knowledge — no matching rules data was found in the database. Details may be inaccurate for Pathfinder 2e.",
+            };
+            resolvedBlocks.unshift(disclaimerCallout);
+        }
+
+        for (const resolved of resolvedBlocks) {
             blocks.push(resolved);
             tryEnqueue(controller, { type: "assistantChunk", data: resolved });
             await delay(CHUNK_DELAY_MS);
@@ -387,7 +408,7 @@ async function runResponseStream(controller, ctx) {
         });
         tryEnqueue(controller, {
             type: "assistantComplete",
-            data: assistantMsg,
+            data: { ...assistantMsg, ragMeta: { resultCount: ragResultCount } },
         });
         try {
             controller.close();

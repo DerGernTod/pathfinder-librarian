@@ -167,6 +167,13 @@ class AssistantMessage extends BaseElement {
                 gap: 0.375rem;
                 margin-top: 0.25rem;
             }
+            .assistant-bubble.ungrounded {
+                border-color: hsl(45, 93%, 47%);
+                background: hsla(45, 93%, 47%, 0.05);
+            }
+            .assistant-bubble.ungrounded .callout-card::part(base) {
+                border-color: hsl(45, 93%, 47%);
+            }
             @media (max-width: 767px) {
                 .assistant-content {
                     max-width: 92%;
@@ -193,11 +200,12 @@ class AssistantMessage extends BaseElement {
         const blocks =
             this.message.blocks ??
             /** @type {MessageBlock[]} */ (JSON.parse(this.message.blocksJson ?? "[]"));
+        const ungrounded = this.message?.ragMeta?.resultCount === 0;
         return html`
             <div class="assistant-message" data-mode=${this.message.mode ?? "gm"}>
                 <div class="assistant-avatar">🤖</div>
                 <div class="assistant-content">
-                    <div class="assistant-bubble">
+                    <div class="assistant-bubble ${ungrounded ? "ungrounded" : ""}">
                         <div class="bubble-content">
                             ${blocks.map((block) => this.renderBlock(block))}
                         </div>

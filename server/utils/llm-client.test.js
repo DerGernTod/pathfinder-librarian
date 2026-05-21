@@ -210,6 +210,25 @@ describe("llm-client", () => {
             expect(body.systemInstruction.parts[0].text).toContain("Pathfinder");
         });
 
+        it("passes ungrounded flag to system prompt", async () => {
+            process.env.GOOGLE_AI_API_KEY = "test-key";
+            const blocks = [{ type: "text", markdown: "Test" }];
+
+            /** @type {import("bun:test").Mock<() => Promise<unknown>>} */
+            const fetchMock = mock(() => Promise.resolve(geminiResponse(JSON.stringify(blocks))));
+            globalThis.fetch = /** @type {typeof fetch} */ (/** @type {unknown} */ (fetchMock));
+
+            await callGeminiJson([{ role: "user", parts: [{ text: "test" }] }], "", "player", true);
+
+            const calls = /** @type {[string, RequestInit][]} */ (
+                /** @type {unknown} */ (fetchMock.mock.calls)
+            );
+            const body = JSON.parse(/** @type {string} */ (calls[0][1].body));
+            const promptText = body.systemInstruction.parts[0].text;
+
+            expect(promptText).toContain("No Reference Data Available");
+        });
+
         it("sends mode-aware prompt (player vs gm)", async () => {
             process.env.GOOGLE_AI_API_KEY = "test-key";
             const blocks = [{ type: "text", markdown: "Test" }];
@@ -331,6 +350,26 @@ describe("llm-client", () => {
             const prompt = buildSystemPrompt("", "player");
 
             expect(prompt).not.toContain("retrieved-context");
+        });
+
+        it("includes ungrounded warning when ungrounded=true", () => {
+            const prompt = buildSystemPrompt("", "player", true);
+
+            expect(prompt).toContain("No Reference Data Available");
+            expect(prompt).toContain("general knowledge");
+            expect(prompt).toContain("NEVER emit stat-block or rule-detail blocks");
+        });
+
+        it("omits ungrounded warning when ungrounded=false", () => {
+            const prompt = buildSystemPrompt("", "player", false);
+
+            expect(prompt).not.toContain("No Reference Data Available");
+        });
+
+        it("omits ungrounded warning by default", () => {
+            const prompt = buildSystemPrompt("", "player");
+
+            expect(prompt).not.toContain("No Reference Data Available");
         });
     });
 
