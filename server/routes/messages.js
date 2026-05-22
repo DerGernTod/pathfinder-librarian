@@ -370,7 +370,10 @@ async function runResponseStream(honoStream, ctx) {
             if (shouldCompact(llmContents)) {
                 await sendEvent({
                     type: "compactionWarning",
-                    data: { message: "This conversation is getting long..." },
+                    data: {
+                        message:
+                            "This conversation is getting long. If the AI can't respond, try starting a new conversation.",
+                    },
                 });
             }
         }
@@ -405,7 +408,8 @@ async function runResponseStream(honoStream, ctx) {
             resolvedBlocks.unshift({
                 type: "callout",
                 title: "⚠ No Database Match",
-                markdown: "This answer is based on general knowledge...",
+                markdown:
+                    "This answer is based on general knowledge — no matching rules data was found in the database. Details may be inaccurate for Pathfinder 2e.",
             });
         }
 
