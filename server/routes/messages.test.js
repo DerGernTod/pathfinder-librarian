@@ -512,3 +512,419 @@ describe("messages routes — cost metadata", () => {
         expect(data.ragMeta.usage).toBeUndefined();
     });
 });
+
+describe("messages routes — custom stat block resolution", () => {
+    /** @type {Hono<any>} */
+    let app;
+    /** @type {ReturnType<typeof createDb>} */
+    let db;
+    /** @type {string} */
+    let sessionToken;
+    /** @type {string} */
+    let SEED_USER_ID;
+    /** @type {string} */
+    let convId;
+
+    beforeEach(async () => {
+        const { seedIfNeeded, SEED_IDS: seedIds } = await import("../db/seed.js");
+        SEED_USER_ID = seedIds.USER_DEFAULT;
+
+        db = createDb(":memory:");
+        seedIfNeeded(db);
+
+        const { conversationsRouter } = await import("./conversations.js");
+        const { sessionMiddleware } = await import("../middleware/session.js");
+        const { databaseMiddleware } = await import("../middleware/database.js");
+        const { createSession, createConversation } = await import("../db/queries.js");
+
+        app = new Hono()
+            .use("/api/*", databaseMiddleware({ database: db }))
+            .use("/api/conversations/*", sessionMiddleware({ database: db }))
+            .route("/api/conversations", conversationsRouter);
+
+        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        const session = createSession(db, {
+            userId: SEED_USER_ID,
+            token: crypto.randomUUID(),
+            expiresAt,
+        });
+        sessionToken = session.token;
+
+        const conv = createConversation(db, {
+            title: "Custom Stat Block Test",
+            userId: SEED_USER_ID,
+        });
+        convId = conv.id;
+    });
+
+    afterEach(() => {
+        if (db) {
+            db.close();
+        }
+    });
+
+    /**
+     * Helper to mock Gemini to return specific blocks.
+     * @param {import("bun:test").Mock<() => Promise<unknown>>} fetchMock
+     * @param {import("../../shared/types.js").MessageBlock[]} blocks
+     */
+    function mockGeminiBlocks(fetchMock, blocks) {
+        fetchMock.mockImplementation(() => {
+            const url = /** @type {string[]} */ (fetchMock.mock.calls.at(-1))?.[0];
+            if (typeof url === "string" && url.includes("generateContent")) {
+                return Promise.resolve({
+                    ok: true,
+                    json: () =>
+                        Promise.resolve({
+                            candidates: [
+                                {
+                                    content: {
+                                        parts: [{ text: JSON.stringify(blocks) }],
+                                    },
+                                },
+                            ],
+                        }),
+                });
+            }
+            return Promise.resolve({
+                ok: false,
+                status: 500,
+                text: () => Promise.resolve("Not mocked"),
+            });
+        });
+    }
+
+    it("GM mode: custom-stat-block is resolved to stat-block with full inline data", async () => {
+        const originalFetch = globalThis.fetch;
+        const { mock } = await import("bun:test");
+
+        /** @type {import("bun:test").Mock<() => Promise<unknown>>} */
+        const fetchMock = mock(() =>
+            Promise.resolve({ ok: false, status: 500, text: () => Promise.resolve("") }),
+        );
+        globalThis.fetch = /** @type {typeof fetch} */ (/** @type {unknown} */ (fetchMock));
+        process.env.GOOGLE_AI_API_KEY = "test-key";
+
+        try {
+            mockGeminiBlocks(fetchMock, [
+                {
+                    type: "custom-stat-block",
+                    title: "Sylvaris",
+                    data: {
+                        name: "Sylvaris",
+                        type: "Humanoid",
+                        level: 5,
+                        traits: ["Elf", "Ranger"],
+                        attributes: {
+                            ac: { value: 22 },
+                            hp: { value: 75, max: 75 },
+                            speed: "30 feet",
+                        },
+                        abilities: {
+                            str: { mod: 2 },
+                            dex: { mod: 4 },
+                            con: { mod: 1 },
+                            int: { mod: 2 },
+                            wis: { mod: 3 },
+                            cha: { mod: 1 },
+                        },
+                    },
+                },
+            ]);
+
+            const res = await app.request(`/api/conversations/${convId}/messages`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-session-token": sessionToken,
+                },
+                body: JSON.stringify({
+                    content: "Create an elf ranger named Sylvaris",
+                    mode: "gm",
+                }),
+            });
+
+            const text = await res.text();
+            const events = parseSse(text);
+
+            const chunkEvents = events.filter((e) => e.type === "assistantChunk");
+            const statBlockChunk = chunkEvents.find(
+                (e) => /** @type {{ type?: string }} */ (e.data).type === "stat-block",
+            );
+            expect(statBlockChunk).toBeDefined();
+            if (!statBlockChunk) {
+                return;
+            }
+
+            const data =
+                /** @type {{ type: string, title: string, data: unknown, redacted?: boolean }} */ (
+                    statBlockChunk.data
+                );
+            expect(data.type).toBe("stat-block");
+            expect(data.title).toBe("Sylvaris");
+            expect(data.redacted).toBeUndefined();
+
+            const creatureData =
+                /** @type {{ name: string, level: number, attributes: unknown }} */ (data.data);
+            expect(creatureData.name).toBe("Sylvaris");
+            expect(creatureData.level).toBe(5);
+            expect(creatureData.attributes).toBeDefined();
+        } finally {
+            globalThis.fetch = originalFetch;
+            delete process.env.GOOGLE_AI_API_KEY;
+            mock.restore();
+        }
+    });
+
+    it("player mode: custom-stat-block is resolved to stat-block with redaction", async () => {
+        const originalFetch = globalThis.fetch;
+        const { mock } = await import("bun:test");
+
+        /** @type {import("bun:test").Mock<() => Promise<unknown>>} */
+        const fetchMock = mock(() =>
+            Promise.resolve({ ok: false, status: 500, text: () => Promise.resolve("") }),
+        );
+        globalThis.fetch = /** @type {typeof fetch} */ (/** @type {unknown} */ (fetchMock));
+        process.env.GOOGLE_AI_API_KEY = "test-key";
+
+        try {
+            mockGeminiBlocks(fetchMock, [
+                {
+                    type: "custom-stat-block",
+                    title: "Sylvaris",
+                    data: {
+                        name: "Sylvaris",
+                        type: "Humanoid",
+                        level: 5,
+                        traits: ["Elf", "Ranger"],
+                        attributes: {
+                            ac: { value: 22 },
+                            hp: { value: 75, max: 75 },
+                        },
+                        abilities: {
+                            str: { mod: 2 },
+                            dex: { mod: 4 },
+                        },
+                    },
+                },
+            ]);
+
+            const res = await app.request(`/api/conversations/${convId}/messages`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-session-token": sessionToken,
+                },
+                body: JSON.stringify({
+                    content: "Create an elf ranger named Sylvaris",
+                    mode: "player",
+                }),
+            });
+
+            const text = await res.text();
+            const events = parseSse(text);
+
+            const chunkEvents = events.filter((e) => e.type === "assistantChunk");
+            const statBlockChunk = chunkEvents.find(
+                (e) => /** @type {{ type?: string }} */ (e.data).type === "stat-block",
+            );
+            expect(statBlockChunk).toBeDefined();
+            if (!statBlockChunk) {
+                return;
+            }
+
+            const data =
+                /** @type {{ type: string, title: string, data: unknown, redacted?: boolean }} */ (
+                    statBlockChunk.data
+                );
+            expect(data.type).toBe("stat-block");
+            expect(data.title).toBe("Sylvaris");
+            expect(data.redacted).toBe(true);
+
+            const creatureData =
+                /** @type {{ name: string, level?: number, attributes?: unknown, abilities?: unknown }} */ (
+                    data.data
+                );
+            expect(creatureData.name).toBe("Sylvaris");
+            expect(creatureData.level).toBeUndefined();
+            expect(creatureData.attributes).toBeUndefined();
+            expect(creatureData.abilities).toBeUndefined();
+        } finally {
+            globalThis.fetch = originalFetch;
+            delete process.env.GOOGLE_AI_API_KEY;
+            mock.restore();
+        }
+    });
+
+    it("mixed blocks: text + custom-stat-block + stat-block all resolve correctly", async () => {
+        const originalFetch = globalThis.fetch;
+        const { mock } = await import("bun:test");
+
+        /** @type {import("bun:test").Mock<() => Promise<unknown>>} */
+        const fetchMock = mock(() =>
+            Promise.resolve({ ok: false, status: 500, text: () => Promise.resolve("") }),
+        );
+        globalThis.fetch = /** @type {typeof fetch} */ (/** @type {unknown} */ (fetchMock));
+        process.env.GOOGLE_AI_API_KEY = "test-key";
+
+        try {
+            mockGeminiBlocks(fetchMock, [
+                { type: "text", markdown: "Here is a custom creature:" },
+                {
+                    type: "custom-stat-block",
+                    title: "Flame Wisp",
+                    data: { name: "Flame Wisp", level: 2 },
+                },
+            ]);
+
+            const res = await app.request(`/api/conversations/${convId}/messages`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-session-token": sessionToken,
+                },
+                body: JSON.stringify({
+                    content: "Create a flame wisp creature",
+                    mode: "gm",
+                }),
+            });
+
+            const text = await res.text();
+            const events = parseSse(text);
+
+            const chunkEvents = events.filter((e) => e.type === "assistantChunk");
+            expect(chunkEvents.length).toBeGreaterThanOrEqual(2);
+
+            const types = chunkEvents.map((e) => /** @type {{ type: string }} */ (e.data).type);
+            expect(types).toContain("text");
+            expect(types).toContain("stat-block");
+            expect(types).not.toContain("custom-stat-block");
+        } finally {
+            globalThis.fetch = originalFetch;
+            delete process.env.GOOGLE_AI_API_KEY;
+            mock.restore();
+        }
+    });
+
+    it("minimal custom-stat-block with name and level only renders without error", async () => {
+        const originalFetch = globalThis.fetch;
+        const { mock } = await import("bun:test");
+
+        /** @type {import("bun:test").Mock<() => Promise<unknown>>} */
+        const fetchMock = mock(() =>
+            Promise.resolve({ ok: false, status: 500, text: () => Promise.resolve("") }),
+        );
+        globalThis.fetch = /** @type {typeof fetch} */ (/** @type {unknown} */ (fetchMock));
+        process.env.GOOGLE_AI_API_KEY = "test-key";
+
+        try {
+            mockGeminiBlocks(fetchMock, [
+                {
+                    type: "custom-stat-block",
+                    title: "Mystery Beast",
+                    data: { name: "Mystery Beast", level: 10 },
+                },
+            ]);
+
+            const res = await app.request(`/api/conversations/${convId}/messages`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-session-token": sessionToken,
+                },
+                body: JSON.stringify({
+                    content: "Create a mystery beast",
+                    mode: "gm",
+                }),
+            });
+
+            const text = await res.text();
+            const events = parseSse(text);
+
+            const chunkEvents = events.filter((e) => e.type === "assistantChunk");
+            const statBlockChunk = chunkEvents.find(
+                (e) => /** @type {{ type?: string }} */ (e.data).type === "stat-block",
+            );
+            expect(statBlockChunk).toBeDefined();
+            if (!statBlockChunk) {
+                return;
+            }
+
+            const data =
+                /** @type {{ type: string, title: string, data: { name: string, level: number } }} */ (
+                    statBlockChunk.data
+                );
+            expect(data.type).toBe("stat-block");
+            expect(data.title).toBe("Mystery Beast");
+            expect(data.data.name).toBe("Mystery Beast");
+            expect(data.data.level).toBe(10);
+        } finally {
+            globalThis.fetch = originalFetch;
+            delete process.env.GOOGLE_AI_API_KEY;
+            mock.restore();
+        }
+    });
+
+    it("stored assistant message contains resolved stat-block blocks not raw custom-stat-block", async () => {
+        const originalFetch = globalThis.fetch;
+        const { mock } = await import("bun:test");
+
+        /** @type {import("bun:test").Mock<() => Promise<unknown>>} */
+        const fetchMock = mock(() =>
+            Promise.resolve({ ok: false, status: 500, text: () => Promise.resolve("") }),
+        );
+        globalThis.fetch = /** @type {typeof fetch} */ (/** @type {unknown} */ (fetchMock));
+        process.env.GOOGLE_AI_API_KEY = "test-key";
+
+        try {
+            mockGeminiBlocks(fetchMock, [
+                {
+                    type: "custom-stat-block",
+                    title: "Frost Giant",
+                    data: { name: "Frost Giant", level: 8 },
+                },
+            ]);
+
+            const res = await app.request(`/api/conversations/${convId}/messages`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-session-token": sessionToken,
+                },
+                body: JSON.stringify({
+                    content: "Create a frost giant",
+                    mode: "gm",
+                }),
+            });
+            await res.text();
+
+            const messages = db
+                .query(
+                    "SELECT blocks_json FROM messages WHERE conversation_id = ? AND role = 'assistant'",
+                )
+                .all(convId);
+
+            expect(messages).toHaveLength(1);
+            const blocks = JSON.parse(messages[0].blocks_json);
+
+            // Should not contain any raw custom-stat-block
+            const customBlocks = blocks.filter(
+                /** @param {{ type?: string }} b */ (b) => b.type === "custom-stat-block",
+            );
+            expect(customBlocks).toHaveLength(0);
+
+            // Should contain resolved stat-block
+            const statBlocks = blocks.filter(
+                /** @param {{ type?: string }} b */ (b) => b.type === "stat-block",
+            );
+            expect(statBlocks).toHaveLength(1);
+            expect(statBlocks[0].title).toBe("Frost Giant");
+            expect(statBlocks[0].data.name).toBe("Frost Giant");
+            expect(statBlocks[0].data.level).toBe(8);
+        } finally {
+            globalThis.fetch = originalFetch;
+            delete process.env.GOOGLE_AI_API_KEY;
+            mock.restore();
+        }
+    });
+});

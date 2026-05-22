@@ -73,11 +73,50 @@
 
 /** @typedef {{ type: "stat-block", title?: string, data?: CreatureData, ruleItemId?: string, redacted?: boolean }} StatBlockMessageBlock */
 
+/**
+ * Relaxed creature data for LLM-emitted custom stat blocks.
+ * Only `name` and `level` are required; all other fields are optional.
+ * @typedef {{
+ *   name: string,
+ *   type?: string,
+ *   level: number,
+ *   rarity?: string,
+ *   traits?: string[],
+ *   perception?: number,
+ *   languages?: { value: string[], details?: string },
+ *   size?: string,
+ *   blurb?: string,
+ *   attributes?: {
+ *     ac?: { value: number, details?: string },
+ *     hp?: { value: number, max: number, details?: string },
+ *     fortitude?: { value: number, saveDetail?: string },
+ *     reflex?: { value: number, saveDetail?: string },
+ *     will?: { value: number, saveDetail?: string },
+ *     speed?: string,
+ *   },
+ *   abilities?: {
+ *     str?: { mod: number },
+ *     dex?: { mod: number },
+ *     con?: { mod: number },
+ *     int?: { mod: number },
+ *     wis?: { mod: number },
+ *     cha?: { mod: number },
+ *   },
+ *   skills?: Record<string, { value: number }>,
+ *   melee?: Array<{ name: string, attack: string, damage: string, damageType?: string, traits?: string[] }>,
+ *   actions?: Array<{ name: string, actionType?: number | "reaction" | "free", traits?: string[], description: string }>,
+ *   spellcasting?: Array<{ name: string, tradition?: string, type?: string, dc?: number, attackModifier?: number, slots?: Record<string, Array<{ name: string, rank?: number }>>, cantrips?: Array<{ name: string, rank?: number }> }>,
+ *   description?: string,
+ * }} CustomCreatureData
+ */
+
+/** @typedef {{ type: "custom-stat-block", title: string, data: CustomCreatureData }} CustomStatBlockMessageBlock */
+
 /** @typedef {{ type: "rule-detail", ruleItemId?: string, title?: string, category?: string, description?: string, traits?: string[] }} RuleDetailBlock */
 
 /** @typedef {{ name: string, ruleItemId?: string }} TraitRef */
 
-/** @typedef {TextBlock | CalloutBlock | StatBlockMessageBlock | RuleDetailBlock} MessageBlock */
+/** @typedef {TextBlock | CalloutBlock | StatBlockMessageBlock | CustomStatBlockMessageBlock | RuleDetailBlock} MessageBlock */
 
 /** @typedef {{ id: string, type: string, name: string, compendiumSource: string, dataJson: string, parentId?: string, linkedSource?: string, itemRefs?: string[] }} ImportableRuleItem */
 

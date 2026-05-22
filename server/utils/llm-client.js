@@ -51,6 +51,160 @@ export function buildGeminiResponseSchema() {
         required: ["type", "ruleItemId"],
     };
 
+    const customStatBlockMessage = {
+        type: "object",
+        properties: {
+            type: { type: "string", enum: ["custom-stat-block"] },
+            title: { type: "string" },
+            data: {
+                type: "object",
+                properties: {
+                    name: { type: "string" },
+                    type: { type: "string" },
+                    level: { type: "number" },
+                    rarity: { type: "string" },
+                    traits: { type: "array", items: { type: "string" } },
+                    perception: { type: "number" },
+                    languages: {
+                        type: "object",
+                        properties: { value: { type: "array", items: { type: "string" } } },
+                    },
+                    size: { type: "string" },
+                    blurb: { type: "string" },
+                    attributes: {
+                        type: "object",
+                        properties: {
+                            ac: {
+                                type: "object",
+                                properties: {
+                                    value: { type: "number" },
+                                    details: { type: "string" },
+                                },
+                            },
+                            hp: {
+                                type: "object",
+                                properties: {
+                                    value: { type: "number" },
+                                    max: { type: "number" },
+                                    details: { type: "string" },
+                                },
+                            },
+                            fortitude: {
+                                type: "object",
+                                properties: {
+                                    value: { type: "number" },
+                                    saveDetail: { type: "string" },
+                                },
+                            },
+                            reflex: {
+                                type: "object",
+                                properties: {
+                                    value: { type: "number" },
+                                    saveDetail: { type: "string" },
+                                },
+                            },
+                            will: {
+                                type: "object",
+                                properties: {
+                                    value: { type: "number" },
+                                    saveDetail: { type: "string" },
+                                },
+                            },
+                            speed: { type: "string" },
+                        },
+                    },
+                    abilities: {
+                        type: "object",
+                        properties: {
+                            str: { type: "object", properties: { mod: { type: "number" } } },
+                            dex: { type: "object", properties: { mod: { type: "number" } } },
+                            con: { type: "object", properties: { mod: { type: "number" } } },
+                            int: { type: "object", properties: { mod: { type: "number" } } },
+                            wis: { type: "object", properties: { mod: { type: "number" } } },
+                            cha: { type: "object", properties: { mod: { type: "number" } } },
+                        },
+                    },
+                    skills: {
+                        type: "object",
+                        additionalProperties: {
+                            type: "object",
+                            properties: { value: { type: "number" } },
+                        },
+                    },
+                    melee: {
+                        type: "array",
+                        items: {
+                            type: "object",
+                            properties: {
+                                name: { type: "string" },
+                                attack: { type: "string" },
+                                damage: { type: "string" },
+                                damageType: { type: "string" },
+                                traits: { type: "array", items: { type: "string" } },
+                            },
+                        },
+                    },
+                    actions: {
+                        type: "array",
+                        items: {
+                            type: "object",
+                            properties: {
+                                name: { type: "string" },
+                                actionType: {
+                                    anyOf: [
+                                        { type: "integer" },
+                                        { type: "string", enum: ["reaction", "free"] },
+                                    ],
+                                },
+                                traits: { type: "array", items: { type: "string" } },
+                                description: { type: "string" },
+                            },
+                        },
+                    },
+                    spellcasting: {
+                        type: "array",
+                        items: {
+                            type: "object",
+                            properties: {
+                                name: { type: "string" },
+                                tradition: { type: "string" },
+                                type: { type: "string" },
+                                dc: { type: "number" },
+                                attackModifier: { type: "number" },
+                                slots: {
+                                    type: "object",
+                                    additionalProperties: {
+                                        type: "array",
+                                        items: {
+                                            type: "object",
+                                            properties: {
+                                                name: { type: "string" },
+                                                rank: { type: "number" },
+                                            },
+                                        },
+                                    },
+                                },
+                                cantrips: {
+                                    type: "array",
+                                    items: {
+                                        type: "object",
+                                        properties: {
+                                            name: { type: "string" },
+                                            rank: { type: "number" },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    description: { type: "string" },
+                },
+                required: ["name", "level"],
+            },
+        },
+        required: ["type", "title", "data"],
+    };
+
     const ruleDetailBlock = {
         type: "object",
         properties: {
@@ -63,7 +217,13 @@ export function buildGeminiResponseSchema() {
     return {
         type: "array",
         items: {
-            anyOf: [textBlock, calloutBlock, statBlockMessage, ruleDetailBlock],
+            anyOf: [
+                textBlock,
+                calloutBlock,
+                statBlockMessage,
+                customStatBlockMessage,
+                ruleDetailBlock,
+            ],
         },
     };
 }
@@ -90,7 +250,7 @@ The database search returned NO matching results for the user's question. You mu
 1. Begin your response with a text block that says: "I don't have specific data in my database about this topic, but here's what I can share based on general Pathfinder 2e knowledge:"
 2. Clearly indicate throughout your response that this information is from general knowledge, not verified database entries.
 3. Avoid presenting speculation as fact. If you're genuinely unsure, say so.
-4. NEVER emit stat-block or rule-detail blocks — you have no verified data to reference.`
+4. NEVER emit stat-block or rule-detail blocks — you have no verified data to reference. You MAY emit custom-stat-block blocks for invented creatures — these include inline data rather than DB references.`
             : "";
 
     const playerRestrictions = `
@@ -130,6 +290,12 @@ Creature stat block. Use when the reference data contains a creature entry. Refe
 - The ruleItemId comes from the [ID: ...] in the creature's reference data header
 - NEVER use stat-block for traits, conditions, or other non-creature items
 
+### custom-stat-block
+Custom or invented creature stat block with inline data. Use when the user asks you to create, invent, or imagine a creature that is NOT in the reference data. Provide full stats inline.
+- Example: { "type": "custom-stat-block", "title": "Sylvaris", "data": { "name": "Sylvaris", "type": "Humanoid", "level": 5, "traits": ["Elf", "Ranger"], "attributes": { "ac": { "value": 22 }, "hp": { "value": 75, "max": 75 }, "speed": "30 feet" }, "abilities": { "str": { "mod": 2 }, "dex": { "mod": 4 }, "con": { "mod": 1 }, "int": { "mod": 2 }, "wis": { "mod": 3 }, "cha": { "mod": 1 } } } }
+- Use stat-block when the creature EXISTS in the reference data (with an [ID: ...] header). Use custom-stat-block when INVENTING a new creature.
+- The data object MUST include "name" and "level". All other fields (attributes, abilities, skills, melee, actions, etc.) are optional but recommended for a complete stat block.
+
 ### rule-detail
 A non-creature rule item (trait, condition, feat, etc.) that has its OWN dedicated entry in the reference data — meaning it has its own [ID: ...] header line.
 - Example: { "type": "rule-detail", "ruleItemId": "abc-123" }
@@ -145,6 +311,7 @@ A non-creature rule item (trait, condition, feat, etc.) that has its OWN dedicat
 - Combine blocks to give a complete answer: a text block for context, stat-block for the creature, rule-detail only for independently-listed items
 - Use markdown formatting: **bold** for key values (DCs, damage dice, critical terms), \`code\` for game terms, bullet lists for enumerations
 - Each response should typically have 2-5 blocks
+- When the user asks you to create or invent a creature/NPC, use custom-stat-block with full inline stats
 - Respond directly and concisely as a helpful RPG assistant${ragSection}${ungroundedSection}`;
 }
 
