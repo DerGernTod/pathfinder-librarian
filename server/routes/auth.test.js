@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeAll, mock } from "bun:test";
+import { describe, test, expect, beforeAll, afterAll, mock } from "bun:test";
 
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
@@ -338,5 +338,50 @@ describe("POST /api/test/ensure-test-user", () => {
         });
 
         expect(res.status).toBe(400);
+    });
+});
+
+describe("GET /auth/api-key-status", () => {
+    const originalKey = process.env.GOOGLE_AI_API_KEY;
+
+    test("returns not_set when GOOGLE_AI_API_KEY is undefined", async () => {
+        delete process.env.GOOGLE_AI_API_KEY;
+
+        const res = await authRouter.request("/auth/api-key-status");
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.result).toBe("success");
+        expect(json.data.available).toBe(false);
+        expect(json.data.reason).toBe("not_set");
+    });
+
+    test("returns empty when GOOGLE_AI_API_KEY is empty string", async () => {
+        process.env.GOOGLE_AI_API_KEY = "";
+
+        const res = await authRouter.request("/auth/api-key-status");
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.result).toBe("success");
+        expect(json.data.available).toBe(false);
+        expect(json.data.reason).toBe("empty");
+    });
+
+    test("returns ok when GOOGLE_AI_API_KEY is set to a non-empty string", async () => {
+        process.env.GOOGLE_AI_API_KEY = "test-api-key-value";
+
+        const res = await authRouter.request("/auth/api-key-status");
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.result).toBe("success");
+        expect(json.data.available).toBe(true);
+        expect(json.data.reason).toBe("ok");
+    });
+
+    afterAll(() => {
+        if (originalKey !== undefined) {
+            process.env.GOOGLE_AI_API_KEY = originalKey;
+        } else {
+            delete process.env.GOOGLE_AI_API_KEY;
+        }
     });
 });

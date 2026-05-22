@@ -119,4 +119,47 @@ describe("chat-input", () => {
         await el.updateComplete;
         expect(getByText(el.shadowRoot, /Pathfinder Librarian can make mistakes/)).toBeTruthy();
     });
+
+    it("does not render warning when API key is available", async () => {
+        const el = createInput();
+        el._apiKeyStatus = { available: true, reason: "ok" };
+        await el.updateComplete;
+
+        const warningIcon = el.shadowRoot.querySelector(".api-warning-icon");
+        expect(warningIcon).toBeNull();
+    });
+
+    it("renders warning icon when API key is not set", async () => {
+        const el = createInput();
+        el._apiKeyStatus = { available: false, reason: "not_set" };
+        await el.updateComplete;
+
+        const warningIcon = el.shadowRoot.querySelector(".api-warning-icon");
+        expect(warningIcon).toBeTruthy();
+        const tooltip = el.shadowRoot.querySelector("sl-tooltip");
+        expect(tooltip).toBeTruthy();
+        expect(tooltip.getAttribute("content")).toBe("API key not configured");
+    });
+
+    it("renders warning icon when API key is empty", async () => {
+        const el = createInput();
+        el._apiKeyStatus = { available: false, reason: "empty" };
+        await el.updateComplete;
+
+        const warningIcon = el.shadowRoot.querySelector(".api-warning-icon");
+        expect(warningIcon).toBeTruthy();
+        const tooltip = el.shadowRoot.querySelector("sl-tooltip");
+        expect(tooltip).toBeTruthy();
+        expect(tooltip.getAttribute("content")).toBe("API key is empty");
+    });
+
+    it("warning icon has correct aria-label", async () => {
+        const el = createInput();
+        el._apiKeyStatus = { available: false, reason: "not_set" };
+        await el.updateComplete;
+
+        const warningIcon = el.shadowRoot.querySelector(".api-warning-icon");
+        expect(warningIcon).toBeTruthy();
+        expect(warningIcon.getAttribute("aria-label")).toBe("API key not configured");
+    });
 });
