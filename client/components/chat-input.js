@@ -175,7 +175,7 @@ class ChatInput extends BaseElement {
         return html`
             <div class="wrapper">
                 <div class="input-row" data-mode=${this._modeState.mode}>
-                    ${!this._apiKeyStatus.available
+                    ${this._apiKeyStatus && !this._apiKeyStatus.available
                         ? html`
                               <sl-tooltip
                                   content="${this._apiKeyStatusReasonText()}"
@@ -277,7 +277,8 @@ class ChatInput extends BaseElement {
      * @returns {string}
      */
     _apiKeyStatusReasonText() {
-        switch (this._apiKeyStatus.reason) {
+        const reason = this._apiKeyStatus?.reason;
+        switch (reason) {
             case "not_set":
                 return "API key not configured";
             case "empty":
