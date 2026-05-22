@@ -163,6 +163,7 @@ const port = 3000;
 // oxlint-disable-next-line import/no-default-export -- required by Bun
 export default {
     port,
+    idleTimeout: 0, // disables timeout for long-running requests (like RAG with a slow LLM response or 30s delay when google fails)
     hostname: "0.0.0.0", // Forces Bun to listen on all interfaces
     fetch: app.fetch,
 };
