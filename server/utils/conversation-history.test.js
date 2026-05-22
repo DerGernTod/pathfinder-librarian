@@ -55,6 +55,33 @@ describe("conversation-history", () => {
             expect(result).toBe("[Rule Detail: Item]");
         });
 
+        it("handles custom-stat-block blocks", () => {
+            const result = serializeBlocks([
+                {
+                    type: "custom-stat-block",
+                    title: "Sylvaris",
+                    data: { name: "Sylvaris", level: 5 },
+                },
+            ]);
+            expect(result).toBe("[Custom Stat Block: Sylvaris]");
+        });
+
+        it("uses default title for custom-stat-block without title", () => {
+            // Defensive test: custom-stat-blocks normally have title, but
+            // serializeBlocks should handle the edge case gracefully
+            const result = serializeBlocks(
+                /** @type {import("../../shared/types.js").MessageBlock[]} */ (
+                    /** @type {unknown} */ ([
+                        {
+                            type: "custom-stat-block",
+                            data: { name: "Unknown", level: 1 },
+                        },
+                    ])
+                ),
+            );
+            expect(result).toBe("[Custom Stat Block: Creature]");
+        });
+
         it("handles mixed block types", () => {
             const result = serializeBlocks([
                 { type: "text", markdown: "Intro text" },

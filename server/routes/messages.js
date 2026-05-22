@@ -249,6 +249,29 @@ function resolveBlocks(db, llmBlocks, mode) {
             if (resolved !== null) {
                 result.push(resolved);
             }
+        } else if (block.type === "custom-stat-block" && block.data) {
+            // Convert custom-stat-block to standard stat-block with inline data
+            if (mode === "player") {
+                const redactedData = redactCreatureDataForPlayer(
+                    /** @type {import("../../shared/types.js").CreatureData} */ (
+                        /** @type {unknown} */ (block.data)
+                    ),
+                );
+                result.push({
+                    type: "stat-block",
+                    title: block.title,
+                    data: redactedData,
+                    redacted: true,
+                });
+            } else {
+                result.push({
+                    type: "stat-block",
+                    title: block.title,
+                    data: /** @type {import("../../shared/types.js").CreatureData} */ (
+                        /** @type {unknown} */ (block.data)
+                    ),
+                });
+            }
         } else {
             result.push(block);
         }

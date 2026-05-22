@@ -206,6 +206,126 @@ const statBlockMessageSchema = z.object({
     redacted: z.boolean().optional(),
 });
 
+const customStatBlockSchema = z.object({
+    type: z.literal("custom-stat-block"),
+    title: z.string(),
+    data: z.object({
+        name: z.string(),
+        type: z.string().optional(),
+        level: z.number(),
+        rarity: z.string().optional(),
+        traits: z.array(z.string()).optional(),
+        perception: z.number().optional(),
+        languages: z
+            .object({
+                value: z.array(z.string()),
+                details: z.string().optional(),
+            })
+            .optional(),
+        size: z.string().optional(),
+        blurb: z.string().optional(),
+        attributes: z
+            .object({
+                ac: z
+                    .object({
+                        value: z.number(),
+                        details: z.string().optional(),
+                    })
+                    .optional(),
+                hp: z
+                    .object({
+                        value: z.number(),
+                        max: z.number(),
+                        details: z.string().optional(),
+                    })
+                    .optional(),
+                fortitude: z
+                    .object({
+                        value: z.number(),
+                        saveDetail: z.string().optional(),
+                    })
+                    .optional(),
+                reflex: z
+                    .object({
+                        value: z.number(),
+                        saveDetail: z.string().optional(),
+                    })
+                    .optional(),
+                will: z
+                    .object({
+                        value: z.number(),
+                        saveDetail: z.string().optional(),
+                    })
+                    .optional(),
+                speed: z.string().optional(),
+            })
+            .optional(),
+        abilities: z
+            .object({
+                str: z.object({ mod: z.number() }).optional(),
+                dex: z.object({ mod: z.number() }).optional(),
+                con: z.object({ mod: z.number() }).optional(),
+                int: z.object({ mod: z.number() }).optional(),
+                wis: z.object({ mod: z.number() }).optional(),
+                cha: z.object({ mod: z.number() }).optional(),
+            })
+            .optional(),
+        skills: z.record(z.string(), z.object({ value: z.number() })).optional(),
+        melee: z
+            .array(
+                z.object({
+                    name: z.string(),
+                    attack: z.string(),
+                    damage: z.string(),
+                    damageType: z.string().optional(),
+                    traits: z.array(z.string()).optional(),
+                }),
+            )
+            .optional(),
+        actions: z
+            .array(
+                z.object({
+                    name: z.string(),
+                    actionType: z.union([z.number(), z.enum(["reaction", "free"])]).optional(),
+                    traits: z.array(z.string()).optional(),
+                    description: z.string(),
+                }),
+            )
+            .optional(),
+        spellcasting: z
+            .array(
+                z.object({
+                    name: z.string(),
+                    tradition: z.string().optional(),
+                    type: z.string().optional(),
+                    dc: z.number().optional(),
+                    attackModifier: z.number().optional(),
+                    slots: z
+                        .record(
+                            z.string(),
+                            z.array(
+                                z.object({
+                                    name: z.string(),
+                                    rank: z.number().optional(),
+                                }),
+                            ),
+                        )
+                        .optional(),
+                    cantrips: z
+                        .array(
+                            z.object({
+                                name: z.string(),
+                                rank: z.number().optional(),
+                            }),
+                        )
+                        .optional(),
+                }),
+            )
+            .optional(),
+        description: z.string().optional(),
+    }),
+});
+
 const ruleDetailBlockSchema = z.object({
     type: z.literal("rule-detail"),
     ruleItemId: z.string(),
@@ -215,6 +335,7 @@ const messageBlockSchema = z.union([
     textBlockSchema,
     calloutBlockSchema,
     statBlockMessageSchema,
+    customStatBlockSchema,
     ruleDetailBlockSchema,
 ]);
 
@@ -273,6 +394,7 @@ export {
     textBlockSchema,
     calloutBlockSchema,
     statBlockMessageSchema,
+    customStatBlockSchema,
     ruleDetailBlockSchema,
     messageBlockSchema,
     messageBlocksArraySchema,

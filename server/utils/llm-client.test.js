@@ -399,6 +399,7 @@ describe("llm-client", () => {
             expect(prompt).toContain("text");
             expect(prompt).toContain("callout");
             expect(prompt).toContain("stat-block");
+            expect(prompt).toContain("custom-stat-block");
             expect(prompt).toContain("rule-detail");
             expect(prompt).toContain("Pathfinder");
         });
@@ -421,6 +422,7 @@ describe("llm-client", () => {
             expect(prompt).toContain("No Reference Data Available");
             expect(prompt).toContain("general knowledge");
             expect(prompt).toContain("NEVER emit stat-block or rule-detail blocks");
+            expect(prompt).toContain("custom-stat-block");
         });
 
         it("omits ungrounded warning when ungrounded=false", () => {
@@ -441,6 +443,28 @@ describe("llm-client", () => {
             expect(prompt).toContain("Player Mode Restrictions");
             expect(prompt).toContain("NEVER reveal creature mechanics");
             expect(prompt).toContain("Ask your GM");
+        });
+
+        it("includes custom-stat-block block type description", () => {
+            const prompt = buildSystemPrompt("", "gm");
+
+            expect(prompt).toContain("custom-stat-block");
+            expect(prompt).toContain("INVENTING a new creature");
+            expect(prompt).toContain('"name" and "level"');
+        });
+
+        it("includes guideline about inventing creatures", () => {
+            const prompt = buildSystemPrompt("", "gm");
+
+            expect(prompt).toContain("create or invent a creature/NPC");
+            expect(prompt).toContain("custom-stat-block");
+        });
+
+        it("ungrounded prompt still forbids stat-block and rule-detail but allows custom-stat-block", () => {
+            const prompt = buildSystemPrompt("", "gm", true);
+
+            expect(prompt).toContain("NEVER emit stat-block or rule-detail blocks");
+            expect(prompt).toContain("You MAY emit custom-stat-block");
         });
 
         it("omits player restrictions when mode is gm", () => {
@@ -514,7 +538,7 @@ describe("llm-client", () => {
 
             expect(schema.type).toBe("array");
             expect(schema.items).toBeDefined();
-            expect(items.anyOf).toHaveLength(4);
+            expect(items.anyOf).toHaveLength(5);
         });
 
         it("uses enum for type discriminators (not const)", () => {
@@ -531,7 +555,13 @@ describe("llm-client", () => {
                 },
             );
 
-            expect(typeEnums).toEqual([["text"], ["callout"], ["stat-block"], ["rule-detail"]]);
+            expect(typeEnums).toEqual([
+                ["text"],
+                ["callout"],
+                ["stat-block"],
+                ["custom-stat-block"],
+                ["rule-detail"],
+            ]);
         });
 
         it("includes required fields for each block type", () => {
@@ -539,14 +569,28 @@ describe("llm-client", () => {
             const items = /** @type {{ anyOf: Record<string, unknown>[] }} */ (
                 /** @type {unknown} */ (schema.items)
             );
-            const [text, callout, statBlock, ruleDetail] = items.anyOf;
+            const [text, callout, statBlock, customStatBlock, ruleDetail] = items.anyOf;
 
             expect(text.required).toEqual(["type", "markdown"]);
             expect(callout.required).toEqual(["type", "title", "markdown"]);
             // title is intentionally NOT required — Gemini sometimes omits it when
             // anyOf schemas share ruleItemId; resolveStatBlock falls back to the DB name.
             expect(statBlock.required).toEqual(["type", "ruleItemId"]);
+            expect(customStatBlock.required).toEqual(["type", "title", "data"]);
             expect(ruleDetail.required).toEqual(["type", "ruleItemId"]);
+        });
+
+        it("custom-stat-block has inline data with required name and level", () => {
+            const schema = buildGeminiResponseSchema();
+            const items = /** @type {{ anyOf: Record<string, unknown>[] }} */ (
+                /** @type {unknown} */ (schema.items)
+            );
+            const customStatBlock = items.anyOf[3];
+            const props = /** @type {Record<string, unknown>} */ (customStatBlock.properties);
+
+            expect(props.data).toBeDefined();
+            const dataProps = /** @type {Record<string, unknown>} */ (props.data);
+            expect(dataProps.required).toEqual(["name", "level"]);
         });
 
         it("stat-block uses ruleItemId instead of nested creature data", () => {

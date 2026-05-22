@@ -28,6 +28,10 @@ export function serializeBlocks(blocks) {
                 parts.push(`[Stat Block: ${block.title ?? "Creature"}]`);
                 break;
             }
+            case "custom-stat-block": {
+                parts.push(`[Custom Stat Block: ${block.title ?? "Creature"}]`);
+                break;
+            }
             case "rule-detail": {
                 parts.push(`[Rule Detail: ${block.title ?? "Item"}]`);
                 break;
