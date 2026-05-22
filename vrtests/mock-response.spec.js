@@ -9,6 +9,17 @@ test.describe("mock LLM response visual regression", () => {
         const { userId } = await setupTestUser(context, testInfo);
         pinnedUserId = userId;
 
+        await page.route("**/api/auth/api-key-status", async (route) => {
+            await route.fulfill({
+                status: 200,
+                contentType: "application/json",
+                body: JSON.stringify({
+                    result: "success",
+                    data: { available: true, reason: "ok" },
+                }),
+            });
+        });
+
         // Pin mock response index 0 (saving throws) for this specific user so the
         // visual regression snapshot is deterministic even when workers run in parallel.
         await fetch("http://localhost:3000/api/test/set-mock-response", {
