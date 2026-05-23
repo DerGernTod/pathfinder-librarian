@@ -1,11 +1,13 @@
 import { expect, test } from "playwright/test";
 
 import { SEED_IDS } from "../../shared/constants.js";
+import { mockApiKeyStatusAvailable } from "../helpers/mock-api-key-status.js";
 import { setupTestUser } from "../helpers/test-user.js";
 
 test.describe("rule-detail-sheet visual regression", () => {
     test.beforeEach(async ({ page, context }, testInfo) => {
         await setupTestUser(context, testInfo);
+        await mockApiKeyStatusAvailable(page);
 
         await page.route("**/api/conversations*", async (route) => {
             if (route.request().method() === "GET") {

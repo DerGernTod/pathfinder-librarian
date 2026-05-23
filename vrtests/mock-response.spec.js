@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+import { mockApiKeyStatusAvailable } from "./helpers/mock-api-key-status.js";
 import { setupTestUser } from "./helpers/test-user.js";
 
 test.describe("mock LLM response visual regression", () => {
@@ -9,16 +10,7 @@ test.describe("mock LLM response visual regression", () => {
         const { userId } = await setupTestUser(context, testInfo);
         pinnedUserId = userId;
 
-        await page.route("**/api/auth/api-key-status", async (route) => {
-            await route.fulfill({
-                status: 200,
-                contentType: "application/json",
-                body: JSON.stringify({
-                    result: "success",
-                    data: { available: true, reason: "ok" },
-                }),
-            });
-        });
+        await mockApiKeyStatusAvailable(page);
 
         // Pin mock response index 0 (saving throws) for this specific user so the
         // visual regression snapshot is deterministic even when workers run in parallel.

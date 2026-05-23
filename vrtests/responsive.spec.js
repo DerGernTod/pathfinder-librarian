@@ -1,11 +1,13 @@
 import { expect, test } from "playwright/test";
 
+import { mockApiKeyStatusAvailable } from "./helpers/mock-api-key-status.js";
 import { setupTestUser } from "./helpers/test-user.js";
 
 test.describe("responsive design", () => {
     test.describe("phone viewport (375x812)", () => {
         test.beforeEach(async ({ page, context }, testInfo) => {
             await setupTestUser(context, testInfo);
+            await mockApiKeyStatusAvailable(page);
             await page.setViewportSize({ width: 375, height: 812 });
             await page.goto("/");
             await page.waitForSelector("main-page");
@@ -36,6 +38,7 @@ test.describe("responsive design", () => {
     test.describe("tablet viewport (768x1024)", () => {
         test.beforeEach(async ({ page, context }, testInfo) => {
             await setupTestUser(context, testInfo);
+            await mockApiKeyStatusAvailable(page);
             await page.setViewportSize({ width: 768, height: 1024 });
             await page.goto("/");
             await page.waitForSelector("main-page");
@@ -63,6 +66,7 @@ test.describe("responsive design", () => {
     test.describe("desktop viewport (1280x800)", () => {
         test.beforeEach(async ({ page, context }, testInfo) => {
             await setupTestUser(context, testInfo);
+            await mockApiKeyStatusAvailable(page);
             await page.setViewportSize({ width: 1280, height: 800 });
             await page.goto("/");
             await page.waitForSelector("main-page");

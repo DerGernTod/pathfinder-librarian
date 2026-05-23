@@ -1,21 +1,12 @@
 import { expect, test } from "playwright/test";
 
+import { mockApiKeyStatusAvailable } from "./helpers/mock-api-key-status.js";
 import { setupTestUser } from "./helpers/test-user.js";
 
 test.describe("loading spinner visual regression", () => {
     test.beforeEach(async ({ page, context }, testInfo) => {
         await setupTestUser(context, testInfo);
-
-        await page.route("**/api/auth/api-key-status", async (route) => {
-            await route.fulfill({
-                status: 200,
-                contentType: "application/json",
-                body: JSON.stringify({
-                    result: "success",
-                    data: { available: true, reason: "ok" },
-                }),
-            });
-        });
+        await mockApiKeyStatusAvailable(page);
 
         await page.goto("/");
         await page.waitForSelector("main-page");
