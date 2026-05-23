@@ -35,13 +35,13 @@ jobs:
               run: |
                   docker context create remote --docker "host=ssh://${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}"
 
-                  # Pull the latest image onto the remote host
+                  # 1. Pull the fresh image
                   docker --context remote pull ghcr.io/${{ env.REPO_LOWER }}:latest
 
-                  # Stop and remove the existing container if it exists
+                  # 2. Stop and remove the old container
                   docker --context remote rm -f project-pathfinderlibrarian || true
 
-                  # Run the new container
+                  # 3. Run the container (Docker will now use the newly pulled layer)
                   docker --context remote run -d \
                     --name project-pathfinderlibrarian \
                     --network opencode-server_backend \
@@ -51,3 +51,6 @@ jobs:
                     --restart unless-stopped \
                     -v pathfinder_db:/app/data \
                     ghcr.io/${{ env.REPO_LOWER }}:latest
+
+                  # 4. Clean up old untagged images to save disk space on your home server
+                  docker --context remote image prune -f
