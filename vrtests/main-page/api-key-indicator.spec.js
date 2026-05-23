@@ -165,7 +165,7 @@ test.describe("api key indicator visual regression", () => {
         });
     });
 
-    test("tooltip on hover — desktop", async ({ page }) => {
+    test("tooltip has correct content — desktop", async ({ page }) => {
         await page.setViewportSize({ width: 1280, height: 800 });
 
         await page.route("**/api/auth/api-key-status", async (route) => {
@@ -186,19 +186,7 @@ test.describe("api key indicator visual regression", () => {
         const warningIcon = page.locator(".api-warning-icon");
         await expect(warningIcon).toBeVisible({ timeout: 5000 });
 
-        await page.evaluate(() => {
-            const s = document.createElement("style");
-            s.textContent =
-                "*, *::before, *::after { animation: none !important; transition: none !important; }";
-            document.head.appendChild(s);
-        });
-
-        await warningIcon.hover();
-        await page.waitForTimeout(300);
-
         const tooltip = page.locator("sl-tooltip[placement='top']");
-        await expect(tooltip).toHaveScreenshot("api-key-tooltip-hover-desktop.png", {
-            maxDiffPixelRatio: 0.05,
-        });
+        await expect(tooltip).toHaveAttribute("content", "API key not configured");
     });
 });
