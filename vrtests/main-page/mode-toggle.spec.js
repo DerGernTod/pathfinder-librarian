@@ -1,10 +1,12 @@
 import { expect, test } from "playwright/test";
 
+import { mockApiKeyStatusAvailable } from "../helpers/mock-api-key-status.js";
 import { setupTestUser } from "../helpers/test-user.js";
 
 test.describe("mode toggle visual regression", () => {
-    test.beforeEach(async ({ page: _page, context }, testInfo) => {
+    test.beforeEach(async ({ page, context }, testInfo) => {
         await setupTestUser(context, testInfo);
+        await mockApiKeyStatusAvailable(page);
     });
 
     test("player mode header", async ({ page }) => {

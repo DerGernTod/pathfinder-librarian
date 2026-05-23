@@ -1,3 +1,5 @@
+/** @typedef {{ available: boolean, reason?: "ok" | "not_set" | "empty" }} ApiKeyStatus */
+
 /** @typedef {"player" | "gm"} Mode */
 
 /** @typedef {{ id: string, title: string, userId?: string, createdAt?: string, compactedSummary?: string | null }} Conversation */

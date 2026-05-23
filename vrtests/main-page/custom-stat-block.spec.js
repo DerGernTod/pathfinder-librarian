@@ -1,10 +1,12 @@
 import { expect, test } from "playwright/test";
 
+import { mockApiKeyStatusAvailable } from "../helpers/mock-api-key-status.js";
 import { setupTestUser } from "../helpers/test-user.js";
 
 test.describe("custom stat block visual regression", () => {
     test.beforeEach(async ({ page, context }, testInfo) => {
         await setupTestUser(context, testInfo);
+        await mockApiKeyStatusAvailable(page);
 
         // Mock conversations list with one conversation so chat-view renders instead of landing-view
         await page.route("**/api/conversations*", async (route) => {

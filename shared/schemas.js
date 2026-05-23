@@ -370,6 +370,11 @@ const geminiResponseSchema = z.object({
     usageMetadata: usageMetadataSchema,
 });
 
+const apiKeyStatusSchema = z.object({
+    available: z.boolean(),
+    reason: z.enum(["ok", "not_set", "empty"]).optional(),
+});
+
 export {
     uuidSchema,
     conversationIdSchema,
@@ -399,4 +404,5 @@ export {
     messageBlockSchema,
     messageBlocksArraySchema,
     geminiResponseSchema,
+    apiKeyStatusSchema,
 };

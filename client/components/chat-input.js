@@ -1,4 +1,5 @@
 import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/textarea/textarea.js?deps=lit@3.3.2";
+import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/tooltip/tooltip.js?deps=lit@3.3.2";
 import { ContextConsumer } from "@lit/context";
 import { css } from "lit-element";
 import { html } from "lit-html";
@@ -8,6 +9,7 @@ import { messagesContext } from "../stores/messages-store.js";
 import { modeContext } from "../stores/mode-store.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
+import { client } from "../utils/rpc-client.js";
 import { BaseElement } from "./base-element.js";
 
 /**
@@ -96,11 +98,26 @@ class ChatInput extends BaseElement {
                 margin-top: 0.5rem;
                 line-height: 1rem;
             }
+            .api-warning-icon {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 1.25rem;
+                height: 1.25rem;
+                flex-shrink: 0;
+                color: hsl(48, 96%, 53%);
+                cursor: help;
+            }
+            .api-warning-icon svg {
+                width: 1rem;
+                height: 1rem;
+            }
         `,
     ];
 
     static properties = {
         value: { type: String },
+        _apiKeyStatus: { type: Object },
     };
 
     clearValue() {
@@ -117,6 +134,7 @@ class ChatInput extends BaseElement {
     constructor() {
         super();
         this.value = "";
+        this._apiKeyStatus = { available: true, reason: "ok" };
         /** @type {import("../stores/mode-store.js").ModeState} */
         this._modeState = { mode: "gm" };
         /** @type {import("../stores/messages-store.js").MessagesState} */
@@ -145,6 +163,7 @@ class ChatInput extends BaseElement {
             },
             subscribe: true,
         });
+        void this._fetchApiKeyStatus();
     }
 
     disconnectedCallback() {
@@ -156,6 +175,29 @@ class ChatInput extends BaseElement {
         return html`
             <div class="wrapper">
                 <div class="input-row" data-mode=${this._modeState.mode}>
+                    ${this._apiKeyStatus && !this._apiKeyStatus.available
+                        ? html`
+                              <sl-tooltip
+                                  content="${this._apiKeyStatusReasonText()}"
+                                  placement="top"
+                                  trigger="click hover"
+                              >
+                                  <span
+                                      class="api-warning-icon"
+                                      aria-label="${this._apiKeyStatusReasonText()}"
+                                  >
+                                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path
+                                              stroke-linecap="round"
+                                              stroke-linejoin="round"
+                                              stroke-width="2"
+                                              d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+                                          />
+                                      </svg>
+                                  </span>
+                              </sl-tooltip>
+                          `
+                        : ""}
                     <sl-textarea
                         .value=${this.value}
                         @sl-input=${this.handleInput}
@@ -229,6 +271,33 @@ class ChatInput extends BaseElement {
 
     handleStop() {
         this.dispatchEvent(new CustomEvent("stop-message", { bubbles: true, composed: true }));
+    }
+
+    /**
+     * @returns {string}
+     */
+    _apiKeyStatusReasonText() {
+        const reason = this._apiKeyStatus?.reason;
+        switch (reason) {
+            case "not_set":
+                return "API key not configured";
+            case "empty":
+                return "API key is empty";
+            default:
+                return "Google API key issue — using mock responses";
+        }
+    }
+
+    async _fetchApiKeyStatus() {
+        try {
+            const res = await client.api.auth["api-key-status"].$get();
+            if (res.ok) {
+                const data = await res.json();
+                this._apiKeyStatus = data.data;
+            }
+        } catch {
+            // Silently ignore — default to available=true
+        }
     }
 }
 

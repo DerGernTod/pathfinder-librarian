@@ -734,12 +734,19 @@ describe("main-page", () => {
                 { id: "conv-from-url", title: "From URL" },
             ];
 
-            let callCount = 0;
-            // @ts-expect-error - override global fetch with our mock
-            globalThis.fetch = mock(() => {
-                callCount++;
-                if (callCount === 1) {
-                    // fetchConversations
+            // @ts-expect-error - override global fetch with URL-aware mock
+            globalThis.fetch = mock((url) => {
+                if (typeof url === "string" && url.includes("api-key-status")) {
+                    return Promise.resolve({
+                        ok: true,
+                        json: () =>
+                            Promise.resolve({
+                                result: "success",
+                                data: { available: true, reason: "ok" },
+                            }),
+                    });
+                }
+                if (typeof url === "string" && url.includes("/api/conversations")) {
                     return Promise.resolve({
                         ok: true,
                         json: () => Promise.resolve({ result: "success", data: conversations }),
@@ -784,11 +791,19 @@ describe("main-page", () => {
                 { id: "conv2", title: "Second" },
             ];
 
-            let callCount = 0;
-            // @ts-expect-error - override global fetch with our mock
-            globalThis.fetch = mock(() => {
-                callCount++;
-                if (callCount === 1) {
+            // @ts-expect-error - override global fetch with URL-aware mock
+            globalThis.fetch = mock((url) => {
+                if (typeof url === "string" && url.includes("api-key-status")) {
+                    return Promise.resolve({
+                        ok: true,
+                        json: () =>
+                            Promise.resolve({
+                                result: "success",
+                                data: { available: true, reason: "ok" },
+                            }),
+                    });
+                }
+                if (typeof url === "string" && url.includes("/api/conversations")) {
                     return Promise.resolve({
                         ok: true,
                         json: () => Promise.resolve({ result: "success", data: conversations }),
@@ -827,11 +842,19 @@ describe("main-page", () => {
 
             const conversations = [{ id: "conv1", title: "First" }];
 
-            let callCount = 0;
-            // @ts-expect-error - override global fetch with our mock
-            globalThis.fetch = mock(() => {
-                callCount++;
-                if (callCount === 1) {
+            // @ts-expect-error - override global fetch with URL-aware mock
+            globalThis.fetch = mock((url) => {
+                if (typeof url === "string" && url.includes("api-key-status")) {
+                    return Promise.resolve({
+                        ok: true,
+                        json: () =>
+                            Promise.resolve({
+                                result: "success",
+                                data: { available: true, reason: "ok" },
+                            }),
+                    });
+                }
+                if (typeof url === "string" && url.includes("/api/conversations")) {
                     return Promise.resolve({
                         ok: true,
                         json: () => Promise.resolve({ result: "success", data: conversations }),

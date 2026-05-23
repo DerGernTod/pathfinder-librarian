@@ -521,6 +521,19 @@ export function createAuthRouter() {
                 },
                 200,
             );
+        })
+        .get("/api-key-status", async (c) => {
+            const apiKey = process.env.GOOGLE_AI_API_KEY;
+            /** @type {{ available: boolean, reason: "ok" | "not_set" | "empty" }} */
+            let status;
+            if (apiKey === undefined) {
+                status = { available: false, reason: "not_set" };
+            } else if (apiKey === "") {
+                status = { available: false, reason: "empty" };
+            } else {
+                status = { available: true, reason: "ok" };
+            }
+            return c.json({ result: "success", data: status }, 200);
         });
 }
 

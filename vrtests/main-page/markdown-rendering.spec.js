@@ -1,5 +1,6 @@
 import { expect, test } from "playwright/test";
 
+import { mockApiKeyStatusAvailable } from "../helpers/mock-api-key-status.js";
 import { setupTestUser } from "../helpers/test-user.js";
 
 test.describe("markdown rendering visual regression", () => {
@@ -74,6 +75,7 @@ test.describe("markdown rendering visual regression", () => {
     test.describe("callout with rich markdown", () => {
         test.beforeEach(async ({ page, context }, testInfo) => {
             await setupTestUser(context, testInfo);
+            await mockApiKeyStatusAvailable(page);
 
             await page.route("**/api/conversations*", async (route) => {
                 if (route.request().method() === "GET") {
@@ -200,6 +202,7 @@ test.describe("markdown rendering visual regression", () => {
     test.describe("text block with varied formatting", () => {
         test.beforeEach(async ({ page, context }, testInfo) => {
             await setupTestUser(context, testInfo);
+            await mockApiKeyStatusAvailable(page);
 
             await page.route("**/api/conversations*", async (route) => {
                 if (route.request().method() === "GET") {

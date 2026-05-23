@@ -1,9 +1,12 @@
 import { expect, test } from "playwright/test";
 
+import { mockApiKeyStatusAvailable } from "../helpers/mock-api-key-status.js";
 import { setupTestUser } from "../helpers/test-user.js";
 
 test.describe("player redacted stat block visual regression", () => {
     test.beforeEach(async ({ page }) => {
+        await mockApiKeyStatusAvailable(page);
+
         // Mock conversations list with one conversation
         await page.route("**/api/conversations*", async (route) => {
             if (route.request().method() === "GET") {

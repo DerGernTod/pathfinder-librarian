@@ -1,11 +1,13 @@
 import { expect, test } from "playwright/test";
 
+import { mockApiKeyStatusAvailable } from "./helpers/mock-api-key-status.js";
 import { setupTestUser } from "./helpers/test-user.js";
 
 test.describe("landing page visual regression", () => {
     test.beforeEach(async ({ page, context }, testInfo) => {
         // Step 1: Create test user and log in (sets cookie on context)
         const { userId: _userId } = await setupTestUser(context, testInfo);
+        await mockApiKeyStatusAvailable(page);
 
         // Step 2: Set up route interceptors (now that auth is ready, before navigation)
         await page.route("**/api/conversations*", async (route) => {
