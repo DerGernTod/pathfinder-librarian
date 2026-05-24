@@ -625,17 +625,28 @@ class MainPage extends BaseElement {
                     this._updateMsgState({ messages, responding: true, retryInfo: event.data });
                 } else if (event.type === "retryFailed") {
                     this._updateMsgState({ messages, responding: true, retryInfo: null });
+                } else if (event.type === "error") {
+                    this._updateMsgState({
+                        messages,
+                        responding: true,
+                        error: event.data.message,
+                    });
                 }
             }
         } catch (err) {
             if (Error.isError(err) && err.name !== "AbortError") {
-                // Ignore error
+                this._updateMsgState({
+                    messages: this._msgState.messages,
+                    responding: true,
+                    error: err.message || "Connection lost. Please try again.",
+                });
             }
         } finally {
             this._updateMsgState({
                 messages: this._msgState.messages,
                 responding: false,
                 retryInfo: null,
+                error: this._msgState.error,
             });
             this._currentAssistantController = null;
         }
@@ -736,17 +747,28 @@ class MainPage extends BaseElement {
                     this._updateMsgState({ messages, responding: true, retryInfo: event.data });
                 } else if (event.type === "retryFailed") {
                     this._updateMsgState({ messages, responding: true, retryInfo: null });
+                } else if (event.type === "error") {
+                    this._updateMsgState({
+                        messages,
+                        responding: true,
+                        error: event.data.message,
+                    });
                 }
             }
         } catch (err) {
             if (Error.isError(err) && err.name !== "AbortError") {
-                // Ignore error
+                this._updateMsgState({
+                    messages: this._msgState.messages,
+                    responding: true,
+                    error: err.message || "Connection lost. Please try again.",
+                });
             }
         } finally {
             this._updateMsgState({
                 messages: this._msgState.messages,
                 responding: false,
                 retryInfo: null,
+                error: this._msgState.error,
             });
             this._currentAssistantController = null;
         }
@@ -961,17 +983,28 @@ class MainPage extends BaseElement {
                         });
                     } else if (event.type === "retryFailed") {
                         this._updateMsgState({ messages, responding: true, retryInfo: null });
+                    } else if (event.type === "error") {
+                        this._updateMsgState({
+                            messages,
+                            responding: true,
+                            error: event.data.message,
+                        });
                     }
                 }
             } catch (err) {
                 if (Error.isError(err) && err.name !== "AbortError") {
-                    // Ignore error
+                    this._updateMsgState({
+                        messages: this._msgState.messages,
+                        responding: true,
+                        error: err.message || "Connection lost. Please try again.",
+                    });
                 }
             } finally {
                 this._updateMsgState({
                     messages: this._msgState.messages,
                     responding: false,
                     retryInfo: null,
+                    error: this._msgState.error,
                 });
                 this._currentAssistantController = null;
             }

@@ -238,7 +238,9 @@ export function setForcedMockIndexForUser(userId, index) {
 }
 
 /**
- * Returns a mock response. When userId is provided and a forced index has been
+ * TEST-ONLY: Returns a mock response for visual regression testing.
+ * Must only be invoked when ENABLE_MOCK_FALLBACK=true.
+ * When userId is provided and a forced index has been
  * pinned for that user, always returns that response; otherwise picks at random.
  * @param {string} [userId]
  * @returns {MessageBlock[]}

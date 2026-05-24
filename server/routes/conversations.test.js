@@ -15,6 +15,7 @@ describe("conversations routes", () => {
     let SEED_IDS;
 
     beforeEach(async () => {
+        process.env.ENABLE_MOCK_FALLBACK = "true";
         // Import seed inside beforeEach to avoid caching database module
         const { seedIfNeeded, SEED_IDS: seedIds } = await import("../db/seed.js");
         SEED_IDS = seedIds;
@@ -52,6 +53,7 @@ describe("conversations routes", () => {
     });
 
     afterEach(() => {
+        delete process.env.ENABLE_MOCK_FALLBACK;
         if (db) {
             db.close();
         }

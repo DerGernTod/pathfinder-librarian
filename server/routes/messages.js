@@ -369,6 +369,8 @@ async function runResponseStream(honoStream, ctx) {
     let ragResultCount = 0;
     let usage;
     let embeddingTokens = 0;
+    /** @type {string | null} */
+    let llmError = null;
 
     try {
         // Long running async operation
@@ -442,24 +444,39 @@ async function runResponseStream(honoStream, ctx) {
             await honoStream.sleep(CHUNK_DELAY_MS);
         }
     } catch (error) {
-        // oxlint-disable-next-line no-console -- just log and continue; streaming failure shouldn't block the user response
+        // oxlint-disable-next-line no-console
         console.error("Error streaming assistant response:", error);
-    } finally {
-        const assistantMsg = queries.createMessage(db, {
-            conversationId: actualConvId,
-            role: "assistant",
-            mode: data.mode,
-            content: null,
-            blocksJson: JSON.stringify(blocks),
-        });
-
+        llmError =
+            error instanceof Error
+                ? error.message
+                : "An unexpected error occurred. Please try again.";
         await sendEvent({
-            type: "assistantComplete",
-            data: {
-                ...assistantMsg,
-                ragMeta: { resultCount: ragResultCount, usage, embeddingTokens },
-            },
+            type: "error",
+            data: { message: llmError },
         });
+    } finally {
+        if (llmError) {
+            // Error path: do NOT create assistant DB row, do NOT send assistantComplete.
+            // The client will see the error event and stop its loading state naturally
+            // when the stream ends (handleSendMessage's finally sets responding: false).
+        } else {
+            // Normal path (existing behavior):
+            const assistantMsg = queries.createMessage(db, {
+                conversationId: actualConvId,
+                role: "assistant",
+                mode: data.mode,
+                content: null,
+                blocksJson: JSON.stringify(blocks),
+            });
+
+            await sendEvent({
+                type: "assistantComplete",
+                data: {
+                    ...assistantMsg,
+                    ragMeta: { resultCount: ragResultCount, usage, embeddingTokens },
+                },
+            });
+        }
 
         // When this outer execution block drops out of scope, Hono cleanly sends the 0-byte end chunk.
     }

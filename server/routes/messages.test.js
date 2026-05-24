@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 
 import { Hono } from "hono";
 
@@ -30,6 +30,7 @@ describe("messages routes — ungrounded response", () => {
     let convId;
 
     beforeEach(async () => {
+        process.env.ENABLE_MOCK_FALLBACK = "true";
         const { seedIfNeeded, SEED_IDS: seedIds } = await import("../db/seed.js");
         SEED_USER_ID = seedIds.USER_DEFAULT;
 
@@ -63,6 +64,7 @@ describe("messages routes — ungrounded response", () => {
     });
 
     afterEach(() => {
+        delete process.env.ENABLE_MOCK_FALLBACK;
         if (db) {
             db.close();
         }
@@ -188,6 +190,7 @@ describe("messages routes — player mode redaction", () => {
     let convId;
 
     beforeEach(async () => {
+        process.env.ENABLE_MOCK_FALLBACK = "true";
         const { seedIfNeeded, SEED_IDS: seedIds } = await import("../db/seed.js");
         SEED_USER_ID = seedIds.USER_DEFAULT;
 
@@ -220,6 +223,7 @@ describe("messages routes — player mode redaction", () => {
     });
 
     afterEach(() => {
+        delete process.env.ENABLE_MOCK_FALLBACK;
         if (db) {
             db.close();
         }
@@ -341,6 +345,7 @@ describe("messages routes — cost metadata", () => {
     let convId;
 
     beforeEach(async () => {
+        process.env.ENABLE_MOCK_FALLBACK = "true";
         const { seedIfNeeded, SEED_IDS: seedIds } = await import("../db/seed.js");
         SEED_USER_ID = seedIds.USER_DEFAULT;
 
@@ -373,6 +378,7 @@ describe("messages routes — cost metadata", () => {
     });
 
     afterEach(() => {
+        delete process.env.ENABLE_MOCK_FALLBACK;
         if (db) {
             db.close();
         }
@@ -921,6 +927,114 @@ describe("messages routes — custom stat block resolution", () => {
             expect(statBlocks[0].title).toBe("Frost Giant");
             expect(statBlocks[0].data.name).toBe("Frost Giant");
             expect(statBlocks[0].data.level).toBe(8);
+        } finally {
+            globalThis.fetch = originalFetch;
+            delete process.env.GOOGLE_AI_API_KEY;
+            mock.restore();
+        }
+    });
+});
+
+describe("messages routes — error handling", () => {
+    /** @type {Hono<any>} */
+    let app;
+    /** @type {ReturnType<typeof createDb>} */
+    let db;
+    /** @type {string} */
+    let sessionToken;
+    /** @type {string} */
+    let SEED_USER_ID;
+    /** @type {string} */
+    let convId;
+
+    beforeEach(async () => {
+        // Do NOT set ENABLE_MOCK_FALLBACK — we want errors to propagate
+        delete process.env.ENABLE_MOCK_FALLBACK;
+        const { seedIfNeeded, SEED_IDS: seedIds } = await import("../db/seed.js");
+        SEED_USER_ID = seedIds.USER_DEFAULT;
+
+        db = createDb(":memory:");
+        seedIfNeeded(db);
+
+        const { conversationsRouter } = await import("./conversations.js");
+        const { sessionMiddleware } = await import("../middleware/session.js");
+        const { databaseMiddleware } = await import("../middleware/database.js");
+        const { createSession, createConversation } = await import("../db/queries.js");
+
+        app = new Hono()
+            .use("/api/*", databaseMiddleware({ database: db }))
+            .use("/api/conversations/*", sessionMiddleware({ database: db }))
+            .route("/api/conversations", conversationsRouter);
+
+        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        const session = createSession(db, {
+            userId: SEED_USER_ID,
+            token: crypto.randomUUID(),
+            expiresAt,
+        });
+        sessionToken = session.token;
+
+        const conv = createConversation(db, {
+            title: "Error Test",
+            userId: SEED_USER_ID,
+        });
+        convId = conv.id;
+    });
+
+    afterEach(() => {
+        delete process.env.ENABLE_MOCK_FALLBACK;
+        if (db) {
+            db.close();
+        }
+    });
+
+    it("emits type: 'error' SSE event and no assistantComplete when LLM fails", async () => {
+        // Make the Gemini API call fail with a 500 error
+        process.env.GOOGLE_AI_API_KEY = "test-key";
+        const originalFetch = globalThis.fetch;
+
+        /** @type {import("bun:test").Mock<() => Promise<unknown>>} */
+        const fetchMock = mock(() =>
+            Promise.resolve({
+                ok: false,
+                status: 500,
+                text: () => Promise.resolve("Internal Server Error"),
+            }),
+        );
+        globalThis.fetch = /** @type {typeof fetch} */ (/** @type {unknown} */ (fetchMock));
+
+        try {
+            const res = await app.request(`/api/conversations/${convId}/messages`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-session-token": sessionToken,
+                },
+                body: JSON.stringify({ content: "Test error handling", mode: "gm" }),
+            });
+
+            const text = await res.text();
+            const events = text
+                .trim()
+                .split("\n")
+                .map((l) => JSON.parse(l));
+
+            // Should have an error event
+            const errorEvent = events.find((e) => e.type === "error");
+            expect(errorEvent).toBeDefined();
+            expect(errorEvent.data.message).toBeDefined();
+
+            // Should NOT have an assistantComplete event
+            const completeEvent = events.find((e) => e.type === "assistantComplete");
+            expect(completeEvent).toBeUndefined();
+
+            // Should NOT have stored an assistant message in the DB
+            const messages = db
+                .query(
+                    "SELECT blocks_json FROM messages WHERE conversation_id = ? AND role = 'assistant'",
+                )
+                .all(convId);
+            expect(messages).toHaveLength(0);
         } finally {
             globalThis.fetch = originalFetch;
             delete process.env.GOOGLE_AI_API_KEY;
