@@ -8,6 +8,7 @@ import {
     callGeminiForSummarization,
     callGeminiJson,
     getLlmResponse,
+    stripAdditionalProperties,
 } from "./llm-client.js";
 
 /**
@@ -341,21 +342,26 @@ describe("llm-client", () => {
     });
 
     describe("getLlmResponse", () => {
-        it("falls back to mock response on error", async () => {
-            const result = await getLlmResponse(
-                [{ role: "user", parts: [{ text: "test" }] }],
-                "",
-                "player",
-            );
+        it("throws on non-retryable error when ENABLE_MOCK_FALLBACK is unset", async () => {
+            // No API key → callGeminiJson throws immediately → getLlmResponse should throw
+            delete process.env.GOOGLE_AI_API_KEY;
+            // Ensure env var is not set
+            delete process.env.ENABLE_MOCK_FALLBACK;
 
-            expect(result.blocks).toBeDefined();
-            expect(Array.isArray(result.blocks)).toBe(true);
-            expect(result.blocks.length).toBeGreaterThan(0);
-            expect(result.usage).toBeUndefined();
+            try {
+                await getLlmResponse([{ role: "user", parts: [{ text: "test" }] }], "", "player");
+                expect.unreachable("Should have thrown");
+            } catch (error) {
+                expect(error).toBeInstanceOf(Error);
+                expect(/** @type {Error} */ (error).message).toContain(
+                    "The AI service encountered an error",
+                );
+            }
         });
 
         it("propagates RetryableError instead of falling back to mock", async () => {
             process.env.GOOGLE_AI_API_KEY = "test-key";
+            delete process.env.ENABLE_MOCK_FALLBACK;
             mockFetch(() =>
                 Promise.resolve({
                     ok: false,
@@ -389,6 +395,216 @@ describe("llm-client", () => {
 
             expect(result.blocks).toEqual(blocks);
             expect(result.usage).toBeUndefined();
+        });
+
+        it("returns mock when ENABLE_MOCK_FALLBACK=true on non-retryable error", async () => {
+            delete process.env.GOOGLE_AI_API_KEY;
+            process.env.ENABLE_MOCK_FALLBACK = "true";
+
+            try {
+                const result = await getLlmResponse(
+                    [{ role: "user", parts: [{ text: "test" }] }],
+                    "",
+                    "player",
+                );
+
+                expect(result.blocks).toBeDefined();
+                expect(Array.isArray(result.blocks)).toBe(true);
+                expect(result.blocks.length).toBeGreaterThan(0);
+                expect(result.usage).toBeUndefined();
+            } finally {
+                delete process.env.ENABLE_MOCK_FALLBACK;
+            }
+        });
+    });
+
+    describe("stripAdditionalProperties", () => {
+        it("removes top-level additionalProperties", () => {
+            const schema = { type: "object", additionalProperties: { type: "string" } };
+            const result = stripAdditionalProperties(schema);
+            expect(result).toEqual({ type: "object" });
+        });
+
+        it("removes nested additionalProperties at depth 3+", () => {
+            const schema = {
+                type: "object",
+                properties: {
+                    data: {
+                        type: "object",
+                        properties: {
+                            skills: {
+                                type: "object",
+                                additionalProperties: {
+                                    type: "object",
+                                    properties: { value: { type: "number" } },
+                                },
+                            },
+                        },
+                    },
+                },
+            };
+            const result = stripAdditionalProperties(schema);
+            // Walk result to ensure no additionalProperties anywhere
+            /** @param {Record<string, unknown>} obj */
+            function walk(obj) {
+                for (const [key, value] of Object.entries(obj)) {
+                    expect(key).not.toBe("additionalProperties");
+                    if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+                        walk(/** @type {Record<string, unknown>} */ (value));
+                    }
+                }
+            }
+            walk(result);
+            // Verify structure preserved (skills still exists)
+            const props = /** @type {Record<string, unknown>} */ (result.properties);
+            const data = /** @type {Record<string, unknown>} */ (props.data);
+            const dataProps = /** @type {Record<string, unknown>} */ (data.properties);
+            expect(dataProps.skills).toBeDefined();
+        });
+
+        it("removes additionalProperties from array items", () => {
+            const schema = {
+                type: "array",
+                items: {
+                    type: "object",
+                    additionalProperties: { type: "string" },
+                    properties: { name: { type: "string" } },
+                },
+            };
+            const result = stripAdditionalProperties(schema);
+            const items = /** @type {Record<string, unknown>} */ (result.items);
+            expect(items.additionalProperties).toBeUndefined();
+            expect(items.properties).toBeDefined();
+        });
+
+        it("preserves all other keys", () => {
+            const schema = {
+                type: "object",
+                properties: { name: { type: "string" } },
+                required: ["name"],
+                enum: ["a", "b"],
+                items: { type: "string" },
+                anyOf: [{ type: "string" }, { type: "number" }],
+            };
+            const result = stripAdditionalProperties(schema);
+            expect(result.type).toBe("object");
+            expect(result.properties).toBeDefined();
+            expect(result.required).toEqual(["name"]);
+            expect(result.enum).toEqual(["a", "b"]);
+            expect(result.items).toBeDefined();
+            expect(result.anyOf).toHaveLength(2);
+        });
+
+        it("handles empty objects", () => {
+            expect(stripAdditionalProperties({})).toEqual({});
+        });
+    });
+
+    describe("buildGeminiResponseSchema — sanitization", () => {
+        it("sanitized schema has zero additionalProperties anywhere", () => {
+            const rawSchema = buildGeminiResponseSchema();
+            const schema = stripAdditionalProperties(rawSchema);
+
+            /** @param {unknown} node */
+            function hasAdditionalProperties(node) {
+                if (node === null || node === undefined) {
+                    return false;
+                }
+                if (typeof node !== "object") {
+                    return false;
+                }
+                if (Array.isArray(node)) {
+                    return node.some(hasAdditionalProperties);
+                }
+                const obj = /** @type {Record<string, unknown>} */ (node);
+                for (const key of Object.keys(obj)) {
+                    if (key === "additionalProperties") {
+                        return true;
+                    }
+                    if (hasAdditionalProperties(obj[key])) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            expect(hasAdditionalProperties(schema)).toBe(false);
+        });
+
+        it("sanitized schema structure is otherwise intact", () => {
+            const rawSchema = buildGeminiResponseSchema();
+            const schema = stripAdditionalProperties(rawSchema);
+            const items = /** @type {{ anyOf: unknown[] }} */ (
+                /** @type {unknown} */ (schema.items)
+            );
+
+            expect(schema.type).toBe("array");
+            expect(items.anyOf).toHaveLength(5);
+            // Check required fields survived
+            const customBlock = /** @type {Record<string, unknown>} */ (items.anyOf[3]);
+            const props = /** @type {Record<string, unknown>} */ (customBlock.properties);
+            const data = /** @type {Record<string, unknown>} */ (props.data);
+            expect(data.required).toEqual(["name", "level"]);
+        });
+    });
+
+    describe("callGeminiJson — sanitization", () => {
+        it("request body contains no additionalProperties in responseSchema", async () => {
+            process.env.GOOGLE_AI_API_KEY = "test-key";
+            const blocks = [{ type: "text", markdown: "Test" }];
+
+            /** @type {import("bun:test").Mock<() => Promise<unknown>>} */
+            const fetchMock = mock(() => Promise.resolve(geminiResponse(JSON.stringify(blocks))));
+            globalThis.fetch = /** @type {typeof fetch} */ (/** @type {unknown} */ (fetchMock));
+
+            await callGeminiJson([{ role: "user", parts: [{ text: "test" }] }], "", "player");
+
+            const calls = /** @type {[string, RequestInit][]} */ (
+                /** @type {unknown} */ (fetchMock.mock.calls)
+            );
+            const body = JSON.parse(/** @type {string} */ (calls[0][1].body));
+
+            /** @param {unknown} node */
+            function hasAdditionalProperties(node) {
+                if (node === null || node === undefined) {
+                    return false;
+                }
+                if (typeof node !== "object") {
+                    return false;
+                }
+                if (Array.isArray(node)) {
+                    return node.some(hasAdditionalProperties);
+                }
+                const obj = /** @type {Record<string, unknown>} */ (node);
+                for (const key of Object.keys(obj)) {
+                    if (key === "additionalProperties") {
+                        return true;
+                    }
+                    if (hasAdditionalProperties(obj[key])) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            expect(hasAdditionalProperties(body.generationConfig.responseSchema)).toBe(false);
+        });
+    });
+
+    describe("callGeminiJson — 400 error handling", () => {
+        it("400 error from Gemini throws descriptive error", async () => {
+            process.env.GOOGLE_AI_API_KEY = "test-key";
+            mockFetch(() =>
+                Promise.resolve({
+                    ok: false,
+                    status: 400,
+                    text: () => Promise.resolve("Invalid JSON payload received"),
+                }),
+            );
+
+            expect(
+                callGeminiJson([{ role: "user", parts: [{ text: "test" }] }], "", "player"),
+            ).rejects.toThrow("Gemini API error: 400 Invalid JSON payload received");
         });
     });
 

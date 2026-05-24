@@ -2,6 +2,35 @@ import { GEMINI_API_BASE, GEMINI_MODEL } from "../../shared/constants.js";
 import { geminiResponseSchema, messageBlocksArraySchema } from "../../shared/schemas.js";
 import { getMockResponse } from "./mock-response.js";
 
+/**
+ * Recursively removes `additionalProperties` keys from a schema object.
+ * Gemini API does not support additionalProperties in responseSchema.
+ * @param {Record<string, unknown>} schema
+ * @returns {Record<string, unknown>}
+ */
+export function stripAdditionalProperties(schema) {
+    const cleaned = /** @type {Record<string, unknown>} */ ({});
+    for (const [key, value] of Object.entries(schema)) {
+        if (key === "additionalProperties") {
+            continue; // skip this key entirely
+        }
+        if (Array.isArray(value)) {
+            cleaned[key] = value.map((item) =>
+                typeof item === "object" && item !== null
+                    ? stripAdditionalProperties(/** @type {Record<string, unknown>} */ (item))
+                    : item,
+            );
+        } else if (typeof value === "object" && value !== null) {
+            cleaned[key] = stripAdditionalProperties(
+                /** @type {Record<string, unknown>} */ (value),
+            );
+        } else {
+            cleaned[key] = value;
+        }
+    }
+    return cleaned;
+}
+
 export class RetryableError extends Error {
     /** @param {string} message */
     constructor(message) {
@@ -293,6 +322,8 @@ Creature stat block. Use when the reference data contains a creature entry. Refe
 ### custom-stat-block
 Custom or invented creature stat block with inline data. Use when the user asks you to create, invent, or imagine a creature that is NOT in the reference data. Provide full stats inline.
 - Example: { "type": "custom-stat-block", "title": "Sylvaris", "data": { "name": "Sylvaris", "type": "Humanoid", "level": 5, "traits": ["Elf", "Ranger"], "attributes": { "ac": { "value": 22 }, "hp": { "value": 75, "max": 75 }, "speed": "30 feet" }, "abilities": { "str": { "mod": 2 }, "dex": { "mod": 4 }, "con": { "mod": 1 }, "int": { "mod": 2 }, "wis": { "mod": 3 }, "cha": { "mod": 1 } } } }
+- skills: { "Skill Name": { "value": 5 }, ... } — map of skill names to their modifier values
+- spellcasting[].slots: { "1": [{ "name": "Spell Name", "rank": 1 }], ... } — map of spell level (string) to array of prepared/known spells
 - Use stat-block when the creature EXISTS in the reference data (with an [ID: ...] header). Use custom-stat-block when INVENTING a new creature.
 - The data object MUST include "name" and "level". All other fields (attributes, abilities, skills, melee, actions, etc.) are optional but recommended for a complete stat block.
 
@@ -331,6 +362,9 @@ export async function callGeminiJson(contents, ragContext, mode, ungrounded) {
 
     const url = `${GEMINI_API_BASE}/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
 
+    const rawSchema = buildGeminiResponseSchema();
+    const sanitizedSchema = stripAdditionalProperties(rawSchema);
+
     const requestBody = {
         contents: contents,
         systemInstruction: {
@@ -338,7 +372,7 @@ export async function callGeminiJson(contents, ragContext, mode, ungrounded) {
         },
         generationConfig: {
             responseMimeType: "application/json",
-            responseSchema: buildGeminiResponseSchema(),
+            responseSchema: sanitizedSchema,
         },
     };
 
@@ -416,9 +450,18 @@ export async function getLlmResponse(contents, ragContext, mode, userId, ungroun
         if (error instanceof RetryableError) {
             throw error;
         }
+        // Only fall back to mock in test environments where ENABLE_MOCK_FALLBACK is set.
+        // This keeps VR tests working while preventing mock responses in production.
+        if (process.env.ENABLE_MOCK_FALLBACK === "true") {
+            // oxlint-disable-next-line no-console
+            console.warn("LLM client error, falling back to mock (test env):", error);
+            return { blocks: getMockResponse(userId), usage: undefined };
+        }
         // oxlint-disable-next-line no-console
-        console.warn("LLM client error, falling back to mock:", error);
-        return { blocks: getMockResponse(userId), usage: undefined };
+        console.error("LLM client error:", error);
+        throw new Error(
+            "The AI service encountered an error. Please try again or contact support if the issue persists.",
+        );
     }
 }
 

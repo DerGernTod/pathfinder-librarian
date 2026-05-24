@@ -54,6 +54,17 @@ class MessageList extends BaseElement {
             .loading-text {
                 font-size: 0.875rem;
             }
+            .error-callout {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                padding: 0.75rem 1rem;
+                background: hsl(0, 70%, 15%);
+                border: 1px solid hsl(0, 70%, 35%);
+                border-radius: 0.5rem;
+                color: hsl(0, 70%, 75%);
+                font-size: 0.875rem;
+            }
             @media (max-width: 767px) {
                 .messages {
                     padding: 1rem 0.75rem;
@@ -93,6 +104,14 @@ class MessageList extends BaseElement {
     render() {
         return html`
             <div class="messages">
+                ${this._msgState.error
+                    ? html`
+                          <div class="error-callout" role="alert">
+                              <span aria-hidden="true">⚠</span>
+                              <span>${this._msgState.error}</span>
+                          </div>
+                      `
+                    : nothing}
                 ${this.renderResponding()}
                 ${this._msgState.messages
                     .toReversed()

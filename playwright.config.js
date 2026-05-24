@@ -37,7 +37,7 @@ export default defineConfig({
         },
     },
     webServer: {
-        command: "bun run start",
+        command: "ENABLE_MOCK_FALLBACK=true bun run start",
         url: "http://localhost:3000",
         reuseExistingServer: true,
     },
