@@ -210,7 +210,13 @@ describe("llm-client", () => {
             );
 
             expect(result).toEqual({
-                blocks: [{ type: "text", markdown: JSON.stringify(invalidBlocks) }],
+                blocks: [
+                    {
+                        type: "text",
+                        markdown:
+                            "The AI produced a response that couldn't be displayed properly. Please try rephrasing your question or starting a new conversation.",
+                    },
+                ],
                 usage: undefined,
             });
         });
@@ -562,7 +568,7 @@ describe("llm-client", () => {
             expect(schema.type).toBe("array");
             expect(items.anyOf).toHaveLength(5);
             // Check required fields survived
-            const customBlock = /** @type {Record<string, unknown>} */ (items.anyOf[3]);
+            const customBlock = /** @type {Record<string, unknown>} */ (items.anyOf[2]);
             const props = /** @type {Record<string, unknown>} */ (customBlock.properties);
             const data = /** @type {Record<string, unknown>} */ (props.data);
             expect(data.required).toEqual(["name", "level"]);
@@ -686,7 +692,7 @@ describe("llm-client", () => {
             const prompt = buildSystemPrompt("", "gm");
 
             expect(prompt).toContain("custom-stat-block");
-            expect(prompt).toContain("INVENTING a new creature");
+            expect(prompt).toContain("invented creatures");
             expect(prompt).toContain('"name" and "level"');
         });
 
@@ -795,8 +801,8 @@ describe("llm-client", () => {
             expect(typeEnums).toEqual([
                 ["text"],
                 ["callout"],
-                ["stat-block"],
                 ["custom-stat-block"],
+                ["stat-block"],
                 ["rule-detail"],
             ]);
         });
@@ -806,7 +812,7 @@ describe("llm-client", () => {
             const items = /** @type {{ anyOf: Record<string, unknown>[] }} */ (
                 /** @type {unknown} */ (schema.items)
             );
-            const [text, callout, statBlock, customStatBlock, ruleDetail] = items.anyOf;
+            const [text, callout, customStatBlock, statBlock, ruleDetail] = items.anyOf;
 
             expect(text.required).toEqual(["type", "markdown"]);
             expect(callout.required).toEqual(["type", "title", "markdown"]);
@@ -822,7 +828,7 @@ describe("llm-client", () => {
             const items = /** @type {{ anyOf: Record<string, unknown>[] }} */ (
                 /** @type {unknown} */ (schema.items)
             );
-            const customStatBlock = items.anyOf[3];
+            const customStatBlock = items.anyOf[2];
             const props = /** @type {Record<string, unknown>} */ (customStatBlock.properties);
 
             expect(props.data).toBeDefined();
@@ -835,7 +841,7 @@ describe("llm-client", () => {
             const items = /** @type {{ anyOf: Record<string, unknown>[] }} */ (
                 /** @type {unknown} */ (schema.items)
             );
-            const statBlock = items.anyOf[2];
+            const statBlock = items.anyOf[3];
             const props = /** @type {Record<string, unknown>} */ (statBlock.properties);
 
             expect(props.ruleItemId).toBeDefined();
