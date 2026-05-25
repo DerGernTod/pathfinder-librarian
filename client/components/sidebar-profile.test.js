@@ -108,4 +108,31 @@ describe("sidebar-profile", () => {
         const wrapper = el.shadowRoot.querySelector(".profile");
         expect(wrapper.getAttribute("aria-label")).toBe("");
     });
+
+    it("displays version when version property is set", async () => {
+        const el = createProfile("GM", "Player", "GP");
+        el.version = "1.2.3";
+        await el.updateComplete;
+        const versionEl = el.shadowRoot.querySelector(".version");
+        expect(versionEl).toBeTruthy();
+        expect(versionEl.textContent).toBe("v1.2.3");
+    });
+
+    it("does not display version when version property is empty", async () => {
+        const el = createProfile("GM", "Player", "GP");
+        el.version = "";
+        await el.updateComplete;
+        const versionEl = el.shadowRoot.querySelector(".version");
+        expect(versionEl).toBeNull();
+    });
+
+    it("version element uses muted styling", async () => {
+        const el = createProfile();
+        el.version = "1.0.0";
+        await el.updateComplete;
+        const versionEl = el.shadowRoot.querySelector(".version");
+        expect(versionEl).toBeTruthy();
+        const styles = getComputedStyle(versionEl);
+        expect(styles.opacity).toBe("0.55");
+    });
 });

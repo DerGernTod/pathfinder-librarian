@@ -115,12 +115,15 @@ class ChatSidebar extends BaseElement {
 
     static properties = {
         user: { type: Object },
+        version: { type: String },
     };
 
     constructor() {
         super();
         /** @type {import("../../shared/types.js").AuthUser | null} */
         this.user = null;
+        /** @type {string} */
+        this.version = "";
         /** @type {import("../stores/conversation-store.js").ConversationState} */
         this._convState = {
             conversations: [],
@@ -197,7 +200,11 @@ class ChatSidebar extends BaseElement {
                         <conversation-menu></conversation-menu>
                     </div>
                 </div>
-                <sidebar-profile .user=${this.user} ?collapsed=${!expanded}></sidebar-profile>
+                <sidebar-profile
+                    .user=${this.user}
+                    ?collapsed=${!expanded}
+                    .version=${this.version}
+                ></sidebar-profile>
             </aside>
         `;
     }

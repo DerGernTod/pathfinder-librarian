@@ -14,6 +14,27 @@ No-build ESM web app: Hono server (Bun runtime) serving a Lit-component client. 
 - `bunx playwright test` — visual regression tests
 - `bunx playwright test --update-snapshots` — regenerate baselines
 
+## Versioning & Changesets
+
+Every PR must include a `.changeset/<name>.md` file describing the change and its bump level. This is enforced by CI.
+
+### Changeset format
+
+```
+---
+bump: patch | minor | major
+---
+
+Description of the change (one or two sentences).
+```
+
+### Rules
+
+- **Every PR** must include at least one changeset file.
+- **Documentation-only PRs** use `bump: patch`.
+- The CI job `check-changeset` will fail if no valid changeset is found.
+- Run `bun scripts/version.js` to aggregate changesets, bump `package.json`, and delete consumed changesets before tagging a release.
+
 ## Architecture
 
 ```

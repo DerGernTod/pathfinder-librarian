@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
@@ -33,6 +36,13 @@ if (vectorDb) {
     console.log("Vector DB not found at data/vectors.sqlite — RAG context retrieval disabled");
 }
 
+// --- Read package.json version at module load ---
+const packageJsonPath = fileURLToPath(new URL("../package.json", import.meta.url));
+const packageJson = /** @type {{ version: string }} */ (
+    JSON.parse(readFileSync(packageJsonPath, "utf-8"))
+);
+const APP_VERSION = packageJson.version;
+
 const app = new Hono()
     // Database middleware (sets db and vectorDb in context for all routes)
     .use("/api/*", databaseMiddleware({ vectorDb }))
@@ -43,7 +53,11 @@ const app = new Hono()
     .use("/api/rule-items/*", sessionMiddleware())
     .route("/api/conversations", conversationsRouter)
     .route("/api/rule-items", ruleItemsRouter)
-    .route("/api/users", usersRouter);
+    .route("/api/users", usersRouter)
+    // --- Public version endpoint (no auth required) ---
+    .get("/api/version", (c) => {
+        return c.json({ result: "success", data: { version: APP_VERSION } });
+    });
 
 // Dev-only test endpoints
 if (process.env.NODE_ENV !== "production") {
