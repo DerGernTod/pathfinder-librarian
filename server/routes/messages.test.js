@@ -1042,3 +1042,142 @@ describe("messages routes — error handling", () => {
         }
     });
 });
+
+describe("messages routes — compaction ordering", () => {
+    /** @type {Hono<any>} */
+    let app;
+    /** @type {ReturnType<typeof createDb>} */
+    let db;
+    /** @type {string} */
+    let sessionToken;
+    /** @type {string} */
+    let SEED_USER_ID;
+    /** @type {string} */
+    let convId;
+
+    beforeEach(async () => {
+        const { seedIfNeeded, SEED_IDS: seedIds } = await import("../db/seed.js");
+        SEED_USER_ID = seedIds.USER_DEFAULT;
+
+        db = createDb(":memory:");
+        seedIfNeeded(db);
+
+        const { conversationsRouter } = await import("./conversations.js");
+        const { sessionMiddleware } = await import("../middleware/session.js");
+        const { databaseMiddleware } = await import("../middleware/database.js");
+        const { createSession, createConversation } = await import("../db/queries.js");
+
+        app = new Hono()
+            .use("/api/*", databaseMiddleware({ database: db }))
+            .use("/api/conversations/*", sessionMiddleware({ database: db }))
+            .route("/api/conversations", conversationsRouter);
+
+        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        const session = createSession(db, {
+            userId: SEED_USER_ID,
+            token: crypto.randomUUID(),
+            expiresAt,
+        });
+        sessionToken = session.token;
+
+        const conv = createConversation(db, {
+            title: "Compaction Test",
+            userId: SEED_USER_ID,
+        });
+        convId = conv.id;
+    });
+
+    afterEach(() => {
+        if (db) {
+            db.close();
+        }
+    });
+
+    it("passes compacted summary to the LLM after compaction", async () => {
+        const originalFetch = globalThis.fetch;
+        const { mock } = await import("bun:test");
+
+        db.run("UPDATE conversations SET compacted_summary = ? WHERE id = ?", [
+            "This is a test summary of the previous conversation.",
+            convId,
+        ]);
+
+        /** @type {import("bun:test").Mock<() => Promise<unknown>>} */
+        const fetchMock = mock(() =>
+            Promise.resolve({ ok: false, status: 500, text: () => Promise.resolve("") }),
+        );
+        globalThis.fetch = /** @type {typeof fetch} */ (/** @type {unknown} */ (fetchMock));
+        process.env.GOOGLE_AI_API_KEY = "test-key";
+
+        fetchMock.mockImplementation(() => {
+            const url = /** @type {string[]} */ (fetchMock.mock.calls.at(-1))?.[0];
+            if (typeof url === "string" && url.includes("generateContent")) {
+                return Promise.resolve({
+                    ok: true,
+                    json: () =>
+                        Promise.resolve({
+                            candidates: [
+                                {
+                                    content: {
+                                        parts: [
+                                            {
+                                                text: JSON.stringify([
+                                                    { type: "text", markdown: "Hi" },
+                                                ]),
+                                            },
+                                        ],
+                                    },
+                                },
+                            ],
+                        }),
+                });
+            }
+            return Promise.resolve({
+                ok: false,
+                status: 500,
+                text: () => Promise.resolve("Not mocked"),
+            });
+        });
+
+        try {
+            const res = await app.request(`/api/conversations/${convId}/messages`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-session-token": sessionToken,
+                },
+                body: JSON.stringify({ content: "Hello", mode: "player" }),
+            });
+            await res.text();
+
+            const calls = /** @type {[string, RequestInit][]} */ (
+                /** @type {unknown} */ (fetchMock.mock.calls)
+            );
+
+            const llmCall = calls.find(([url, init]) => {
+                if (typeof url !== "string" || !url.includes("generateContent")) {
+                    return false;
+                }
+                const body = JSON.parse(/** @type {string} */ (init.body));
+                return body.generationConfig !== undefined;
+            });
+
+            expect(llmCall).toBeDefined();
+            if (!llmCall) {
+                return;
+            }
+
+            const body = JSON.parse(/** @type {string} */ (llmCall[1].body));
+            const userContent = body.contents.find(
+                /** @param {{ role: string }} c */ (c) => c.role === "user",
+            );
+            expect(userContent).toBeDefined();
+            expect(userContent.parts[0].text).toContain("[Previous conversation summary]");
+            expect(userContent.parts[0].text).toContain("This is a test summary");
+        } finally {
+            globalThis.fetch = originalFetch;
+            delete process.env.GOOGLE_AI_API_KEY;
+            mock.restore();
+        }
+    });
+});

@@ -56,6 +56,7 @@ function createMessagesStore() {
         async *parseSSEStream(body) {
             const reader = body.getReader();
             const decoder = new TextDecoder();
+            let buffer = "";
 
             try {
                 while (true) {
@@ -63,10 +64,14 @@ function createMessagesStore() {
                     if (result.done) {
                         break;
                     }
-                    const value = result.value;
-                    const chunk = decoder.decode(value, { stream: true });
-                    const lines = chunk.split("\n").filter(Boolean);
-                    for (const line of lines) {
+                    const chunk = decoder.decode(result.value, { stream: true });
+                    buffer += chunk;
+                    const parts = buffer.split("\n");
+                    buffer = /** @type {string} */ (parts.pop());
+                    for (const line of parts) {
+                        if (!line) {
+                            continue;
+                        }
                         /** @type {unknown} */
                         const data = JSON.parse(line);
                         if (
@@ -80,6 +85,21 @@ function createMessagesStore() {
                             const typedData = /** @type {SSEEvent} */ (data);
                             yield typedData;
                         }
+                    }
+                }
+                if (buffer) {
+                    /** @type {unknown} */
+                    const data = JSON.parse(buffer);
+                    if (
+                        typeof data === "object" &&
+                        data !== null &&
+                        "type" in data &&
+                        typeof data.type === "string" &&
+                        "data" in data
+                    ) {
+                        /** @type {SSEEvent} */
+                        const typedData = /** @type {SSEEvent} */ (data);
+                        yield typedData;
                     }
                 }
             } finally {

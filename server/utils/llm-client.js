@@ -373,6 +373,9 @@ export async function callGeminiJson(contents, ragContext, mode, ungrounded) {
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: sanitizedSchema,
+            temperature: 0.7,
+            topP: 0.9,
+            maxOutputTokens: 8192,
         },
     };
 

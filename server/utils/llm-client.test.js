@@ -110,6 +110,27 @@ describe("llm-client", () => {
             expect(body.generationConfig.responseSchema.type).toBe("array");
         });
 
+        it("includes repetition-prevention parameters in generationConfig", async () => {
+            process.env.GOOGLE_AI_API_KEY = "test-key";
+            const blocks = [{ type: "text", markdown: "Test" }];
+
+            const fetchMock = mock(() => Promise.resolve(geminiResponse(JSON.stringify(blocks))));
+            globalThis.fetch = /** @type {typeof fetch} */ (/** @type {unknown} */ (fetchMock));
+
+            await callGeminiJson([{ role: "user", parts: [{ text: "test" }] }], "", "player");
+
+            const body = JSON.parse(
+                /** @type {string} */ (
+                    /** @type {[string, RequestInit][]} */ (
+                        /** @type {unknown} */ (fetchMock.mock.calls)
+                    )[0][1].body
+                ),
+            );
+            expect(body.generationConfig.temperature).toBe(0.7);
+            expect(body.generationConfig.topP).toBe(0.9);
+            expect(body.generationConfig.maxOutputTokens).toBe(8192);
+        });
+
         it("throws descriptive error on non-OK HTTP response", async () => {
             process.env.GOOGLE_AI_API_KEY = "test-key";
             mockFetch(() =>
