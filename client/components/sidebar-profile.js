@@ -1,6 +1,6 @@
 import { ContextConsumer } from "@lit/context";
 import { css } from "lit-element";
-import { html } from "lit-html";
+import { html, nothing } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
 import { modeContext } from "../stores/mode-store.js";
@@ -83,6 +83,16 @@ class SidebarProfile extends BaseElement {
                 overflow: hidden;
                 text-overflow: ellipsis;
             }
+            .version {
+                font-size: 0.65rem;
+                line-height: 1rem;
+                color: var(--muted-foreground);
+                opacity: 0.55;
+                margin-top: 0.125rem;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
         `,
     ];
 
@@ -92,6 +102,7 @@ class SidebarProfile extends BaseElement {
         initials: { type: String },
         collapsed: { type: Boolean },
         user: { type: Object },
+        version: { type: String },
     };
 
     constructor() {
@@ -106,6 +117,8 @@ class SidebarProfile extends BaseElement {
         this.collapsed = false;
         /** @type {AuthUser | null} */
         this.user = null;
+        /** @type {string} */
+        this.version = "";
         /** @type {import("../stores/mode-store.js").ModeState} */
         this._modeState = { mode: "gm" };
     }
@@ -143,6 +156,7 @@ class SidebarProfile extends BaseElement {
                 <div class="text-container">
                     <p class="name">${this.name}</p>
                     <p class="subtitle">${this.subtitle}</p>
+                    ${this.version ? html`<p class="version">v${this.version}</p>` : nothing}
                 </div>
             </div>
         `;

@@ -33,6 +33,9 @@ Verify the implementation through automated checks and logic review. You MUST NO
     - If irrelevant commits found: `STATUS: FAIL` with list of off-topic commits
 4. **Formatting & Linting:** Run project linters and formatters.
 5. **Code Quality:** Ensure no obvious bugs, security risks, or "todo" comments were left behind.
+6. **Changeset Check:**
+    - Verify the PR branch includes at least one `.changeset/*.md` file with valid frontmatter (`bump: patch|minor|major`).
+    - If no changeset found: `STATUS: FAIL` with "Missing changeset file".
 
 - **Output:**
     - If all checks pass: `STATUS: PASS`

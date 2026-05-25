@@ -94,4 +94,14 @@ test.describe("sidebar toggle visual regression", () => {
         const profile = page.locator("sidebar-profile");
         await expect(profile).toHaveScreenshot("sidebar-profile-collapsed.png");
     });
+
+    test("sidebar-profile displays version text", async ({ page }) => {
+        await page.goto("/");
+        await page.waitForSelector("main-page");
+        // Wait for version text to appear in sidebar-profile shadow DOM
+        await page.locator("sidebar-profile .version").waitFor({ timeout: 5000 });
+        await page.waitForTimeout(500);
+        const profile = page.locator("sidebar-profile");
+        await expect(profile).toHaveScreenshot("sidebar-profile-version.png");
+    });
 });

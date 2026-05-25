@@ -13,6 +13,7 @@ Transform the approved `PLAN.md` into functional, tested code.
 ## Instructions
 
 - Follow the approved `PLAN.md` strictly.
+- **Changeset Requirement:** Every PR must include a `.changeset/<name>.md` file. See AGENTS.md § "Versioning & Changesets" for format. Create one even for doc-only changes (use `bump: patch`).
 - **TDD Requirement:**
     1. Write failing tests first.
     2. Implement minimal code to pass tests.

@@ -100,6 +100,7 @@ class MainPage extends BaseElement {
         _isNewChat: { type: Boolean },
         _viewState: { type: String },
         _prevViewState: { type: String },
+        version: { type: String },
     };
 
     constructor() {
@@ -110,6 +111,8 @@ class MainPage extends BaseElement {
         this._landingSubmitting = false;
         /** @type {boolean} */
         this._isNewChat = false;
+        /** @type {string} */
+        this.version = "";
         /** @type {string} */
         this._viewState = "loading";
         /** @type {string} */
@@ -358,6 +361,19 @@ class MainPage extends BaseElement {
             }
             // Flush update before returning from firstUpdated
             await this.updateComplete;
+
+            // Fetch app version for display in sidebar
+            try {
+                const versionRes = await client.api.version.$get();
+                const versionData = /** @type {{ result: string, data: { version: string } }} */ (
+                    await versionRes.json()
+                );
+                if (versionData.data?.version) {
+                    this.version = versionData.data.version;
+                }
+            } catch {
+                // Version fetch is non-critical; silently ignore failures
+            }
         } catch {
             this._viewState = "landing";
         }
@@ -376,6 +392,7 @@ class MainPage extends BaseElement {
                     : nothing}
                 <chat-sidebar
                     .user=${this.user}
+                    .version=${this.version}
                     @new-chat=${this.handleNewChat}
                     @select-conversation=${this.handleSelectConversation}
                     @toggle-sidebar=${this.handleSidebarToggle}
