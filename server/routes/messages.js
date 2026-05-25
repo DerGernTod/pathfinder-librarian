@@ -385,14 +385,14 @@ async function runResponseStream(honoStream, ctx) {
         embeddingTokens = ragContext.embeddingTokens ?? 0;
         const isUngrounded = ragResultCount === 0;
 
-        const llmContents = formatConversationForLlm(db, actualConvId);
+        const llmContentsBefore = formatConversationForLlm(db, actualConvId);
 
         try {
-            await compactConversation(db, actualConvId, llmContents);
+            await compactConversation(db, actualConvId, llmContentsBefore);
         } catch (compactionError) {
             // oxlint-disable-next-line no-console -- just log and continue; compaction failure shouldn't block the user response
             console.error("Compaction failed:", compactionError);
-            if (shouldCompact(llmContents)) {
+            if (shouldCompact(llmContentsBefore)) {
                 await sendEvent({
                     type: "compactionWarning",
                     data: {
@@ -402,6 +402,8 @@ async function runResponseStream(honoStream, ctx) {
                 });
             }
         }
+
+        const llmContents = formatConversationForLlm(db, actualConvId);
 
         const llmResult = await getLlmResponseWithRetry(
             {
