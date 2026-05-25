@@ -70,6 +70,8 @@ export function buildGeminiResponseSchema() {
 
     const statBlockMessage = {
         type: "object",
+        description:
+            "Emit ONLY when you have a ruleItemId from reference data. Requires the ruleItemId field. Do NOT include a data field.",
         properties: {
             type: { type: "string", enum: ["stat-block"] },
             title: { type: "string" },
@@ -82,24 +84,59 @@ export function buildGeminiResponseSchema() {
 
     const customStatBlockMessage = {
         type: "object",
+        description:
+            "Use when creating or inventing a creature NOT found in reference data. Includes inline stats in the data field. NEVER use stat-block for invented creatures — use custom-stat-block instead.",
         properties: {
             type: { type: "string", enum: ["custom-stat-block"] },
-            title: { type: "string" },
+            title: {
+                type: "string",
+                description: "Display name for the stat block heading.",
+            },
             data: {
                 type: "object",
+                description: "Full inline creature stats. Provide as much detail as possible.",
                 properties: {
-                    name: { type: "string" },
-                    type: { type: "string" },
-                    level: { type: "number" },
-                    rarity: { type: "string" },
-                    traits: { type: "array", items: { type: "string" } },
-                    perception: { type: "number" },
+                    name: {
+                        type: "string",
+                        description: "The creature's name.",
+                    },
+                    type: {
+                        type: "string",
+                        description:
+                            "Short creature type classification, e.g. 'Dragon', 'Animal', 'Humanoid', 'Undead', 'Fey'. NOT a narrative description or rules explanation.",
+                    },
+                    level: {
+                        type: "number",
+                        description: "Integer level from -1 to 25 for Pathfinder 2e.",
+                    },
+                    rarity: {
+                        type: "string",
+                        description: "One of: Common, Uncommon, Rare, or Unique.",
+                    },
+                    traits: {
+                        type: "array",
+                        items: { type: "string", description: "A single trait label." },
+                        description:
+                            "Array of short trait labels, e.g. ['Dragon', 'Aquatic', 'Cold'].",
+                    },
+                    perception: {
+                        type: "number",
+                        description: "Perception skill modifier value.",
+                    },
                     languages: {
                         type: "object",
                         properties: { value: { type: "array", items: { type: "string" } } },
                     },
-                    size: { type: "string" },
-                    blurb: { type: "string" },
+                    size: {
+                        type: "string",
+                        description:
+                            "Size category: Tiny, Small, Medium, Large, Huge, or Gargantuan.",
+                    },
+                    blurb: {
+                        type: "string",
+                        description:
+                            "One-sentence flavor description of the creature's appearance or nature. Keep it brief.",
+                    },
                     attributes: {
                         type: "object",
                         properties: {
@@ -186,7 +223,11 @@ export function buildGeminiResponseSchema() {
                                     ],
                                 },
                                 traits: { type: "array", items: { type: "string" } },
-                                description: { type: "string" },
+                                description: {
+                                    type: "string",
+                                    description:
+                                        "Full narrative description. Can be multiple paragraphs. Include lore, behavior, and appearance.",
+                                },
                             },
                         },
                     },
@@ -249,8 +290,8 @@ export function buildGeminiResponseSchema() {
             anyOf: [
                 textBlock,
                 calloutBlock,
-                statBlockMessage,
                 customStatBlockMessage,
+                statBlockMessage,
                 ruleDetailBlock,
             ],
         },
@@ -313,19 +354,24 @@ Use "italic: true" for in-character dialogue or flavor text.
 Important rules, key mechanics, or highlighted information. "title" is the heading. "markdown" body supports same formatting as text blocks.
 - Example: { "type": "callout", "title": "Critical Success", "markdown": "When you **critically succeed** on a saving throw, you take **no damage** from effects that would deal half damage on a success." }
 
-### stat-block
-Creature stat block. Use when the reference data contains a creature entry. Reference the creature by the ruleItemId shown in its [ID: ...] header.
-- Example: { "type": "stat-block", "title": "Goblin Warrior", "ruleItemId": "abc-123" }
-- The ruleItemId comes from the [ID: ...] in the creature's reference data header
-- NEVER use stat-block for traits, conditions, or other non-creature items
-
 ### custom-stat-block
 Custom or invented creature stat block with inline data. Use when the user asks you to create, invent, or imagine a creature that is NOT in the reference data. Provide full stats inline.
 - Example: { "type": "custom-stat-block", "title": "Sylvaris", "data": { "name": "Sylvaris", "type": "Humanoid", "level": 5, "traits": ["Elf", "Ranger"], "attributes": { "ac": { "value": 22 }, "hp": { "value": 75, "max": 75 }, "speed": "30 feet" }, "abilities": { "str": { "mod": 2 }, "dex": { "mod": 4 }, "con": { "mod": 1 }, "int": { "mod": 2 }, "wis": { "mod": 3 }, "cha": { "mod": 1 } } } }
+- "data.type": Short classification (e.g. "Dragon", "Animal", "Humanoid", "Undead"). NOT narrative prose, NOT rules text, NOT multi-sentence descriptions.
+- If you mention traits like "Aquatic" or "Cold", put them in the "traits" array, NOT in "data.type".
 - skills: { "Skill Name": { "value": 5 }, ... } — map of skill names to their modifier values
 - spellcasting[].slots: { "1": [{ "name": "Spell Name", "rank": 1 }], ... } — map of spell level (string) to array of prepared/known spells
-- Use stat-block when the creature EXISTS in the reference data (with an [ID: ...] header). Use custom-stat-block when INVENTING a new creature.
 - The data object MUST include "name" and "level". All other fields (attributes, abilities, skills, melee, actions, etc.) are optional but recommended for a complete stat block.
+- CRITICAL: NEVER use "stat-block" for invented creatures. If you don't have a ruleItemId from reference data, you MUST use "custom-stat-block".
+- NEVER emit more than ONE custom-stat-block for the same creature. Each creature gets exactly one stat block.
+
+### stat-block
+Creature stat block from reference data. Use ONLY when the reference data contains a creature entry AND you can provide its ruleItemId.
+- Example: { "type": "stat-block", "title": "Goblin Warrior", "ruleItemId": "abc-123" }
+- The ruleItemId comes from the [ID: ...] in the creature's reference data header
+- NEVER use stat-block for traits, conditions, or other non-creature items
+- NEVER use stat-block for invented creatures — use custom-stat-block instead
+- CRITICAL: "stat-block" MUST have a "ruleItemId" field and MUST NOT have a "data" field
 
 ### rule-detail
 A non-creature rule item (trait, condition, feat, etc.) that has its OWN dedicated entry in the reference data — meaning it has its own [ID: ...] header line.
@@ -343,6 +389,7 @@ A non-creature rule item (trait, condition, feat, etc.) that has its OWN dedicat
 - Use markdown formatting: **bold** for key values (DCs, damage dice, critical terms), \`code\` for game terms, bullet lists for enumerations
 - Each response should typically have 2-5 blocks
 - When the user asks you to create or invent a creature/NPC, use custom-stat-block with full inline stats
+- **NO DUPLICATION**: NEVER emit two blocks with the same information. Do not repeat the same stat block multiple times. Each custom-stat-block must represent a distinct creature.
 - Respond directly and concisely as a helpful RPG assistant${ragSection}${ungroundedSection}`;
 }
 
@@ -419,7 +466,21 @@ export async function callGeminiJson(contents, ragContext, mode, ungrounded) {
     try {
         blocks = messageBlocksArraySchema.parse(parsed);
     } catch {
-        return { blocks: [{ type: "text", markdown: rawText }], usage: undefined };
+        // oxlint-disable-next-line no-console
+        console.warn(
+            "Gemini JSON response failed block schema validation — raw text:",
+            rawText.slice(0, 200),
+        );
+        return {
+            blocks: [
+                {
+                    type: "text",
+                    markdown:
+                        "The AI produced a response that couldn't be displayed properly. Please try rephrasing your question or starting a new conversation.",
+                },
+            ],
+            usage: undefined,
+        };
     }
 
     if (blocks.length === 0) {
