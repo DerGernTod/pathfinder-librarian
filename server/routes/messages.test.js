@@ -570,14 +570,32 @@ describe("messages routes — custom stat block resolution", () => {
     });
 
     /**
-     * Helper to mock Gemini to return specific blocks.
+     * Helper to mock Gemini to return specific blocks via dual-pass pipeline.
+     * Pass 1 returns plain text; Pass 2 returns scratchpad-wrapped JSON blocks.
      * @param {import("bun:test").Mock<() => Promise<unknown>>} fetchMock
      * @param {import("../../shared/types.js").MessageBlock[]} blocks
      */
     function mockGeminiBlocks(fetchMock, blocks) {
+        let callIndex = 0;
         fetchMock.mockImplementation(() => {
             const url = /** @type {string[]} */ (fetchMock.mock.calls.at(-1))?.[0];
             if (typeof url === "string" && url.includes("generateContent")) {
+                callIndex++;
+                if (callIndex === 1) {
+                    return Promise.resolve({
+                        ok: true,
+                        json: () =>
+                            Promise.resolve({
+                                candidates: [
+                                    {
+                                        content: {
+                                            parts: [{ text: "Pass 1 creative output" }],
+                                        },
+                                    },
+                                ],
+                            }),
+                    });
+                }
                 return Promise.resolve({
                     ok: true,
                     json: () =>
@@ -585,7 +603,14 @@ describe("messages routes — custom stat block resolution", () => {
                             candidates: [
                                 {
                                     content: {
-                                        parts: [{ text: JSON.stringify(blocks) }],
+                                        parts: [
+                                            {
+                                                text: JSON.stringify({
+                                                    internal_reasoning_scratchpad: "Parsing blocks",
+                                                    blocks: blocks,
+                                                }),
+                                            },
+                                        ],
                                     },
                                 },
                             ],
