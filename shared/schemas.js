@@ -341,6 +341,11 @@ const messageBlockSchema = z.union([
 
 const messageBlocksArraySchema = z.array(messageBlockSchema);
 
+const dualPassResponseSchema = z.object({
+    internal_reasoning_scratchpad: z.string(),
+    blocks: messageBlocksArraySchema,
+});
+
 // --- Gemini API response schema for summarization validation ---
 
 const usageMetadataSchema = z
@@ -403,6 +408,7 @@ export {
     ruleDetailBlockSchema,
     messageBlockSchema,
     messageBlocksArraySchema,
+    dualPassResponseSchema,
     geminiResponseSchema,
     apiKeyStatusSchema,
 };

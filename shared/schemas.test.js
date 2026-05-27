@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import { customStatBlockSchema, messageBlockSchema } from "./schemas.js";
+import { customStatBlockSchema, dualPassResponseSchema, messageBlockSchema } from "./schemas.js";
 
 describe("customStatBlockSchema", () => {
     it("validates a minimal valid block with name and level only", () => {
@@ -152,5 +152,48 @@ describe("messageBlockSchema union", () => {
     it("still accepts rule-detail blocks", () => {
         const block = { type: /** @type {const} */ ("rule-detail"), ruleItemId: "abc-123" };
         expect(messageBlockSchema.parse(block)).toEqual(block);
+    });
+});
+
+describe("dualPassResponseSchema", () => {
+    it("validates a valid response with scratchpad and blocks", () => {
+        const response = {
+            internal_reasoning_scratchpad: "Thinking about the creature...",
+            blocks: [
+                { type: /** @type {const} */ ("text"), markdown: "Here is a goblin." },
+                { type: /** @type {const} */ ("stat-block"), ruleItemId: "abc-123" },
+            ],
+        };
+        expect(dualPassResponseSchema.parse(response)).toEqual(response);
+    });
+
+    it("rejects response missing internal_reasoning_scratchpad", () => {
+        const response = {
+            blocks: [{ type: /** @type {const} */ ("text"), markdown: "Hello" }],
+        };
+        expect(() => dualPassResponseSchema.parse(response)).toThrow();
+    });
+
+    it("rejects response missing blocks", () => {
+        const response = {
+            internal_reasoning_scratchpad: "Some reasoning",
+        };
+        expect(() => dualPassResponseSchema.parse(response)).toThrow();
+    });
+
+    it("rejects response with invalid block types inside blocks", () => {
+        const response = {
+            internal_reasoning_scratchpad: "Reasoning",
+            blocks: [{ type: "unknown-type", foo: "bar" }],
+        };
+        expect(() => dualPassResponseSchema.parse(response)).toThrow();
+    });
+
+    it("accepts response with empty blocks array", () => {
+        const response = {
+            internal_reasoning_scratchpad: "No blocks needed",
+            blocks: [],
+        };
+        expect(dualPassResponseSchema.parse(response)).toEqual(response);
     });
 });
