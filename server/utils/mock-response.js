@@ -25,7 +25,7 @@ const MOCK_RESPONSES = [
         {
             type: "text",
             markdown:
-                "The three basic saves are Fortitude (CON), Reflex (DEX), and Will (WIS). Proficiency with these saves is trained by default and can be increased through class features and feats.",
+                "The creature must succeed at a :dc{15} Fortitude save or take :dice{2d6 fire} damage and become :condition{Stunned 1}. The three basic saves are Fortitude (CON), Reflex (DEX), and Will (WIS).",
         },
     ],
     // Combat mechanics and MAP
@@ -209,6 +209,25 @@ const MOCK_RESPONSES = [
         {
             type: "rule-detail",
             ruleItemId: SEED_IDS.RULE_CONDITION_ENFEEBLED,
+        },
+    ],
+    // Rich game component showcase
+    [
+        {
+            type: "text",
+            markdown:
+                "The dragon breathes fire! Deal :dice{4d6 fire} damage. Targets must succeed at a :dc{23} Reflex save or take full damage.",
+        },
+        {
+            type: "callout",
+            title: "Breath Weapon",
+            markdown:
+                "The creature has :trait{Dragon} and :trait{Fire} traits. On a failed save, targets become :condition{Stunned 2}. This ability costs :action{2} actions.",
+        },
+        {
+            type: "text",
+            markdown:
+                "The dragon can also use :action{reaction} as a reaction to tail swipe, or :action{free} to speak. A critical failure on the save applies :condition{Enfeebled 2} for 1 round.",
         },
     ],
 ];

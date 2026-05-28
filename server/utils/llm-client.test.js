@@ -1011,6 +1011,16 @@ describe("llm-client", () => {
         it("includes step-by-step reasoning instruction", () => {
             const prompt = buildCreativeSystemPrompt("", "gm");
             expect(prompt).toContain("step-by-step");
+            expect(prompt).toContain("Pathfinder");
+        });
+
+        it("includes rich game component syntax guidance", () => {
+            const prompt = buildCreativeSystemPrompt("", "gm");
+            expect(prompt).toContain("::dice{");
+            expect(prompt).toContain("::dc{");
+            expect(prompt).toContain("::condition{");
+            expect(prompt).toContain("::trait{");
+            expect(prompt).toContain("::action{");
         });
 
         it("includes RAG context when provided", () => {
@@ -1070,6 +1080,15 @@ describe("llm-client", () => {
         it("mentions strict parsing role", () => {
             const prompt = buildExtractionSystemPrompt();
             expect(prompt).toContain("JSON transformation engine");
+        });
+
+        it("instructs to preserve rich game component patterns", () => {
+            const prompt = buildExtractionSystemPrompt();
+            expect(prompt).toContain("::dice{");
+            expect(prompt).toContain("::dc{");
+            expect(prompt).toContain("::condition{");
+            expect(prompt).toContain("::trait{");
+            expect(prompt).toContain("::action{");
         });
     });
 

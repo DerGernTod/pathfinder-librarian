@@ -7,6 +7,7 @@ import { html, nothing } from "lit-html";
 import { customElement } from "lit/decorators.js";
 import { marked } from "marked";
 
+import "../utils/marked-extensions.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
 import { BaseElement } from "./base-element.js";
@@ -193,6 +194,56 @@ class AssistantMessage extends BaseElement {
             }
             .cost-value {
                 font-family: ui-monospace, monospace;
+            }
+            .dice-badge {
+                display: inline-block;
+                background: hsl(280 25% 18%);
+                border: 1px solid hsl(280 45% 32%);
+                border-radius: 0.25rem;
+                padding: 0.05em 0.4em;
+                font-size: 0.85em;
+                font-weight: 600;
+                color: hsl(280 75% 72%);
+                white-space: nowrap;
+            }
+            .dc-badge {
+                display: inline-block;
+                background: hsl(200 25% 18%);
+                border: 1px solid hsl(200 45% 32%);
+                border-radius: 0.25rem;
+                padding: 0.05em 0.4em;
+                font-size: 0.85em;
+                font-weight: 600;
+                color: hsl(200 75% 72%);
+                white-space: nowrap;
+            }
+            .condition-badge {
+                display: inline-block;
+                background: hsl(340 25% 18%);
+                border: 1px solid hsl(340 45% 32%);
+                border-radius: 0.25rem;
+                padding: 0.05em 0.4em;
+                font-size: 0.85em;
+                font-weight: 600;
+                color: hsl(340 75% 72%);
+                white-space: nowrap;
+            }
+            .trait-badge {
+                display: inline-block;
+                background: hsl(160 25% 18%);
+                border: 1px solid hsl(160 45% 32%);
+                border-radius: 0.25rem;
+                padding: 0.05em 0.4em;
+                font-size: 0.85em;
+                font-weight: 600;
+                color: hsl(160 75% 72%);
+                white-space: nowrap;
+            }
+            .action-icon {
+                display: inline-block;
+                font-weight: 700;
+                color: hsl(45 85% 65%);
+                vertical-align: middle;
             }
             @media (max-width: 767px) {
                 .assistant-content {

@@ -251,6 +251,130 @@ describe("assistant-message", () => {
         expect(code.textContent).toBe("DC 15");
     });
 
+    describe("rich game component badges", () => {
+        it("renders dice badge in text block", async () => {
+            const el = createAssistantMessage({
+                id: "1",
+                role: "assistant",
+                blocks: [
+                    {
+                        type: "text",
+                        markdown: "Deal :dice{2d6 fire} damage.",
+                    },
+                ],
+            });
+            await el.updateComplete;
+            const badge = el.shadowRoot.querySelector(".dice-badge");
+            expect(badge).toBeTruthy();
+            expect(badge.textContent).toBe("2d6 fire");
+        });
+
+        it("renders DC badge in text block", async () => {
+            const el = createAssistantMessage({
+                id: "1",
+                role: "assistant",
+                blocks: [
+                    {
+                        type: "text",
+                        markdown: "Succeed at :dc{15} Fortitude.",
+                    },
+                ],
+            });
+            await el.updateComplete;
+            const badge = el.shadowRoot.querySelector(".dc-badge");
+            expect(badge).toBeTruthy();
+            expect(badge.textContent).toBe("DC 15");
+        });
+
+        it("renders condition badge in text block", async () => {
+            const el = createAssistantMessage({
+                id: "1",
+                role: "assistant",
+                blocks: [
+                    {
+                        type: "text",
+                        markdown: "Target becomes :condition{Stunned 1}.",
+                    },
+                ],
+            });
+            await el.updateComplete;
+            const badge = el.shadowRoot.querySelector(".condition-badge");
+            expect(badge).toBeTruthy();
+            expect(badge.textContent).toBe("Stunned 1");
+        });
+
+        it("renders trait badge in text block", async () => {
+            const el = createAssistantMessage({
+                id: "1",
+                role: "assistant",
+                blocks: [
+                    {
+                        type: "text",
+                        markdown: "Has :trait{Dragon} trait.",
+                    },
+                ],
+            });
+            await el.updateComplete;
+            const badge = el.shadowRoot.querySelector(".trait-badge");
+            expect(badge).toBeTruthy();
+            expect(badge.textContent).toBe("Dragon");
+        });
+
+        it("renders action icon in text block", async () => {
+            const el = createAssistantMessage({
+                id: "1",
+                role: "assistant",
+                blocks: [
+                    {
+                        type: "text",
+                        markdown: "Costs :action{2} actions.",
+                    },
+                ],
+            });
+            await el.updateComplete;
+            const icon = el.shadowRoot.querySelector(".action-icon");
+            expect(icon).toBeTruthy();
+            expect(icon.getAttribute("data-actions")).toBe("2");
+        });
+
+        it("renders mixed badges in a callout", async () => {
+            const el = createAssistantMessage({
+                id: "1",
+                role: "assistant",
+                blocks: [
+                    {
+                        type: "callout",
+                        title: "Effect",
+                        markdown:
+                            "Deal :dice{2d6 fire} on failed :dc{20} save, causing :condition{Stunned 1}. Has :trait{Fire}.",
+                    },
+                ],
+            });
+            await el.updateComplete;
+            const callout = el.shadowRoot.querySelector(".callout-card");
+            expect(callout.querySelector(".dice-badge")).toBeTruthy();
+            expect(callout.querySelector(".dc-badge")).toBeTruthy();
+            expect(callout.querySelector(".condition-badge")).toBeTruthy();
+            expect(callout.querySelector(".trait-badge")).toBeTruthy();
+        });
+
+        it("does NOT produce badges for plain text without wrapper syntax", async () => {
+            const el = createAssistantMessage({
+                id: "1",
+                role: "assistant",
+                blocks: [
+                    {
+                        type: "text",
+                        markdown: "Roll 2d6 damage against DC 15.",
+                    },
+                ],
+            });
+            await el.updateComplete;
+            expect(el.shadowRoot.querySelector(".dice-badge")).toBeNull();
+            expect(el.shadowRoot.querySelector(".dc-badge")).toBeNull();
+        });
+    });
+
     describe("ungrounded styling", () => {
         it("applies ungrounded class when ragMeta.resultCount is 0", async () => {
             const el = createAssistantMessage({
