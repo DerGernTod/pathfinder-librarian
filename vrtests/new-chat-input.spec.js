@@ -26,7 +26,7 @@ test.describe("new chat input clearing", () => {
         await newChatBtn.click();
         await page.waitForTimeout(500);
 
-        const landingInput = page.locator('input[data-test="landing-input"]');
+        const landingInput = page.locator('[data-test="landing-input"] textarea');
         await landingInput.fill("other thing");
 
         const landingSend = page.locator('button[data-test="landing-send"]');

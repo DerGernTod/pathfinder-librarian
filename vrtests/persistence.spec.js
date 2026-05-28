@@ -59,7 +59,7 @@ test.describe("persistence e2e tests", () => {
         await page.waitForTimeout(500);
 
         // Send a unique message to identify this conversation
-        const input = page.locator('[data-test="landing-input"]');
+        const input = page.locator('[data-test="landing-input"] textarea');
         await input.fill("Unique marker for new conv");
         await page.keyboard.press("Enter");
 

@@ -170,7 +170,7 @@ test.describe("player redacted stat block visual regression", () => {
             document.head.appendChild(s);
         });
 
-        const input = page.locator("[data-test='landing-input']");
+        const input = page.locator("[data-test='landing-input'] textarea");
         await input.fill("Tell me about the orc");
         await input.press("Enter");
         await page.waitForSelector("stat-block", { timeout: 5000 });
@@ -201,7 +201,7 @@ test.describe("player redacted stat block visual regression", () => {
             document.head.appendChild(s);
         });
 
-        const input = page.locator("[data-test='landing-input']");
+        const input = page.locator("[data-test='landing-input'] textarea");
         await input.fill("Tell me about the orc");
         await input.press("Enter");
         await page.waitForSelector("stat-block", { timeout: 5000 });
@@ -235,7 +235,7 @@ test.describe("player redacted stat block visual regression", () => {
             document.head.appendChild(s);
         });
 
-        const input = page.locator("[data-test='landing-input']");
+        const input = page.locator("[data-test='landing-input'] textarea");
         await input.fill("Tell me about the orc");
         await input.press("Enter");
         await page.waitForSelector("stat-block", { timeout: 5000 });
@@ -259,7 +259,7 @@ test.describe("player redacted stat block visual regression", () => {
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
 
-        const input = page.locator("[data-test='landing-input']");
+        const input = page.locator("[data-test='landing-input'] textarea");
         await input.fill("Show me the full orc stats");
         await input.press("Enter");
         await page.waitForSelector("stat-block", { timeout: 5000 });

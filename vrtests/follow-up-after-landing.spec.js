@@ -23,7 +23,7 @@ test.describe("follow-up after landing submit", () => {
         await newChatBtn.click();
         await page.waitForTimeout(500);
 
-        const landingInput = page.locator('input[data-test="landing-input"]');
+        const landingInput = page.locator('[data-test="landing-input"] textarea');
         await landingInput.fill("test");
 
         const landingSend = page.locator('button[data-test="landing-send"]');

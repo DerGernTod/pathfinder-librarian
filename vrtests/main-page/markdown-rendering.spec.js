@@ -122,7 +122,7 @@ test.describe("markdown rendering visual regression", () => {
             await page.waitForSelector("main-page");
             await page.waitForTimeout(1000);
 
-            const input = page.locator("[data-test='landing-input']");
+            const input = page.locator("[data-test='landing-input'] textarea");
             await input.fill("Tell me about critical hits");
             await input.press("Enter");
             await page.waitForSelector(".callout-card", { timeout: 5000 });
@@ -154,7 +154,7 @@ test.describe("markdown rendering visual regression", () => {
             await page.waitForSelector("main-page");
             await page.waitForTimeout(1000);
 
-            const input = page.locator("[data-test='landing-input']");
+            const input = page.locator("[data-test='landing-input'] textarea");
             await input.fill("Tell me about critical hits");
             await input.press("Enter");
             await page.waitForSelector(".callout-card", { timeout: 5000 });
@@ -186,7 +186,7 @@ test.describe("markdown rendering visual regression", () => {
             await page.waitForSelector("main-page");
             await page.waitForTimeout(1000);
 
-            const input = page.locator("[data-test='landing-input']");
+            const input = page.locator("[data-test='landing-input'] textarea");
             await input.fill("Tell me about critical hits");
             await input.press("Enter");
             await page.waitForSelector(".callout-card", { timeout: 5000 });
@@ -244,7 +244,7 @@ test.describe("markdown rendering visual regression", () => {
             await page.waitForSelector("main-page");
             await page.waitForTimeout(1000);
 
-            const input = page.locator("[data-test='landing-input']");
+            const input = page.locator("[data-test='landing-input'] textarea");
             await input.fill("What are combat actions?");
             await input.press("Enter");
             await page.waitForSelector(".markdown-body", { timeout: 5000 });
@@ -271,7 +271,7 @@ test.describe("markdown rendering visual regression", () => {
             await page.waitForSelector("main-page");
             await page.waitForTimeout(1000);
 
-            const input = page.locator("[data-test='landing-input']");
+            const input = page.locator("[data-test='landing-input'] textarea");
             await input.fill("What are combat actions?");
             await input.press("Enter");
             await page.waitForSelector(".markdown-body", { timeout: 5000 });
@@ -298,7 +298,7 @@ test.describe("markdown rendering visual regression", () => {
             await page.waitForSelector("main-page");
             await page.waitForTimeout(1000);
 
-            const input = page.locator("[data-test='landing-input']");
+            const input = page.locator("[data-test='landing-input'] textarea");
             await input.fill("What are combat actions?");
             await input.press("Enter");
             await page.waitForSelector(".markdown-body", { timeout: 5000 });
@@ -368,7 +368,7 @@ test.describe("markdown rendering visual regression", () => {
             await page.waitForSelector("main-page");
             await page.waitForTimeout(1000);
 
-            const input = page.locator("[data-test='landing-input']");
+            const input = page.locator("[data-test='landing-input'] textarea");
             await input.fill("Show me badges");
             await input.press("Enter");
             await page.waitForSelector(".dice-badge", { timeout: 5000 });
@@ -389,7 +389,7 @@ test.describe("markdown rendering visual regression", () => {
             await page.waitForSelector("main-page");
             await page.waitForTimeout(1000);
 
-            const input = page.locator("[data-test='landing-input']");
+            const input = page.locator("[data-test='landing-input'] textarea");
             await input.fill("Show me badges");
             await input.press("Enter");
             await page.waitForSelector(".dice-badge", { timeout: 5000 });
@@ -410,7 +410,7 @@ test.describe("markdown rendering visual regression", () => {
             await page.waitForSelector("main-page");
             await page.waitForTimeout(1000);
 
-            const input = page.locator("[data-test='landing-input']");
+            const input = page.locator("[data-test='landing-input'] textarea");
             await input.fill("Show me badges");
             await input.press("Enter");
             await page.waitForSelector(".dice-badge", { timeout: 5000 });

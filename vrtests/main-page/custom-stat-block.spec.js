@@ -231,7 +231,7 @@ test.describe("custom stat block visual regression", () => {
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
 
-        const input = page.locator("[data-test='landing-input']");
+        const input = page.locator("[data-test='landing-input'] textarea");
         await input.fill("Show me a custom creature");
         await input.press("Enter");
         await page.waitForSelector("stat-block", { timeout: 5000 });
@@ -254,7 +254,7 @@ test.describe("custom stat block visual regression", () => {
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
 
-        const input = page.locator("[data-test='landing-input']");
+        const input = page.locator("[data-test='landing-input'] textarea");
         await input.fill("Show me a custom creature");
         await input.press("Enter");
         await page.waitForSelector("stat-block", { timeout: 5000 });
@@ -277,7 +277,7 @@ test.describe("custom stat block visual regression", () => {
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
 
-        const input = page.locator("[data-test='landing-input']");
+        const input = page.locator("[data-test='landing-input'] textarea");
         await input.fill("Show me a custom creature");
         await input.press("Enter");
         await page.waitForSelector("stat-block", { timeout: 5000 });
@@ -300,7 +300,7 @@ test.describe("custom stat block visual regression", () => {
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
 
-        const input = page.locator("[data-test='landing-input']");
+        const input = page.locator("[data-test='landing-input'] textarea");
         await input.fill("Show me a minimal custom creature");
         await input.press("Enter");
         await page.waitForSelector("stat-block", { timeout: 5000 });
@@ -323,7 +323,7 @@ test.describe("custom stat block visual regression", () => {
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
 
-        const input = page.locator("[data-test='landing-input']");
+        const input = page.locator("[data-test='landing-input'] textarea");
         await input.fill("Tell me about this player creature");
         await input.press("Enter");
         await page.waitForSelector("stat-block", { timeout: 5000 });
