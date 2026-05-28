@@ -64,9 +64,21 @@ class ChatInput extends BaseElement {
                 line-height: 1.25rem;
                 padding: 0;
                 color: var(--foreground);
+                max-height: 200px;
+                overflow-y: auto;
             }
             sl-textarea::part(textarea)::placeholder {
                 color: var(--muted-foreground);
+            }
+            @media (max-width: 1024px) {
+                sl-textarea::part(textarea) {
+                    max-height: 160px;
+                }
+            }
+            @media (max-width: 767px) {
+                sl-textarea::part(textarea) {
+                    max-height: 100px;
+                }
             }
             .send-btn {
                 color: white;
@@ -267,6 +279,17 @@ class ChatInput extends BaseElement {
             new CustomEvent("send-message", { detail: { text }, bubbles: true, composed: true }),
         );
         this.value = "";
+        const slTextarea = this.shadowRoot?.querySelector("sl-textarea");
+        if (slTextarea) {
+            slTextarea.focus();
+        }
+    }
+
+    focus() {
+        const slTextarea = this.shadowRoot?.querySelector("sl-textarea");
+        if (slTextarea) {
+            slTextarea.focus();
+        }
     }
 
     handleStop() {
