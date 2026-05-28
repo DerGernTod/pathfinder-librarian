@@ -310,4 +310,116 @@ test.describe("markdown rendering visual regression", () => {
             await expect(chatArea).toHaveScreenshot("markdown-formatting-phone.png");
         });
     });
+
+    test.describe("rich game component badges", () => {
+        test.beforeEach(async ({ page, context }, testInfo) => {
+            await setupTestUser(context, testInfo);
+            await mockApiKeyStatusAvailable(page);
+
+            await page.route("**/api/conversations*", async (route) => {
+                if (route.request().method() === "GET") {
+                    await route.fulfill({
+                        status: 200,
+                        contentType: "application/json",
+                        body: JSON.stringify({
+                            result: "success",
+                            data: [
+                                {
+                                    id: "conv-md3",
+                                    title: "Badge Test",
+                                    userId: "00000000-0000-4000-8000-000000000001",
+                                    createdAt: new Date().toISOString(),
+                                    updatedAt: new Date().toISOString(),
+                                    messageCount: 0,
+                                },
+                            ],
+                        }),
+                    });
+                } else {
+                    await route.continue();
+                }
+            });
+        });
+
+        const badgeBlocks = [
+            {
+                type: "text",
+                markdown:
+                    "You deal :dice{2d6 fire} damage. Target must pass a :dc{15} Fortitude save.",
+            },
+            {
+                type: "callout",
+                title: "Effect",
+                markdown:
+                    "On failure: :condition{Stunned 1} for 1 round.\n\nCreature has :trait{Dragon} and :trait{Fire} traits.",
+            },
+            {
+                type: "text",
+                markdown: "This costs :action{2} actions or :action{reaction} as a reaction.",
+            },
+        ];
+
+        test("desktop viewport (1280x800)", async ({ page }) => {
+            await page.setViewportSize({ width: 1280, height: 800 });
+
+            await mockSseWithBlocks(page, badgeBlocks);
+
+            await page.goto("/");
+            await page.waitForSelector("main-page");
+            await page.waitForTimeout(1000);
+
+            const input = page.locator("[data-test='landing-input']");
+            await input.fill("Show me badges");
+            await input.press("Enter");
+            await page.waitForSelector(".dice-badge", { timeout: 5000 });
+            await page.waitForTimeout(500);
+
+            await disableAnimations(page);
+
+            const chatArea = page.locator("main.main");
+            await expect(chatArea).toHaveScreenshot("badges-desktop.png");
+        });
+
+        test("tablet viewport (768x1024)", async ({ page }) => {
+            await page.setViewportSize({ width: 768, height: 1024 });
+
+            await mockSseWithBlocks(page, badgeBlocks);
+
+            await page.goto("/");
+            await page.waitForSelector("main-page");
+            await page.waitForTimeout(1000);
+
+            const input = page.locator("[data-test='landing-input']");
+            await input.fill("Show me badges");
+            await input.press("Enter");
+            await page.waitForSelector(".dice-badge", { timeout: 5000 });
+            await page.waitForTimeout(500);
+
+            await disableAnimations(page);
+
+            const chatArea = page.locator("main.main");
+            await expect(chatArea).toHaveScreenshot("badges-tablet.png");
+        });
+
+        test("phone viewport (375x812)", async ({ page }) => {
+            await page.setViewportSize({ width: 375, height: 812 });
+
+            await mockSseWithBlocks(page, badgeBlocks);
+
+            await page.goto("/");
+            await page.waitForSelector("main-page");
+            await page.waitForTimeout(1000);
+
+            const input = page.locator("[data-test='landing-input']");
+            await input.fill("Show me badges");
+            await input.press("Enter");
+            await page.waitForSelector(".dice-badge", { timeout: 5000 });
+            await page.waitForTimeout(500);
+
+            await disableAnimations(page);
+
+            const chatArea = page.locator("main.main");
+            await expect(chatArea).toHaveScreenshot("badges-phone.png");
+        });
+    });
 });

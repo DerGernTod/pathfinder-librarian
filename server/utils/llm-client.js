@@ -399,6 +399,15 @@ A non-creature rule item (trait, condition, feat, etc.) that has its OWN dedicat
 - NEVER use rule-detail for a trait that is merely listed as a property of a creature or another item — only use it when the trait itself has an independent entry in the reference data
 - NEVER use rule-detail with an ID taken from a creature entry
 
+## Rich Game Components
+Use these inline patterns to highlight game mechanics in text and callout blocks:
+- \`::dice{formula}\` for dice rolls, e.g. \`::dice{2d6 fire}\` or \`::dice{1d20+5}\`
+- \`::dc{value}\` for difficulty classes, e.g. \`::dc{15}\` or \`::dc{25 Fortitude}\`
+- \`::condition{name}\` for conditions, e.g. \`::condition{Stunned}\` or \`::condition{Enfeebled 2}\`
+- \`::trait{name}\` for traits, e.g. \`::trait{Dragon}\` or \`::trait{Fire}\`
+- \`::action{type}\` for action symbols, e.g. \`::action{2}\` or \`::action{reaction}\`
+- Example: "You deal \`::dice{2d6 fire}\` damage. The target must succeed at a \`::dc{20}\` Fortitude save or become \`::condition{Slowed 1}\`."
+
 ## Guidelines
 - Treat the reference data as your own knowledge. NEVER say "based on the provided data", "the information suggests", "according to the context", or similar meta-phrases
 - Speak directly and confidently as a Pathfinder 2e expert
@@ -406,6 +415,7 @@ A non-creature rule item (trait, condition, feat, etc.) that has its OWN dedicat
 - Use rule-detail ONLY for items that have their own independent [ID: ...] header in the reference data (e.g. a trait entry, a condition entry) — not for traits listed inside another item's data
 - Combine blocks to give a complete answer: a text block for context, stat-block for the creature, rule-detail only for independently-listed items
 - Use markdown formatting: **bold** for key values (DCs, damage dice, critical terms), \`code\` for game terms, bullet lists for enumerations
+- Use the rich game component patterns above whenever mentioning dice, DCs, conditions, traits, or action costs
 - Each response should typically have 2-5 blocks
 - When the user asks you to create or invent a creature/NPC, use custom-stat-block with full inline stats
 - **NO DUPLICATION**: NEVER emit two blocks with the same information. Do not repeat the same stat block multiple times. Each custom-stat-block must represent a distinct creature.
@@ -460,6 +470,15 @@ Use plain paragraphs with markdown formatting for explanations, descriptions, an
 - \`code\` for game terms like \`DC 15\`
 - Bullet lists and numbered lists where appropriate
 - > Blockquotes for quoted rules
+
+### Rich Game Components
+Use these inline patterns to highlight game mechanics:
+- \`::dice{formula}\` for dice rolls, e.g. \`::dice{2d6 fire}\` or \`::dice{1d20+5}\`
+- \`::dc{value}\` for difficulty classes, e.g. \`::dc{15}\` or \`::dc{25 Fortitude}\`
+- \`::condition{name}\` for conditions, e.g. \`::condition{Stunned}\` or \`::condition{Enfeebled 2}\`
+- \`::trait{name}\` for traits, e.g. \`::trait{Dragon}\` or \`::trait{Fire}\`
+- \`::action{type}\` for action symbols (1, 2, 3, reaction, free)
+- Example: "You deal \`::dice{2d6 fire}\` damage. The target must succeed at a \`::dc{20}\` Fortitude save or become \`::condition{Slowed 1}\`."
 
 ### Key Rules / Callouts
 When highlighting an important rule, use a heading: \`## Key Rule: <title>\` followed by the rule body in markdown.
@@ -553,6 +572,7 @@ A non-creature rule item with its own database entry.
 - Output ONLY valid JSON. No markdown code fences, no extra text.
 - Each distinct concept gets its own block. Typically 2-5 blocks per response.
 - Preserve ALL information from the input — do not summarize or drop content.
+- Preserve any inline patterns like \`::dice{...}\`, \`::dc{...}\`, \`::condition{...}\`, \`::trait{...}\`, \`::action{...}\` verbatim in the markdown field of text and callout blocks.
 - **NO DUPLICATION**: Do not emit two blocks with the same information.`;
 }
 
