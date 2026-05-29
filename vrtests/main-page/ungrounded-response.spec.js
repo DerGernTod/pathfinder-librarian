@@ -123,7 +123,7 @@ test.describe("ungrounded response visual regression", () => {
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
 
-        const input = page.locator("[data-test='landing-input']");
+        const input = page.locator("[data-test='landing-input'] textarea");
         await input.fill("Tell me about an unknown creature");
         await input.press("Enter");
         await page.waitForSelector(".assistant-bubble", { timeout: 5000 });
@@ -154,7 +154,7 @@ test.describe("ungrounded response visual regression", () => {
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
 
-        const input = page.locator("[data-test='landing-input']");
+        const input = page.locator("[data-test='landing-input'] textarea");
         await input.fill("Tell me about an unknown creature");
         await input.press("Enter");
         await page.waitForSelector(".assistant-bubble", { timeout: 5000 });
@@ -185,7 +185,7 @@ test.describe("ungrounded response visual regression", () => {
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
 
-        const input = page.locator("[data-test='landing-input']");
+        const input = page.locator("[data-test='landing-input'] textarea");
         await input.fill("Tell me about an unknown creature");
         await input.press("Enter");
         await page.waitForSelector(".assistant-bubble", { timeout: 5000 });
@@ -216,7 +216,7 @@ test.describe("ungrounded response visual regression", () => {
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
 
-        const input = page.locator("[data-test='landing-input']");
+        const input = page.locator("[data-test='landing-input'] textarea");
         await input.fill("Tell me about goblins");
         await input.press("Enter");
         await page.waitForSelector(".assistant-bubble", { timeout: 5000 });

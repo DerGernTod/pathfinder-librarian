@@ -410,7 +410,7 @@ describe("main-page", () => {
             await element.updateComplete;
 
             const landingView = element.shadowRoot?.querySelector("landing-view");
-            const input = /** @type {HTMLInputElement} */ (
+            const input = /** @type {HTMLElement} */ (
                 landingView?.shadowRoot?.querySelector('[data-test="landing-input"]')
             );
             expect(input).toBeTruthy();
@@ -504,12 +504,12 @@ describe("main-page", () => {
             await element.updateComplete;
 
             const landingView = element.shadowRoot?.querySelector("landing-view");
-            const input = /** @type {HTMLInputElement} */ (
+            const input = /** @type {HTMLElement & { value: string }} */ (
                 landingView?.shadowRoot?.querySelector('[data-test="landing-input"]')
             );
             expect(input).toBeTruthy();
             input.value = "Hello world";
-            input.dispatchEvent(new Event("input", { bubbles: true }));
+            input.dispatchEvent(new CustomEvent("sl-input", { bubbles: true }));
 
             const preventDefaultMock = mock(() => {});
             const keydownEvent = new KeyboardEvent("keydown", {
@@ -537,12 +537,12 @@ describe("main-page", () => {
             await element.updateComplete;
 
             const landingView = element.shadowRoot?.querySelector("landing-view");
-            const input = /** @type {HTMLInputElement} */ (
+            const input = /** @type {HTMLElement & { value: string }} */ (
                 landingView?.shadowRoot?.querySelector('[data-test="landing-input"]')
             );
             expect(input).toBeTruthy();
             input.value = "Hello world";
-            input.dispatchEvent(new Event("input", { bubbles: true }));
+            input.dispatchEvent(new CustomEvent("sl-input", { bubbles: true }));
 
             const preventDefaultMock = mock(() => {});
             const keydownEvent = new KeyboardEvent("keydown", {

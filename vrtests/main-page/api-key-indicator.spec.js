@@ -25,7 +25,7 @@ test.describe("api key indicator visual regression", () => {
         await page.waitForSelector("chat-input");
         await page.waitForTimeout(1000);
 
-        const warningIcon = page.locator(".api-warning-icon");
+        const warningIcon = page.locator("chat-input .api-warning-icon");
         await expect(warningIcon).toBeVisible({ timeout: 5000 });
 
         await page.evaluate(() => {
@@ -59,7 +59,7 @@ test.describe("api key indicator visual regression", () => {
         await page.waitForSelector("chat-input");
         await page.waitForTimeout(1000);
 
-        const warningIcon = page.locator(".api-warning-icon");
+        const warningIcon = page.locator("chat-input .api-warning-icon");
         await expect(warningIcon).toBeVisible({ timeout: 5000 });
 
         await page.evaluate(() => {
@@ -93,7 +93,7 @@ test.describe("api key indicator visual regression", () => {
         await page.waitForSelector("chat-input");
         await page.waitForTimeout(1000);
 
-        const warningIcon = page.locator(".api-warning-icon");
+        const warningIcon = page.locator("chat-input .api-warning-icon");
         await expect(warningIcon).toBeVisible({ timeout: 5000 });
 
         await page.evaluate(() => {
@@ -127,7 +127,7 @@ test.describe("api key indicator visual regression", () => {
         await page.waitForSelector("chat-input");
         await page.waitForTimeout(1000);
 
-        const warningIcon = page.locator(".api-warning-icon");
+        const warningIcon = page.locator("chat-input .api-warning-icon");
         await expect(warningIcon).toHaveCount(0);
     });
 
@@ -149,7 +149,7 @@ test.describe("api key indicator visual regression", () => {
         await page.waitForSelector("chat-input");
         await page.waitForTimeout(1000);
 
-        const warningIcon = page.locator(".api-warning-icon");
+        const warningIcon = page.locator("chat-input .api-warning-icon");
         await expect(warningIcon).toBeVisible({ timeout: 5000 });
 
         await page.evaluate(() => {
@@ -183,10 +183,10 @@ test.describe("api key indicator visual regression", () => {
         await page.waitForSelector("chat-input");
         await page.waitForTimeout(1000);
 
-        const warningIcon = page.locator(".api-warning-icon");
+        const warningIcon = page.locator("chat-input .api-warning-icon");
         await expect(warningIcon).toBeVisible({ timeout: 5000 });
 
-        const tooltip = page.locator("sl-tooltip[placement='top']");
+        const tooltip = page.locator("chat-input sl-tooltip[placement='top']");
         await expect(tooltip).toHaveAttribute("content", "API key not configured");
     });
 });
