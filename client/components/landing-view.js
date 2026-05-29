@@ -146,6 +146,8 @@ class LandingView extends BaseElement {
                 line-height: 1.5rem;
                 padding: 0;
                 color: var(--foreground);
+                max-height: 40vh;
+                overflow-y: auto;
             }
             sl-textarea::part(textarea)::placeholder {
                 color: var(--muted-foreground);
