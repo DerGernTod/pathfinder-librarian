@@ -45,15 +45,14 @@ describe("landing-view", () => {
     it("tracks input text", async () => {
         await element.updateComplete;
 
-        const input = /** @type {HTMLInputElement} */ (
+        const textarea = /** @type {HTMLElement & { value: string }} */ (
             element.shadowRoot?.querySelector('[data-test="landing-input"]')
         );
-        input.value = "Test query";
-        input.dispatchEvent(new Event("input", { bubbles: true }));
+        textarea.value = "Test query";
+        textarea.dispatchEvent(new CustomEvent("sl-input", { bubbles: true }));
         await element.updateComplete;
 
-        // Verify the input value is reflected
-        expect(input.value).toBe("Test query");
+        expect(textarea.value).toBe("Test query");
     });
 
     it("dispatches landing-submit on button click", async () => {
@@ -67,11 +66,11 @@ describe("landing-view", () => {
             },
         );
 
-        const input = /** @type {HTMLInputElement} */ (
+        const textarea = /** @type {HTMLElement & { value: string }} */ (
             element.shadowRoot?.querySelector('[data-test="landing-input"]')
         );
-        input.value = "How does flanking work?";
-        input.dispatchEvent(new Event("input", { bubbles: true }));
+        textarea.value = "How does flanking work?";
+        textarea.dispatchEvent(new CustomEvent("sl-input", { bubbles: true }));
         await element.updateComplete;
 
         const sendBtn = element.shadowRoot?.querySelector('[data-test="landing-send"]');
@@ -91,11 +90,11 @@ describe("landing-view", () => {
             },
         );
 
-        const input = /** @type {HTMLInputElement} */ (
+        const textarea = /** @type {HTMLElement & { value: string }} */ (
             element.shadowRoot?.querySelector('[data-test="landing-input"]')
         );
-        input.value = "Hello";
-        input.dispatchEvent(new Event("input", { bubbles: true }));
+        textarea.value = "Hello";
+        textarea.dispatchEvent(new CustomEvent("sl-input", { bubbles: true }));
         await element.updateComplete;
 
         const preventDefaultMock = mock(() => {});
@@ -107,7 +106,7 @@ describe("landing-view", () => {
         });
         Object.defineProperty(keydownEvent, "preventDefault", { value: preventDefaultMock });
 
-        input.dispatchEvent(keydownEvent);
+        textarea.dispatchEvent(keydownEvent);
 
         expect(preventDefaultMock).toHaveBeenCalled();
         expect(result.value).toBe("Hello");
@@ -124,11 +123,11 @@ describe("landing-view", () => {
             },
         );
 
-        const input = /** @type {HTMLInputElement} */ (
+        const textarea = /** @type {HTMLElement & { value: string }} */ (
             element.shadowRoot?.querySelector('[data-test="landing-input"]')
         );
-        input.value = "Hello";
-        input.dispatchEvent(new Event("input", { bubbles: true }));
+        textarea.value = "Hello";
+        textarea.dispatchEvent(new CustomEvent("sl-input", { bubbles: true }));
         await element.updateComplete;
 
         const preventDefaultMock = mock(() => {});
@@ -140,7 +139,7 @@ describe("landing-view", () => {
         });
         Object.defineProperty(keydownEvent, "preventDefault", { value: preventDefaultMock });
 
-        input.dispatchEvent(keydownEvent);
+        textarea.dispatchEvent(keydownEvent);
 
         expect(preventDefaultMock).not.toHaveBeenCalled();
         expect(result.value).toBeNull();
@@ -157,11 +156,11 @@ describe("landing-view", () => {
             },
         );
 
-        const input = /** @type {HTMLInputElement} */ (
+        const textarea = /** @type {HTMLElement & { value: string }} */ (
             element.shadowRoot?.querySelector('[data-test="landing-input"]')
         );
-        input.value = "   ";
-        input.dispatchEvent(new Event("input", { bubbles: true }));
+        textarea.value = "   ";
+        textarea.dispatchEvent(new CustomEvent("sl-input", { bubbles: true }));
         await element.updateComplete;
 
         const sendBtn = element.shadowRoot?.querySelector('[data-test="landing-send"]');
@@ -184,10 +183,10 @@ describe("landing-view", () => {
         element.submitting = true;
         await element.updateComplete;
 
-        const input = /** @type {HTMLInputElement} */ (
+        const textarea = /** @type {HTMLElement} */ (
             element.shadowRoot?.querySelector('[data-test="landing-input"]')
         );
-        expect(input.disabled).toBe(true);
+        expect(textarea.hasAttribute("disabled")).toBe(true);
     });
 
     it("does not submit when submitting is true", async () => {
@@ -202,11 +201,11 @@ describe("landing-view", () => {
             },
         );
 
-        const input = /** @type {HTMLInputElement} */ (
+        const textarea = /** @type {HTMLElement & { value: string }} */ (
             element.shadowRoot?.querySelector('[data-test="landing-input"]')
         );
-        input.value = "Hello";
-        input.dispatchEvent(new Event("input", { bubbles: true }));
+        textarea.value = "Hello";
+        textarea.dispatchEvent(new CustomEvent("sl-input", { bubbles: true }));
         await element.updateComplete;
 
         const sendBtn = element.shadowRoot?.querySelector('[data-test="landing-send"]');
@@ -226,16 +225,30 @@ describe("landing-view", () => {
             },
         );
 
-        const input = /** @type {HTMLInputElement} */ (
+        const textarea = /** @type {HTMLElement & { value: string }} */ (
             element.shadowRoot?.querySelector('[data-test="landing-input"]')
         );
-        input.value = "Test query";
-        input.dispatchEvent(new Event("input", { bubbles: true }));
+        textarea.value = "Test query";
+        textarea.dispatchEvent(new CustomEvent("sl-input", { bubbles: true }));
         await element.updateComplete;
 
         const sendBtn = element.shadowRoot?.querySelector('[data-test="landing-send"]');
         sendBtn?.dispatchEvent(new Event("click", { bubbles: true }));
 
         expect(result.value).toBe("Test query");
+    });
+
+    it("renders warning icon when API key is not set", async () => {
+        element._apiKeyStatus = { available: false, reason: "not_set" };
+        await element.updateComplete;
+        const warningIcon = element.shadowRoot?.querySelector(".api-warning-icon");
+        expect(warningIcon).toBeTruthy();
+    });
+
+    it("does not render warning when API key is available", async () => {
+        element._apiKeyStatus = { available: true, reason: "ok" };
+        await element.updateComplete;
+        const warningIcon = element.shadowRoot?.querySelector(".api-warning-icon");
+        expect(warningIcon).toBeNull();
     });
 });

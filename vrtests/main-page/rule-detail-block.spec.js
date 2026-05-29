@@ -107,7 +107,7 @@ test.describe("rule-detail block visual regression", () => {
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
 
-        const input = page.locator("[data-test='landing-input']");
+        const input = page.locator("[data-test='landing-input'] textarea");
         await input.fill("Tell me about a condition");
         await input.press("Enter");
         await page.waitForSelector(".rule-detail-block", { timeout: 5000 });
@@ -142,7 +142,7 @@ test.describe("rule-detail block visual regression", () => {
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
 
-        const input = page.locator("[data-test='landing-input']");
+        const input = page.locator("[data-test='landing-input'] textarea");
         await input.fill("Tell me about the humanoid trait");
         await input.press("Enter");
         await page.waitForSelector(".rule-detail-block", { timeout: 5000 });
@@ -182,7 +182,7 @@ test.describe("rule-detail block visual regression", () => {
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
 
-        const input = page.locator("[data-test='landing-input']");
+        const input = page.locator("[data-test='landing-input'] textarea");
         await input.fill("What is enfeebled?");
         await input.press("Enter");
         await page.waitForSelector(".rule-detail-block", { timeout: 5000 });
@@ -222,7 +222,7 @@ test.describe("rule-detail block visual regression", () => {
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
 
-        const input = page.locator("[data-test='landing-input']");
+        const input = page.locator("[data-test='landing-input'] textarea");
         await input.fill("What is enfeebled?");
         await input.press("Enter");
         await page.waitForSelector(".rule-detail-block", { timeout: 5000 });
@@ -262,7 +262,7 @@ test.describe("rule-detail block visual regression", () => {
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
 
-        const input = page.locator("[data-test='landing-input']");
+        const input = page.locator("[data-test='landing-input'] textarea");
         await input.fill("What is enfeebled?");
         await input.press("Enter");
         await page.waitForSelector(".rule-detail-block", { timeout: 5000 });

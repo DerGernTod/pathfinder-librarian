@@ -62,7 +62,7 @@ test.describe("landing page visual regression", () => {
 
     test("landing input focused state", async ({ page }) => {
         await page.waitForSelector('[data-test="landing-input"]');
-        await page.focus('[data-test="landing-input"]');
+        await page.focus('[data-test="landing-input"] textarea');
         await page.waitForTimeout(300);
 
         await expect(page).toHaveScreenshot("landing-empty-focus.png", {
@@ -149,7 +149,7 @@ test.describe("landing page visual regression", () => {
             }
         });
 
-        const input = page.locator('[data-test="landing-input"]');
+        const input = page.locator('[data-test="landing-input"] textarea');
         await input.fill("Hello world");
         await page.click('[data-test="landing-send"]');
 
@@ -182,7 +182,8 @@ test.describe("landing page visual regression", () => {
         await expect(sendBtn).toHaveAttribute("aria-label", "Send prompt");
 
         // Verify hint text is present
-        const hint = page.locator(".landing-hint");
-        await expect(hint).toHaveText("Press Enter to send");
+        const hint = page.locator("landing-view .disclaimer");
+        const hintText = await hint.textContent();
+        expect(hintText).toContain("Pathfinder Librarian can make mistakes");
     });
 });

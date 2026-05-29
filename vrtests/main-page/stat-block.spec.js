@@ -183,7 +183,7 @@ test.describe("stat block visual regression", () => {
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
 
-        const input = page.locator("[data-test='landing-input']");
+        const input = page.locator("[data-test='landing-input'] textarea");
         await input.fill("Show me a stat block");
         await input.press("Enter");
         await page.waitForSelector("stat-block", { timeout: 5000 });
@@ -204,7 +204,7 @@ test.describe("stat block visual regression", () => {
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
 
-        const input = page.locator("[data-test='landing-input']");
+        const input = page.locator("[data-test='landing-input'] textarea");
         await input.fill("Show me a simple goblin stat block");
         await input.press("Enter");
         await page.waitForSelector("stat-block", { timeout: 5000 });
@@ -226,7 +226,7 @@ test.describe("stat block visual regression", () => {
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
 
-        const input = page.locator("[data-test='landing-input']");
+        const input = page.locator("[data-test='landing-input'] textarea");
         await input.fill("Show me a stat block");
         await input.press("Enter");
         await page.waitForSelector("stat-block", { timeout: 5000 });
@@ -249,7 +249,7 @@ test.describe("stat block visual regression", () => {
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
 
-        const input = page.locator("[data-test='landing-input']");
+        const input = page.locator("[data-test='landing-input'] textarea");
         await input.fill("Show me a stat block");
         await input.press("Enter");
         await page.waitForSelector("stat-block", { timeout: 5000 });
@@ -272,7 +272,7 @@ test.describe("stat block visual regression", () => {
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
 
-        const input = page.locator("[data-test='landing-input']");
+        const input = page.locator("[data-test='landing-input'] textarea");
         await input.fill("Show me a stat block");
         await input.press("Enter");
         await page.waitForSelector("stat-block", { timeout: 5000 });
@@ -370,7 +370,7 @@ test.describe("stat block visual regression", () => {
         await page.waitForSelector("main-page");
         await page.waitForTimeout(1000);
 
-        const input = page.locator("[data-test='landing-input']");
+        const input = page.locator("[data-test='landing-input'] textarea");
         await input.fill("Show me a wisp");
         await input.press("Enter");
         await page.waitForSelector("stat-block", { timeout: 5000 });
@@ -509,7 +509,7 @@ test.describe("stat block visual regression", () => {
                 document.head.appendChild(s);
             });
 
-            const input = page.locator("[data-test='landing-input']");
+            const input = page.locator("[data-test='landing-input'] textarea");
             await input.fill("Show me a stat block with traits");
             await input.press("Enter");
             await page.waitForSelector("stat-block", { timeout: 5000 });
@@ -536,7 +536,7 @@ test.describe("stat block visual regression", () => {
                 document.head.appendChild(s);
             });
 
-            const input = page.locator("[data-test='landing-input']");
+            const input = page.locator("[data-test='landing-input'] textarea");
             await input.fill("Show me a stat block with traits");
             await input.press("Enter");
             await page.waitForSelector("stat-block", { timeout: 5000 });
@@ -563,7 +563,7 @@ test.describe("stat block visual regression", () => {
                 document.head.appendChild(s);
             });
 
-            const input = page.locator("[data-test='landing-input']");
+            const input = page.locator("[data-test='landing-input'] textarea");
             await input.fill("Show me a stat block with traits");
             await input.press("Enter");
             await page.waitForSelector("stat-block", { timeout: 5000 });
