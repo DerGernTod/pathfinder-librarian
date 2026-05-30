@@ -144,7 +144,12 @@ class SettingsDialog extends BaseElement {
         /** @type {string} */
         this.error = "";
         /** @type {import("../stores/ui-store.js").UIState} */
-        this._uiState = { sidebarExpanded: true, settingsOpen: false, breakpoint: "desktop" };
+        this._uiState = {
+            sidebarExpanded: true,
+            settingsOpen: false,
+            archiveOpen: false,
+            breakpoint: "desktop",
+        };
     }
 
     connectedCallback() {

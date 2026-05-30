@@ -10,6 +10,7 @@ const ConversationSchema = z
         user_id: z.string(),
         created_at: z.string(),
         compacted_summary: z.string().nullable().optional(),
+        archived_at: z.string().nullable().optional(),
     })
     .transform((row) => ({
         id: row.id,
@@ -17,6 +18,7 @@ const ConversationSchema = z
         userId: row.user_id,
         createdAt: row.created_at,
         compactedSummary: row.compacted_summary ?? null,
+        archivedAt: row.archived_at ?? null,
     }));
 
 const ConversationListSchema = z.array(ConversationSchema);
@@ -171,7 +173,7 @@ export function getConversationById(database, id) {
     /** @type {unknown} */
     const row = database
         .query(
-            "SELECT id, title, user_id, created_at, compacted_summary FROM conversations WHERE id = ?",
+            "SELECT id, title, user_id, created_at, compacted_summary, archived_at FROM conversations WHERE id = ?",
         )
         .get(id);
     if (!row) {
@@ -334,9 +336,10 @@ export function getUserById(database, id) {
  * @returns {z.infer<typeof ConversationListSchema>}
  */
 export function getConversationsByUser(database, userId) {
+    /** @type {unknown} */
     const rows = database
         .query(
-            "SELECT id, title, user_id, created_at FROM conversations WHERE user_id = ? ORDER BY created_at DESC",
+            "SELECT id, title, user_id, created_at, compacted_summary, archived_at FROM conversations WHERE user_id = ? AND archived_at IS NULL ORDER BY created_at DESC",
         )
         .all(userId);
     return ConversationListSchema.parse(rows);
@@ -849,4 +852,56 @@ export function updateCompactedSummary(database, conversationId, summary) {
         summary,
         conversationId,
     ]);
+}
+
+/**
+ * Archives a conversation by setting archived_at to now.
+ * Idempotent: succeeds silently if already archived.
+ * @param {import("bun:sqlite").Database} database
+ * @param {string} conversationId
+ * @returns {z.infer<typeof ConversationSchema> | null}
+ */
+export function archiveConversation(database, conversationId) {
+    database.run("UPDATE conversations SET archived_at = ? WHERE id = ?", [
+        new Date().toISOString(),
+        conversationId,
+    ]);
+    return getConversationById(database, conversationId);
+}
+
+/**
+ * Restores an archived conversation by setting archived_at to NULL.
+ * Idempotent: succeeds silently if already active.
+ * @param {import("bun:sqlite").Database} database
+ * @param {string} conversationId
+ * @returns {z.infer<typeof ConversationSchema> | null}
+ */
+export function restoreConversation(database, conversationId) {
+    database.run("UPDATE conversations SET archived_at = NULL WHERE id = ?", [conversationId]);
+    return getConversationById(database, conversationId);
+}
+
+/**
+ * Permanently deletes a conversation and its messages (CASCADE).
+ * @param {import("bun:sqlite").Database} database
+ * @param {string} conversationId
+ */
+export function deleteConversation(database, conversationId) {
+    database.run("DELETE FROM conversations WHERE id = ?", [conversationId]);
+}
+
+/**
+ * Gets all archived conversations for a specific user.
+ * @param {import("bun:sqlite").Database} database
+ * @param {string} userId
+ * @returns {z.infer<typeof ConversationListSchema>}
+ */
+export function getArchivedConversationsByUser(database, userId) {
+    /** @type {unknown} */
+    const rows = database
+        .query(
+            "SELECT id, title, user_id, created_at, compacted_summary, archived_at FROM conversations WHERE user_id = ? AND archived_at IS NOT NULL ORDER BY archived_at DESC",
+        )
+        .all(userId);
+    return ConversationListSchema.parse(rows);
 }

@@ -14,7 +14,12 @@ describe("chat-sidebar", () => {
         const el = document.createElement("chat-sidebar");
         el._convState = { conversations, activeConversationId: activeId, loading: false };
         el._modeState = { mode: "gm" };
-        el._uiState = { sidebarExpanded: true, settingsOpen: false, breakpoint: "desktop" };
+        el._uiState = {
+            sidebarExpanded: true,
+            settingsOpen: false,
+            archiveOpen: false,
+            breakpoint: "desktop",
+        };
         document.body.appendChild(el);
         return el;
     }
@@ -106,7 +111,12 @@ describe("chat-sidebar", () => {
 
     it("renders in collapsed state when expanded=false", async () => {
         const el = createSidebar();
-        el._uiState = { sidebarExpanded: false, settingsOpen: false, breakpoint: "desktop" };
+        el._uiState = {
+            sidebarExpanded: false,
+            settingsOpen: false,
+            archiveOpen: false,
+            breakpoint: "desktop",
+        };
         await el.updateComplete;
         const sidebar = el.shadowRoot.querySelector(".sidebar");
         expect(sidebar.classList.contains("collapsed")).toBe(true);
@@ -126,7 +136,12 @@ describe("chat-sidebar", () => {
 
     it("hides content when collapsed", async () => {
         const el = createSidebar([{ id: "1", title: "Test" }]);
-        el._uiState = { sidebarExpanded: false, settingsOpen: false, breakpoint: "desktop" };
+        el._uiState = {
+            sidebarExpanded: false,
+            settingsOpen: false,
+            archiveOpen: false,
+            breakpoint: "desktop",
+        };
         await el.updateComplete;
         const content = el.shadowRoot.querySelector(".content");
         const menuWrapper = el.shadowRoot.querySelector(".conversation-menu-wrapper");
@@ -153,7 +168,12 @@ describe("chat-sidebar", () => {
 
     it("passes collapsed prop to new-chat-button when collapsed", async () => {
         const el = createSidebar();
-        el._uiState = { sidebarExpanded: false, settingsOpen: false, breakpoint: "desktop" };
+        el._uiState = {
+            sidebarExpanded: false,
+            settingsOpen: false,
+            archiveOpen: false,
+            breakpoint: "desktop",
+        };
         await el.updateComplete;
         const ncb = el.shadowRoot.querySelector("new-chat-button");
         expect(ncb.collapsed).toBe(true);
@@ -161,7 +181,12 @@ describe("chat-sidebar", () => {
 
     it("passes collapsed=false to new-chat-button when expanded", async () => {
         const el = createSidebar();
-        el._uiState = { sidebarExpanded: true, settingsOpen: false, breakpoint: "desktop" };
+        el._uiState = {
+            sidebarExpanded: true,
+            settingsOpen: false,
+            archiveOpen: false,
+            breakpoint: "desktop",
+        };
         await el.updateComplete;
         const ncb = el.shadowRoot.querySelector("new-chat-button");
         expect(ncb.collapsed).toBe(false);
@@ -181,7 +206,12 @@ describe("chat-sidebar", () => {
         expect(initialButton).toBeTruthy();
 
         // Toggle to collapsed
-        el._uiState = { sidebarExpanded: false, settingsOpen: false, breakpoint: "desktop" };
+        el._uiState = {
+            sidebarExpanded: false,
+            settingsOpen: false,
+            archiveOpen: false,
+            breakpoint: "desktop",
+        };
         await el.updateComplete;
         const collapsedButton = el.shadowRoot.querySelector("new-chat-button");
 
@@ -189,7 +219,12 @@ describe("chat-sidebar", () => {
         expect(collapsedButton === initialButton).toBeTrue();
 
         // Toggle back to expanded
-        el._uiState = { sidebarExpanded: true, settingsOpen: false, breakpoint: "desktop" };
+        el._uiState = {
+            sidebarExpanded: true,
+            settingsOpen: false,
+            archiveOpen: false,
+            breakpoint: "desktop",
+        };
         await el.updateComplete;
         const expandedButton = el.shadowRoot.querySelector("new-chat-button");
 
@@ -199,7 +234,12 @@ describe("chat-sidebar", () => {
 
     it("renders conversation-menu when collapsed", async () => {
         const el = createSidebar([{ id: "1", title: "Test" }]);
-        el._uiState = { sidebarExpanded: false, settingsOpen: false, breakpoint: "desktop" };
+        el._uiState = {
+            sidebarExpanded: false,
+            settingsOpen: false,
+            archiveOpen: false,
+            breakpoint: "desktop",
+        };
         await el.updateComplete;
         const menu = el.shadowRoot.querySelector("conversation-menu");
         const menuWrapper = el.shadowRoot.querySelector(".conversation-menu-wrapper");
@@ -209,7 +249,12 @@ describe("chat-sidebar", () => {
 
     it("renders conversation-menu when expanded (hidden via CSS)", async () => {
         const el = createSidebar([{ id: "1", title: "Test" }]);
-        el._uiState = { sidebarExpanded: true, settingsOpen: false, breakpoint: "desktop" };
+        el._uiState = {
+            sidebarExpanded: true,
+            settingsOpen: false,
+            archiveOpen: false,
+            breakpoint: "desktop",
+        };
         await el.updateComplete;
         const menu = el.shadowRoot.querySelector("conversation-menu");
         const menuWrapper = el.shadowRoot.querySelector(".conversation-menu-wrapper");
@@ -219,7 +264,12 @@ describe("chat-sidebar", () => {
 
     it("passes collapsed prop to sidebar-profile when collapsed", async () => {
         const el = createSidebar();
-        el._uiState = { sidebarExpanded: false, settingsOpen: false, breakpoint: "desktop" };
+        el._uiState = {
+            sidebarExpanded: false,
+            settingsOpen: false,
+            archiveOpen: false,
+            breakpoint: "desktop",
+        };
         await el.updateComplete;
         const profile = el.shadowRoot.querySelector("sidebar-profile");
         expect(profile.collapsed).toBe(true);
@@ -227,7 +277,12 @@ describe("chat-sidebar", () => {
 
     it("passes collapsed=false to sidebar-profile when expanded", async () => {
         const el = createSidebar();
-        el._uiState = { sidebarExpanded: true, settingsOpen: false, breakpoint: "desktop" };
+        el._uiState = {
+            sidebarExpanded: true,
+            settingsOpen: false,
+            archiveOpen: false,
+            breakpoint: "desktop",
+        };
         await el.updateComplete;
         const profile = el.shadowRoot.querySelector("sidebar-profile");
         expect(profile.collapsed).toBe(false);
@@ -244,7 +299,12 @@ describe("chat-sidebar", () => {
         expect(el.shadowRoot.querySelector("conversation-menu")).toBeTruthy();
 
         // Test collapsed state
-        el._uiState = { sidebarExpanded: false, settingsOpen: false, breakpoint: "desktop" };
+        el._uiState = {
+            sidebarExpanded: false,
+            settingsOpen: false,
+            archiveOpen: false,
+            breakpoint: "desktop",
+        };
         await el.updateComplete;
         expect(el.shadowRoot.querySelector(".content")).toBeTruthy();
         expect(el.shadowRoot.querySelector(".conversation-menu-wrapper")).toBeTruthy();
@@ -261,7 +321,12 @@ describe("chat-sidebar", () => {
 
     it("content has correct CSS classes for collapsed state", async () => {
         const el = createSidebar([{ id: "1", title: "Test" }]);
-        el._uiState = { sidebarExpanded: false, settingsOpen: false, breakpoint: "desktop" };
+        el._uiState = {
+            sidebarExpanded: false,
+            settingsOpen: false,
+            archiveOpen: false,
+            breakpoint: "desktop",
+        };
         await el.updateComplete;
         const content = el.shadowRoot.querySelector(".content");
         expect(content.classList.contains("collapsed")).toBe(true);
@@ -276,7 +341,12 @@ describe("chat-sidebar", () => {
 
     it("conversation-menu-wrapper has correct CSS classes for collapsed state", async () => {
         const el = createSidebar([{ id: "1", title: "Test" }]);
-        el._uiState = { sidebarExpanded: false, settingsOpen: false, breakpoint: "desktop" };
+        el._uiState = {
+            sidebarExpanded: false,
+            settingsOpen: false,
+            archiveOpen: false,
+            breakpoint: "desktop",
+        };
         await el.updateComplete;
         const menuWrapper = el.shadowRoot.querySelector(".conversation-menu-wrapper");
         expect(menuWrapper.classList.contains("visible")).toBe(true);

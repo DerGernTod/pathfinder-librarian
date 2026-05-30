@@ -68,6 +68,7 @@ describe("main-page", () => {
         expect(element._convState.activeConversationId).toBe("");
         expect(element._modeState.mode).toBe("player");
         expect(element._uiState.sidebarExpanded).toBe(true);
+        expect(element._uiState.archiveOpen).toBe(false);
     });
 
     it("should filter messages by active conversation", () => {
@@ -701,6 +702,172 @@ describe("main-page", () => {
             await element.handleLandingSubmit(event);
 
             expect(element._landingSubmitting).toBe(false);
+        });
+    });
+
+    describe("archive conversation", () => {
+        /** @type {typeof router.navigate} */
+        let origNavigate;
+
+        beforeEach(() => {
+            origNavigate = router.navigate;
+        });
+
+        afterEach(() => {
+            router.navigate = origNavigate;
+        });
+
+        it("removes conversation from list after archive-conversation event", async () => {
+            element._convState = {
+                conversations: [
+                    { id: "conv1", title: "First" },
+                    { id: "conv2", title: "Second" },
+                ],
+                activeConversationId: "conv2",
+                loading: false,
+            };
+
+            // @ts-expect-error - override global fetch with our mock
+            globalThis.fetch = mock(() =>
+                Promise.resolve({
+                    ok: true,
+                    json: () =>
+                        Promise.resolve({
+                            result: "success",
+                            data: { id: "conv1", archivedAt: new Date().toISOString() },
+                        }),
+                }),
+            );
+
+            const event = new CustomEvent("archive-conversation", {
+                detail: { id: "conv1" },
+            });
+            await element.handleArchiveConversation(event);
+
+            expect(element._convState.conversations).toHaveLength(1);
+            expect(element._convState.conversations[0].id).toBe("conv2");
+        });
+
+        it("navigates to next conversation when active conversation is archived", async () => {
+            element._convState = {
+                conversations: [
+                    { id: "conv1", title: "First" },
+                    { id: "conv2", title: "Second" },
+                ],
+                activeConversationId: "conv1",
+                loading: false,
+            };
+
+            // @ts-expect-error - override global fetch with our mock
+            globalThis.fetch = mock(() =>
+                Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ result: "success", data: [] }),
+                }),
+            );
+
+            const navigateSpy = mock(() => {});
+            router.navigate = navigateSpy;
+
+            const event = new CustomEvent("archive-conversation", {
+                detail: { id: "conv1" },
+            });
+            await element.handleArchiveConversation(event);
+
+            expect(element._convState.activeConversationId).toBe("conv2");
+            expect(navigateSpy).toHaveBeenCalledWith("/conversations/conv2", { replace: true });
+        });
+
+        it("navigates to landing when last active conversation is archived", async () => {
+            element._convState = {
+                conversations: [{ id: "conv1", title: "Only One" }],
+                activeConversationId: "conv1",
+                loading: false,
+            };
+
+            // @ts-expect-error - override global fetch with our mock
+            globalThis.fetch = mock(() =>
+                Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ result: "success", data: { id: "conv1" } }),
+                }),
+            );
+
+            const navigateSpy = mock(() => {});
+            router.navigate = navigateSpy;
+
+            const event = new CustomEvent("archive-conversation", {
+                detail: { id: "conv1" },
+            });
+            await element.handleArchiveConversation(event);
+
+            expect(element._convState.conversations).toHaveLength(0);
+            expect(element._viewState).toBe("landing");
+            expect(navigateSpy).toHaveBeenCalledWith("/", { replace: true });
+        });
+
+        it("aborts active SSE stream when archiving the active conversation", async () => {
+            element._convState = {
+                conversations: [
+                    { id: "conv1", title: "First" },
+                    { id: "conv2", title: "Second" },
+                ],
+                activeConversationId: "conv1",
+                loading: false,
+            };
+
+            const abortSpy = mock(() => {});
+            const mockController = { abort: abortSpy, signal: {} };
+            element._currentAssistantController = /** @type {AbortController} */ (
+                /** @type {unknown} */ (mockController)
+            );
+
+            // @ts-expect-error - override global fetch with our mock
+            globalThis.fetch = mock(() =>
+                Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ result: "success", data: [] }),
+                }),
+            );
+
+            const event = new CustomEvent("archive-conversation", {
+                detail: { id: "conv1" },
+            });
+            await element.handleArchiveConversation(event);
+
+            expect(abortSpy).toHaveBeenCalled();
+        });
+
+        it("does not abort SSE when archiving non-active conversation", async () => {
+            element._convState = {
+                conversations: [
+                    { id: "conv1", title: "First" },
+                    { id: "conv2", title: "Second" },
+                ],
+                activeConversationId: "conv2",
+                loading: false,
+            };
+
+            const abortSpy = mock(() => {});
+            const mockController = { abort: abortSpy, signal: {} };
+            element._currentAssistantController = /** @type {AbortController} */ (
+                /** @type {unknown} */ (mockController)
+            );
+
+            // @ts-expect-error - override global fetch with our mock
+            globalThis.fetch = mock(() =>
+                Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ result: "success", data: { id: "conv1" } }),
+                }),
+            );
+
+            const event = new CustomEvent("archive-conversation", {
+                detail: { id: "conv1" },
+            });
+            await element.handleArchiveConversation(event);
+
+            expect(abortSpy).not.toHaveBeenCalled();
         });
     });
 

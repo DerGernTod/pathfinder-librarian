@@ -18,7 +18,12 @@ describe("settings-dialog", () => {
     function createDialog() {
         /** @type {any} */
         const el = document.createElement("settings-dialog");
-        el._uiState = { sidebarExpanded: true, settingsOpen: false, breakpoint: "desktop" };
+        el._uiState = {
+            sidebarExpanded: true,
+            settingsOpen: false,
+            archiveOpen: false,
+            breakpoint: "desktop",
+        };
         return el;
     }
 
