@@ -1,5 +1,5 @@
 import "./chat-input.js";
-import { beforeEach, describe, expect, it } from "bun:test";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 
 import { fireEvent, getByText } from "@testing-library/dom";
 
@@ -161,5 +161,50 @@ describe("chat-input", () => {
         const warningIcon = el.shadowRoot.querySelector(".api-warning-icon");
         expect(warningIcon).toBeTruthy();
         expect(warningIcon.getAttribute("aria-label")).toBe("API key not configured");
+    });
+
+    it("re-focuses textarea after submit", async () => {
+        const el = createInput();
+        await el.updateComplete;
+
+        el.value = "Hello";
+        el.requestUpdate();
+        await el.updateComplete;
+
+        const slTextarea = el.shadowRoot.querySelector("sl-textarea");
+        /** @type {import("bun:test").Mock<() => void>} */
+        const focusSpy = mock(() => {});
+        slTextarea.focus = focusSpy;
+
+        const button = /** @type {HTMLElement} */ (el.shadowRoot.querySelector("button"));
+        fireEvent.click(button);
+
+        expect(focusSpy).toHaveBeenCalled();
+    });
+
+    it("focus() method delegates to sl-textarea", async () => {
+        const el = createInput();
+        await el.updateComplete;
+
+        const slTextarea = el.shadowRoot.querySelector("sl-textarea");
+        /** @type {import("bun:test").Mock<() => void>} */
+        const focusSpy = mock(() => {});
+        slTextarea.focus = focusSpy;
+
+        el.focus();
+
+        expect(focusSpy).toHaveBeenCalled();
+    });
+
+    it("textarea CSS includes max-height rule", async () => {
+        const el = createInput();
+        await el.updateComplete;
+
+        const styles = el.constructor.styles;
+        const cssTexts = styles.map(/** @param {{ cssText?: string }} s */ (s) => s.cssText);
+        const hasMaxHeight = cssTexts.some(
+            /** @param {string | undefined} t */ (t) => t && t.includes("max-height"),
+        );
+        expect(hasMaxHeight).toBe(true);
     });
 });
