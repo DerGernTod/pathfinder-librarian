@@ -98,7 +98,7 @@ test.describe("chat-input auto-resize", () => {
                 await page.waitForSelector("main-page");
                 await page.waitForTimeout(1000);
 
-                const input = page.locator("[data-test='landing-input']");
+                const input = page.locator("[data-test='landing-input'] textarea");
                 await input.fill("initial message");
                 await input.press("Enter");
                 await page.waitForSelector("chat-input", { timeout: 5000 });
