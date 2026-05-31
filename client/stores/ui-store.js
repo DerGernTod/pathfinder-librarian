@@ -4,6 +4,7 @@ import { createContext } from "@lit/context";
  * @typedef {{
  *   sidebarExpanded: boolean,
  *   settingsOpen: boolean,
+ *   archiveOpen: boolean,
  *   breakpoint: "phone" | "tablet" | "desktop"
  * }} UIState
  */
@@ -17,6 +18,8 @@ const uiContext = createContext("ui");
  *   toggleSidebar: (current: UIState) => UIState,
  *   openSettings: (current: UIState) => UIState,
  *   closeSettings: (current: UIState) => UIState,
+ *   openArchive: (current: UIState) => UIState,
+ *   closeArchive: (current: UIState) => UIState,
  *   setBreakpoint: (current: UIState, breakpoint: "phone" | "tablet" | "desktop") => UIState
  * }}
  */
@@ -44,6 +47,22 @@ function createUIStore() {
          */
         closeSettings(current) {
             return { ...current, settingsOpen: false };
+        },
+
+        /**
+         * @param {UIState} current
+         * @returns {UIState}
+         */
+        openArchive(current) {
+            return { ...current, archiveOpen: true };
+        },
+
+        /**
+         * @param {UIState} current
+         * @returns {UIState}
+         */
+        closeArchive(current) {
+            return { ...current, archiveOpen: false };
         },
 
         /** @param {"phone" | "tablet" | "desktop"} breakpoint */

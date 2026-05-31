@@ -2,6 +2,7 @@ import "../components/chat-sidebar.js";
 import "../components/chat-view.js";
 import "../components/landing-view.js";
 import "../components/settings-dialog.js";
+import "../components/archive-dialog.js";
 import { ContextProvider } from "@lit/context";
 import { css } from "lit-element";
 import { html, nothing } from "lit-html";
@@ -137,7 +138,12 @@ class MainPage extends BaseElement {
         this._modeState = { mode: "player" };
 
         /** @type {import("../stores/ui-store.js").UIState} */
-        this._uiState = { sidebarExpanded: true, settingsOpen: false, breakpoint: "desktop" };
+        this._uiState = {
+            sidebarExpanded: true,
+            settingsOpen: false,
+            archiveOpen: false,
+            breakpoint: "desktop",
+        };
 
         // Store instances
         this._convStore = createConversationStore();
@@ -400,6 +406,10 @@ class MainPage extends BaseElement {
                     @open-settings=${() => {
                         this._updateUIState(this._uiStore.openSettings(this._uiState));
                     }}
+                    @open-archive=${() => {
+                        this._updateUIState(this._uiStore.openArchive(this._uiState));
+                    }}
+                    @archive-conversation=${this.handleArchiveConversation}
                 ></chat-sidebar>
                 <main class="main">
                     <div class="view-layer ${this.isLanding ? "active" : ""}">
@@ -430,6 +440,12 @@ class MainPage extends BaseElement {
                 @settings-updated=${this.handleSettingsUpdated}
                 @account-deleted=${this.handleAccountDeleted}
             ></settings-dialog>
+            <archive-dialog
+                @archive-closed=${() => {
+                    this._updateUIState(this._uiStore.closeArchive(this._uiState));
+                }}
+                @conversation-restored=${this.handleConversationRestored}
+            ></archive-dialog>
         `;
     }
 
@@ -827,6 +843,64 @@ class MainPage extends BaseElement {
                 composed: true,
             }),
         );
+    }
+
+    /**
+     * @param {CustomEvent<{ id: string }>} e
+     */
+    async handleArchiveConversation(e) {
+        const { id } = e.detail;
+
+        // Abort any active SSE stream if archiving the active conversation
+        if (this._convState.activeConversationId === id) {
+            this._currentAssistantController?.abort();
+        }
+
+        try {
+            await this._convStore.archiveConversation(id);
+        } catch {
+            // Archive API call failed — still update local state optimistically
+        }
+
+        // Remove from local conversation list
+        const updatedConversations = this._convState.conversations.filter((c) => c.id !== id);
+
+        // If the archived conversation was active, navigate away
+        if (this._convState.activeConversationId === id) {
+            if (updatedConversations.length > 0) {
+                const nextId = updatedConversations[0].id;
+                this._updateConvState({
+                    conversations: updatedConversations,
+                    activeConversationId: nextId,
+                    loading: false,
+                });
+                router.navigate(`/conversations/${nextId}`, { replace: true });
+                const msgs = await this._msgStore.fetchMessages(nextId);
+                this._updateMsgState({ messages: msgs, responding: false });
+            } else {
+                this._updateConvState({
+                    conversations: updatedConversations,
+                    activeConversationId: "",
+                    loading: false,
+                });
+                this._viewState = "landing";
+                this._updateMsgState({ messages: [], responding: false });
+                router.navigate("/", { replace: true });
+            }
+        } else {
+            this._updateConvState({
+                ...this._convState,
+                conversations: updatedConversations,
+            });
+        }
+    }
+
+    async handleConversationRestored() {
+        const conversations = await this._convStore.fetchConversations();
+        this._updateConvState({
+            ...this._convState,
+            conversations,
+        });
     }
 
     /**

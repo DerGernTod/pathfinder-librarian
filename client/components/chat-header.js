@@ -110,7 +110,12 @@ class ChatHeader extends BaseElement {
 
     constructor() {
         super();
-        this._uiState = { sidebarExpanded: true, settingsOpen: false, breakpoint: "desktop" };
+        this._uiState = {
+            sidebarExpanded: true,
+            settingsOpen: false,
+            archiveOpen: false,
+            breakpoint: "desktop",
+        };
     }
 
     connectedCallback() {

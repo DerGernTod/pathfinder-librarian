@@ -76,6 +76,17 @@ class ProfileMenu extends BaseElement {
                     >
                         ⚙️ Settings
                     </sl-menu-item>
+                    <sl-menu-item
+                        @click=${() =>
+                            this.dispatchEvent(
+                                new CustomEvent("open-archive", {
+                                    bubbles: true,
+                                    composed: true,
+                                }),
+                            )}
+                    >
+                        📦 Archive
+                    </sl-menu-item>
                     <sl-divider></sl-divider>
                     <sl-menu-item
                         @click=${() =>

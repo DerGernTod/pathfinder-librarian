@@ -260,7 +260,12 @@ class LandingView extends BaseElement {
         /** @type {import("../stores/mode-store.js").ModeState} */
         this._modeState = { mode: "player" };
         /** @type {import("../stores/ui-store.js").UIState} */
-        this._uiState = { sidebarExpanded: true, settingsOpen: false, breakpoint: "desktop" };
+        this._uiState = {
+            sidebarExpanded: true,
+            settingsOpen: false,
+            archiveOpen: false,
+            breakpoint: "desktop",
+        };
     }
 
     connectedCallback() {

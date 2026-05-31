@@ -67,4 +67,19 @@ describe("profile-menu", () => {
 
         expect(dispatchedEvent).toBe(true);
     });
+
+    test("dispatches open-archive on archive click", async () => {
+        let dispatchedEvent = false;
+        const el = createMenu();
+        el.addEventListener("open-archive", () => {
+            dispatchedEvent = true;
+        });
+        container.appendChild(el);
+        await el.updateComplete;
+
+        const archiveButton = getByText(el.shadowRoot, /archive/i);
+        archiveButton.click();
+
+        expect(dispatchedEvent).toBe(true);
+    });
 });

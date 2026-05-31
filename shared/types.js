@@ -2,7 +2,7 @@
 
 /** @typedef {"player" | "gm"} Mode */
 
-/** @typedef {{ id: string, title: string, userId?: string, createdAt?: string, compactedSummary?: string | null }} Conversation */
+/** @typedef {{ id: string, title: string, userId?: string, createdAt?: string, compactedSummary?: string | null, archivedAt?: string | null }} Conversation */
 
 /** @typedef {{ id: string, name: string, initials: string, subtitle: string, mode: Mode, email: string | null, isTestUser?: boolean, webauthnUserId?: string }} AuthUser */
 

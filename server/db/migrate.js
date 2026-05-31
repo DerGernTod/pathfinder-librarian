@@ -60,6 +60,14 @@ export function migrateDb(database) {
         database.run("ALTER TABLE conversations ADD COLUMN compacted_summary TEXT");
     }
 
+    if (!convColumns.includes("archived_at")) {
+        database.run("ALTER TABLE conversations ADD COLUMN archived_at TEXT");
+    }
+
+    database.run(
+        "CREATE INDEX IF NOT EXISTS idx_conversations_archived ON conversations(user_id, archived_at)",
+    );
+
     // Clean up expired challenges (older than 5 minutes)
     database.run("DELETE FROM challenges WHERE created_at < datetime('now', '-5 minutes')");
 }

@@ -14,6 +14,7 @@ import { BaseElement } from "./base-element.js";
  * @customElement conversation-item
  * @property {Conversation} conversation - The conversation to display in the item.
  * @fires select - Fired when the user clicks on the conversation item, with the conversation ID in the event detail.
+ * @fires archive-conversation - Fired when the user clicks the archive action.
  */
 class ConversationItem extends BaseElement {
     static styles = [
@@ -30,9 +31,10 @@ class ConversationItem extends BaseElement {
                 color: var(--muted-foreground);
                 line-height: 1.25rem;
                 cursor: pointer;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 0.25rem;
                 transition:
                     all var(--transition-speed),
                     background-color var(--accent-transition-speed);
@@ -41,6 +43,59 @@ class ConversationItem extends BaseElement {
                 color: var(--foreground);
             }
             .item.active {
+                background: var(--accent);
+                color: var(--secondary-foreground);
+            }
+            .item-title {
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                flex: 1;
+            }
+            .kebab {
+                border: none;
+                background: none;
+                color: inherit;
+                cursor: pointer;
+                font-size: 1rem;
+                padding: 0 0.125rem;
+                line-height: 1;
+                flex-shrink: 0;
+                opacity: 0;
+                transition: opacity 0.15s ease;
+            }
+            .item:hover .kebab,
+            .item.active .kebab {
+                opacity: 1;
+            }
+            @media (hover: none) {
+                .kebab {
+                    opacity: 1;
+                }
+            }
+            .menu {
+                background: var(--popover, var(--background));
+                border: 1px solid var(--border);
+                border-radius: 0.375rem;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                padding: 0.25rem 0;
+                min-width: 8rem;
+                inset: auto;
+                margin: 0;
+            }
+            .menu-item {
+                display: block;
+                width: 100%;
+                border: none;
+                background: none;
+                color: var(--foreground);
+                cursor: pointer;
+                padding: 0.5rem 0.75rem;
+                font-size: 0.875rem;
+                text-align: left;
+                white-space: nowrap;
+            }
+            .menu-item:hover {
                 background: var(--accent);
                 color: var(--secondary-foreground);
             }
@@ -80,10 +135,26 @@ class ConversationItem extends BaseElement {
         const active = this._convState.activeConversationId === this.conversation.id;
         return html`
             <div class="item ${active ? "active" : ""}" @click=${() => this.handleClick()}>
-                ${this.loading
-                    ? html`<sl-spinner style="font-size: 0.75rem;"></sl-spinner>`
-                    : nothing}
-                ${this.conversation.title}
+                <span class="item-title">
+                    ${this.loading
+                        ? html`<sl-spinner style="font-size: 0.75rem;"></sl-spinner>`
+                        : nothing}
+                    ${this.conversation.title}
+                </span>
+                <button
+                    class="kebab"
+                    aria-label="Conversation actions"
+                    @click=${(/** @type {Event} */ e) => this.handleKebabClick(e)}
+                >
+                    ⋯
+                </button>
+            </div>
+            <div
+                class="menu"
+                popover="auto"
+                @click=${(/** @type {Event} */ e) => this.handleMenuAction(e)}
+            >
+                <button class="menu-item" data-action="archive">📦 Archive</button>
             </div>
         `;
     }
@@ -91,6 +162,50 @@ class ConversationItem extends BaseElement {
     handleClick() {
         this.dispatchEvent(
             new CustomEvent("select", {
+                detail: { id: this.conversation.id },
+                bubbles: true,
+                composed: true,
+            }),
+        );
+    }
+
+    /** @param {Event} e */
+    handleKebabClick(e) {
+        e.stopPropagation();
+        const menu = /** @type {HTMLElement & { togglePopover?: () => void }} */ (
+            this.shadowRoot?.querySelector(".menu")
+        );
+        if (!menu) {
+            return;
+        }
+        const btn = /** @type {HTMLElement} */ (e.currentTarget);
+        const rect = btn.getBoundingClientRect();
+        menu.style.position = "fixed";
+        menu.style.top = `${rect.bottom + 4}px`;
+        menu.style.left = `${Math.max(4, rect.right - 128)}px`;
+        menu.togglePopover?.();
+    }
+
+    /** @param {Event} e */
+    handleMenuAction(e) {
+        const target = /** @type {HTMLElement} */ (e.target);
+        const item = target.closest("[data-action]");
+        if (!item) {
+            return;
+        }
+        const action = item.getAttribute("data-action");
+        const menu = /** @type {HTMLElement & { hidePopover?: () => void } } */ (
+            this.shadowRoot?.querySelector(".menu")
+        );
+        menu?.hidePopover?.();
+        if (action === "archive") {
+            this.handleArchive();
+        }
+    }
+
+    handleArchive() {
+        this.dispatchEvent(
+            new CustomEvent("archive-conversation", {
                 detail: { id: this.conversation.id },
                 bubbles: true,
                 composed: true,

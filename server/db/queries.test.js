@@ -44,6 +44,22 @@ describe("queries", () => {
             const conv = queries.getConversationById(db, "00000000-0000-0000-0000-000000000000");
             expect(conv).toBeNull();
         });
+
+        it("includes archivedAt field", () => {
+            const conversations = queries.getAllConversations(db);
+            const conv = queries.getConversationById(db, conversations[0].id);
+            expect(conv).toHaveProperty("archivedAt");
+            expect(conv?.archivedAt).toBeNull();
+        });
+
+        it("returns archivedAt as string for archived conversation", () => {
+            const conversations = queries.getAllConversations(db);
+            const convId = conversations[0].id;
+            const timestamp = new Date().toISOString();
+            db.run("UPDATE conversations SET archived_at = ? WHERE id = ?", [timestamp, convId]);
+            const conv = queries.getConversationById(db, convId);
+            expect(conv?.archivedAt).toBe(timestamp);
+        });
     });
 
     describe("createConversation", () => {
@@ -555,6 +571,117 @@ describe("queries", () => {
             // Children should be gone
             const childrenAfter = queries.getChildItems(db, SEED_IDS.RULE_MITFLIT_KING);
             expect(childrenAfter).toHaveLength(0);
+        });
+    });
+
+    describe("getConversationsByUser", () => {
+        it("returns only non-archived conversations for user", () => {
+            const conversations = queries.getConversationsByUser(db, SEED_IDS.USER_DEFAULT);
+            expect(conversations).toHaveLength(2);
+            for (const conv of conversations) {
+                expect(conv).toHaveProperty("archivedAt");
+                expect(conv.archivedAt).toBeNull();
+            }
+        });
+
+        it("excludes archived conversations", () => {
+            const conversationsBefore = queries.getConversationsByUser(db, SEED_IDS.USER_DEFAULT);
+            expect(conversationsBefore).toHaveLength(2);
+
+            // Archive one conversation
+            const convId = conversationsBefore[0].id;
+            db.run("UPDATE conversations SET archived_at = ? WHERE id = ?", [
+                new Date().toISOString(),
+                convId,
+            ]);
+
+            const conversationsAfter = queries.getConversationsByUser(db, SEED_IDS.USER_DEFAULT);
+            expect(conversationsAfter).toHaveLength(1);
+            expect(conversationsAfter[0].id).not.toBe(convId);
+        });
+    });
+
+    describe("archiveConversation", () => {
+        it("archives a conversation by setting archived_at", () => {
+            const conversations = queries.getAllConversations(db);
+            const convId = conversations[0].id;
+            const archived = queries.archiveConversation(db, convId);
+            expect(archived).not.toBeNull();
+            expect(archived?.archivedAt).not.toBeNull();
+            expect(typeof archived?.archivedAt).toBe("string");
+        });
+
+        it("is idempotent — calling twice does not error", () => {
+            const conversations = queries.getAllConversations(db);
+            const convId = conversations[0].id;
+            queries.archiveConversation(db, convId);
+            const second = queries.archiveConversation(db, convId);
+            expect(second).not.toBeNull();
+            expect(second?.archivedAt).not.toBeNull();
+        });
+    });
+
+    describe("restoreConversation", () => {
+        it("restores an archived conversation", () => {
+            const conversations = queries.getAllConversations(db);
+            const convId = conversations[0].id;
+            queries.archiveConversation(db, convId);
+
+            const restored = queries.restoreConversation(db, convId);
+            expect(restored).not.toBeNull();
+            expect(restored?.archivedAt).toBeNull();
+        });
+
+        it("is idempotent — calling restore on active conversation does not error", () => {
+            const conversations = queries.getAllConversations(db);
+            const convId = conversations[0].id;
+            const restored = queries.restoreConversation(db, convId);
+            expect(restored).not.toBeNull();
+            expect(restored?.archivedAt).toBeNull();
+        });
+    });
+
+    describe("deleteConversation", () => {
+        it("deletes a conversation from the database", () => {
+            const conversations = queries.getAllConversations(db);
+            const convId = conversations[0].id;
+            queries.deleteConversation(db, convId);
+
+            const deleted = queries.getConversationById(db, convId);
+            expect(deleted).toBeNull();
+        });
+
+        it("cascades deletes messages", () => {
+            const conversations = queries.getAllConversations(db);
+            const convId = conversations[0].id;
+
+            // Verify messages exist
+            const messagesBefore = queries.getMessagesByConversationId(db, convId);
+            expect(messagesBefore.length).toBeGreaterThan(0);
+
+            queries.deleteConversation(db, convId);
+
+            const messagesAfter = queries.getMessagesByConversationId(db, convId);
+            expect(messagesAfter).toHaveLength(0);
+        });
+    });
+
+    describe("getArchivedConversationsByUser", () => {
+        it("returns only archived conversations for user", () => {
+            // Archive one of USER_DEFAULT's conversations
+            const conversations = queries.getConversationsByUser(db, SEED_IDS.USER_DEFAULT);
+            const convId = conversations[0].id;
+            queries.archiveConversation(db, convId);
+
+            const archived = queries.getArchivedConversationsByUser(db, SEED_IDS.USER_DEFAULT);
+            expect(archived).toHaveLength(1);
+            expect(archived[0].id).toBe(convId);
+            expect(archived[0].archivedAt).not.toBeNull();
+        });
+
+        it("returns empty array when none archived", () => {
+            const archived = queries.getArchivedConversationsByUser(db, SEED_IDS.USER_DEFAULT);
+            expect(archived).toEqual([]);
         });
     });
 

@@ -70,6 +70,24 @@ describe("conversations routes", () => {
             expect(data.data).toHaveLength(2); // USER_DEFAULT has 2 conversations
         });
 
+        it("excludes archived conversations", async () => {
+            // Archive one conversation directly in DB
+            const convs = db
+                .query("SELECT id FROM conversations WHERE user_id = ?")
+                .all(SEED_IDS.USER_DEFAULT);
+            db.run("UPDATE conversations SET archived_at = ? WHERE id = ?", [
+                new Date().toISOString(),
+                convs[0].id,
+            ]);
+
+            const res = await app.request("/api/conversations", {
+                headers: { "x-session-token": sessionToken },
+            });
+            expect(res.status).toBe(200);
+            const data = await res.json();
+            expect(data.data).toHaveLength(1);
+        });
+
         it("returns 401 without session", async () => {
             const res = await app.request("/api/conversations");
             expect(res.status).toBe(401);
@@ -257,6 +275,243 @@ describe("conversations routes", () => {
                 body: JSON.stringify(newMsg),
             });
             expect(res.status).toBe(400);
+        });
+    });
+
+    describe("GET /api/conversations/archived", () => {
+        it("returns only archived conversations for authenticated user", async () => {
+            // Archive one conversation
+            const convs = db
+                .query("SELECT id FROM conversations WHERE user_id = ?")
+                .all(SEED_IDS.USER_DEFAULT);
+            db.run("UPDATE conversations SET archived_at = ? WHERE id = ?", [
+                new Date().toISOString(),
+                convs[0].id,
+            ]);
+
+            const res = await app.request("/api/conversations/archived", {
+                headers: { "x-session-token": sessionToken },
+            });
+            expect(res.status).toBe(200);
+            const data = await res.json();
+            expect(data.data).toHaveLength(1);
+            expect(data.data[0].archivedAt).not.toBeNull();
+        });
+
+        it("returns empty array when none archived", async () => {
+            const res = await app.request("/api/conversations/archived", {
+                headers: { "x-session-token": sessionToken },
+            });
+            expect(res.status).toBe(200);
+            const data = await res.json();
+            expect(data.data).toEqual([]);
+        });
+
+        it("returns 401 without session", async () => {
+            const res = await app.request("/api/conversations/archived");
+            expect(res.status).toBe(401);
+        });
+    });
+
+    describe("PATCH /api/conversations/:id/archive", () => {
+        it("archives successfully and returns non-null archivedAt", async () => {
+            const convs = db
+                .query("SELECT id FROM conversations WHERE user_id = ?")
+                .all(SEED_IDS.USER_DEFAULT);
+            const res = await app.request(`/api/conversations/${convs[0].id}/archive`, {
+                method: "PATCH",
+                headers: { "x-session-token": sessionToken },
+            });
+            expect(res.status).toBe(200);
+            const data = await res.json();
+            expect(data.data.archivedAt).not.toBeNull();
+        });
+
+        it("is idempotent — archiving already-archived returns 200", async () => {
+            const convs = db
+                .query("SELECT id FROM conversations WHERE user_id = ?")
+                .all(SEED_IDS.USER_DEFAULT);
+            await app.request(`/api/conversations/${convs[0].id}/archive`, {
+                method: "PATCH",
+                headers: { "x-session-token": sessionToken },
+            });
+            const res2 = await app.request(`/api/conversations/${convs[0].id}/archive`, {
+                method: "PATCH",
+                headers: { "x-session-token": sessionToken },
+            });
+            expect(res2.status).toBe(200);
+        });
+
+        it("returns 403 for another user's conversation", async () => {
+            const convs = db
+                .query("SELECT id FROM conversations WHERE user_id = ?")
+                .all(SEED_IDS.USER_TEST_PLAYER);
+            const res = await app.request(`/api/conversations/${convs[0].id}/archive`, {
+                method: "PATCH",
+                headers: { "x-session-token": sessionToken },
+            });
+            expect(res.status).toBe(403);
+        });
+
+        it("returns 404 for non-existent conversation", async () => {
+            const res = await app.request(
+                "/api/conversations/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/archive",
+                {
+                    method: "PATCH",
+                    headers: { "x-session-token": sessionToken },
+                },
+            );
+            expect(res.status).toBe(404);
+        });
+
+        it("returns 400 for invalid UUID", async () => {
+            const res = await app.request("/api/conversations/invalid-id/archive", {
+                method: "PATCH",
+                headers: { "x-session-token": sessionToken },
+            });
+            expect(res.status).toBe(400);
+        });
+
+        it("returns 400 for __new__ literal", async () => {
+            const res = await app.request("/api/conversations/__new__/archive", {
+                method: "PATCH",
+                headers: { "x-session-token": sessionToken },
+            });
+            expect(res.status).toBe(400);
+        });
+
+        it("returns 401 without session", async () => {
+            const convs = db
+                .query("SELECT id FROM conversations WHERE user_id = ?")
+                .all(SEED_IDS.USER_DEFAULT);
+            const res = await app.request(`/api/conversations/${convs[0].id}/archive`, {
+                method: "PATCH",
+            });
+            expect(res.status).toBe(401);
+        });
+    });
+
+    describe("PATCH /api/conversations/:id/restore", () => {
+        it("restores successfully after archiving", async () => {
+            const convs = db
+                .query("SELECT id FROM conversations WHERE user_id = ?")
+                .all(SEED_IDS.USER_DEFAULT);
+            // Archive first
+            await app.request(`/api/conversations/${convs[0].id}/archive`, {
+                method: "PATCH",
+                headers: { "x-session-token": sessionToken },
+            });
+            // Then restore
+            const res = await app.request(`/api/conversations/${convs[0].id}/restore`, {
+                method: "PATCH",
+                headers: { "x-session-token": sessionToken },
+            });
+            expect(res.status).toBe(200);
+            const data = await res.json();
+            expect(data.data.archivedAt).toBeNull();
+        });
+
+        it("is idempotent — restoring already-active returns 200", async () => {
+            const convs = db
+                .query("SELECT id FROM conversations WHERE user_id = ?")
+                .all(SEED_IDS.USER_DEFAULT);
+            const res = await app.request(`/api/conversations/${convs[0].id}/restore`, {
+                method: "PATCH",
+                headers: { "x-session-token": sessionToken },
+            });
+            expect(res.status).toBe(200);
+        });
+
+        it("returns 403 for another user's conversation", async () => {
+            const convs = db
+                .query("SELECT id FROM conversations WHERE user_id = ?")
+                .all(SEED_IDS.USER_TEST_PLAYER);
+            const res = await app.request(`/api/conversations/${convs[0].id}/restore`, {
+                method: "PATCH",
+                headers: { "x-session-token": sessionToken },
+            });
+            expect(res.status).toBe(403);
+        });
+
+        it("returns 404 for non-existent conversation", async () => {
+            const res = await app.request(
+                "/api/conversations/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/restore",
+                {
+                    method: "PATCH",
+                    headers: { "x-session-token": sessionToken },
+                },
+            );
+            expect(res.status).toBe(404);
+        });
+
+        it("returns 401 without session", async () => {
+            const convs = db
+                .query("SELECT id FROM conversations WHERE user_id = ?")
+                .all(SEED_IDS.USER_DEFAULT);
+            const res = await app.request(`/api/conversations/${convs[0].id}/restore`, {
+                method: "PATCH",
+            });
+            expect(res.status).toBe(401);
+        });
+    });
+
+    describe("DELETE /api/conversations/:id", () => {
+        it("deletes successfully", async () => {
+            const convs = db
+                .query("SELECT id FROM conversations WHERE user_id = ?")
+                .all(SEED_IDS.USER_DEFAULT);
+            const res = await app.request(`/api/conversations/${convs[0].id}`, {
+                method: "DELETE",
+                headers: { "x-session-token": sessionToken },
+            });
+            expect(res.status).toBe(200);
+        });
+
+        it("verifies messages are gone from DB after delete", async () => {
+            const convs = db
+                .query("SELECT id FROM conversations WHERE user_id = ?")
+                .all(SEED_IDS.USER_DEFAULT);
+            const convId = convs[0].id;
+            await app.request(`/api/conversations/${convId}`, {
+                method: "DELETE",
+                headers: { "x-session-token": sessionToken },
+            });
+            const messages = db
+                .query("SELECT COUNT(*) as count FROM messages WHERE conversation_id = ?")
+                .get(convId);
+            expect(messages.count).toBe(0);
+        });
+
+        it("returns 403 for another user's conversation", async () => {
+            const convs = db
+                .query("SELECT id FROM conversations WHERE user_id = ?")
+                .all(SEED_IDS.USER_TEST_PLAYER);
+            const res = await app.request(`/api/conversations/${convs[0].id}`, {
+                method: "DELETE",
+                headers: { "x-session-token": sessionToken },
+            });
+            expect(res.status).toBe(403);
+        });
+
+        it("returns 404 for non-existent conversation", async () => {
+            const res = await app.request(
+                "/api/conversations/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+                {
+                    method: "DELETE",
+                    headers: { "x-session-token": sessionToken },
+                },
+            );
+            expect(res.status).toBe(404);
+        });
+
+        it("returns 401 without session", async () => {
+            const convs = db
+                .query("SELECT id FROM conversations WHERE user_id = ?")
+                .all(SEED_IDS.USER_DEFAULT);
+            const res = await app.request(`/api/conversations/${convs[0].id}`, {
+                method: "DELETE",
+            });
+            expect(res.status).toBe(401);
         });
     });
 });

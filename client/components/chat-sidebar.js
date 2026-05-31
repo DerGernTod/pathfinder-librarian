@@ -134,7 +134,12 @@ class ChatSidebar extends BaseElement {
         /** @type {import("../stores/mode-store.js").ModeState} */
         this._modeState = { mode: "gm" };
         /** @type {import("../stores/ui-store.js").UIState} */
-        this._uiState = { sidebarExpanded: true, settingsOpen: false, breakpoint: "desktop" };
+        this._uiState = {
+            sidebarExpanded: true,
+            settingsOpen: false,
+            archiveOpen: false,
+            breakpoint: "desktop",
+        };
     }
 
     connectedCallback() {
