@@ -8,10 +8,6 @@ import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
 import { BaseElement } from "./base-element.js";
 
-import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/dropdown/dropdown.js?deps=lit@3.3.2";
-import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/menu/menu.js?deps=lit@3.3.2";
-import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/menu-item/menu-item.js?deps=lit@3.3.2";
-
 /** @typedef {import("../../shared/types.js").Conversation} Conversation */
 
 /**
@@ -35,17 +31,13 @@ class ConversationItem extends BaseElement {
                 color: var(--muted-foreground);
                 line-height: 1.25rem;
                 cursor: pointer;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-                transition:
-                    all var(--transition-speed),
-                    background-color var(--accent-transition-speed);
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
                 gap: 0.25rem;
-                position: relative;
+                transition:
+                    all var(--transition-speed),
+                    background-color var(--accent-transition-speed);
             }
             .item:hover {
                 color: var(--foreground);
@@ -61,7 +53,6 @@ class ConversationItem extends BaseElement {
                 flex: 1;
             }
             .kebab {
-                opacity: 0;
                 border: none;
                 background: none;
                 color: inherit;
@@ -70,14 +61,43 @@ class ConversationItem extends BaseElement {
                 padding: 0 0.125rem;
                 line-height: 1;
                 flex-shrink: 0;
+                opacity: 0;
                 transition: opacity 0.15s ease;
             }
             .item:hover .kebab,
             .item.active .kebab {
                 opacity: 1;
             }
-            .item.active .kebab {
-                display: none;
+            @media (hover: none) {
+                .kebab {
+                    opacity: 1;
+                }
+            }
+            .menu {
+                background: var(--popover, var(--background));
+                border: 1px solid var(--border);
+                border-radius: 0.375rem;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                padding: 0.25rem 0;
+                min-width: 8rem;
+                inset: auto;
+                margin: 0;
+            }
+            .menu-item {
+                display: block;
+                width: 100%;
+                border: none;
+                background: none;
+                color: var(--foreground);
+                cursor: pointer;
+                padding: 0.5rem 0.75rem;
+                font-size: 0.875rem;
+                text-align: left;
+                white-space: nowrap;
+            }
+            .menu-item:hover {
+                background: var(--accent);
+                color: var(--secondary-foreground);
             }
         `,
     ];
@@ -121,28 +141,20 @@ class ConversationItem extends BaseElement {
                         : nothing}
                     ${this.conversation.title}
                 </span>
-                ${!active
-                    ? html`<sl-dropdown
-                          placement="bottom-end"
-                          distance="4"
-                          hoist
-                          @click=${(/** @type {Event} */ e) => e.stopPropagation()}
-                      >
-                          <button
-                              class="kebab"
-                              slot="trigger"
-                              aria-label="Conversation actions"
-                              @click=${(/** @type {Event} */ e) => e.stopPropagation()}
-                          >
-                              ⋯
-                          </button>
-                          <sl-menu>
-                              <sl-menu-item @click=${() => this.handleArchive()}>
-                                  📦 Archive
-                              </sl-menu-item>
-                          </sl-menu>
-                      </sl-dropdown>`
-                    : nothing}
+                <button
+                    class="kebab"
+                    aria-label="Conversation actions"
+                    @click=${(/** @type {Event} */ e) => this.handleKebabClick(e)}
+                >
+                    ⋯
+                </button>
+            </div>
+            <div
+                class="menu"
+                popover="auto"
+                @click=${(/** @type {Event} */ e) => this.handleMenuAction(e)}
+            >
+                <button class="menu-item" data-action="archive">📦 Archive</button>
             </div>
         `;
     }
@@ -155,6 +167,40 @@ class ConversationItem extends BaseElement {
                 composed: true,
             }),
         );
+    }
+
+    /** @param {Event} e */
+    handleKebabClick(e) {
+        e.stopPropagation();
+        const menu = /** @type {HTMLElement & { togglePopover?: () => void }} */ (
+            this.shadowRoot?.querySelector(".menu")
+        );
+        if (!menu) {
+            return;
+        }
+        const btn = /** @type {HTMLElement} */ (e.currentTarget);
+        const rect = btn.getBoundingClientRect();
+        menu.style.position = "fixed";
+        menu.style.top = `${rect.bottom + 4}px`;
+        menu.style.left = `${Math.max(4, rect.right - 128)}px`;
+        menu.togglePopover?.();
+    }
+
+    /** @param {Event} e */
+    handleMenuAction(e) {
+        const target = /** @type {HTMLElement} */ (e.target);
+        const item = target.closest("[data-action]");
+        if (!item) {
+            return;
+        }
+        const action = item.getAttribute("data-action");
+        const menu = /** @type {HTMLElement & { hidePopover?: () => void } } */ (
+            this.shadowRoot?.querySelector(".menu")
+        );
+        menu?.hidePopover?.();
+        if (action === "archive") {
+            this.handleArchive();
+        }
     }
 
     handleArchive() {

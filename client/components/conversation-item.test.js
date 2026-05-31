@@ -7,7 +7,7 @@ describe("conversation-item", () => {
     let container;
 
     /**
-     * @param {{ id?: string, title?: string }} [opts]
+     * @param {{ id?: string, title?: string, activeId?: string }} [opts]
      * @returns {any}
      */
     function createItem(opts) {
@@ -17,10 +17,9 @@ describe("conversation-item", () => {
             id: opts?.id ?? "test-conv-1",
             title: opts?.title ?? "Test Conversation",
         };
-        // Override context consumer to provide default state
         el._convState = {
             conversations: [],
-            activeConversationId: "",
+            activeConversationId: opts?.activeId ?? "",
             loading: false,
         };
         return el;
@@ -56,7 +55,7 @@ describe("conversation-item", () => {
         expect(listener.mock.calls[0][0].detail.id).toBe("test-conv-1");
     });
 
-    test("dispatches archive-conversation event with conversation id when archive is clicked", async () => {
+    test("dispatches archive-conversation when archive action clicked", async () => {
         /** @type {import("bun:test").Mock<(arg: CustomEvent<{ id: string }>) => void>} */
         const listener = mock(() => {});
         const el = createItem({ id: "conv-to-archive" });
@@ -64,7 +63,7 @@ describe("conversation-item", () => {
         container.appendChild(el);
         await el.updateComplete;
 
-        const archiveItem = el.shadowRoot.querySelector("sl-menu-item");
+        const archiveItem = el.shadowRoot.querySelector('[data-action="archive"]');
         expect(archiveItem).toBeTruthy();
         archiveItem?.click();
 
@@ -72,35 +71,59 @@ describe("conversation-item", () => {
         expect(listener.mock.calls[0][0].detail.id).toBe("conv-to-archive");
     });
 
-    test("does not show kebab button on active conversation", async () => {
-        const el = createItem({ id: "active-conv" });
-        el._convState = {
-            conversations: [],
-            activeConversationId: "active-conv",
-            loading: false,
-        };
-        container.appendChild(el);
-        await el.updateComplete;
-
-        const item = el.shadowRoot.querySelector(".item");
-        expect(item?.classList.contains("active")).toBe(true);
-
-        // Kebab dropdown should not be rendered for active item
-        const kebab = el.shadowRoot.querySelector(".kebab");
-        expect(kebab).toBeNull();
-    });
-
     test("shows kebab button on non-active conversation", async () => {
-        const el = createItem({ id: "non-active-conv" });
-        el._convState = {
-            conversations: [],
-            activeConversationId: "some-other-conv",
-            loading: false,
-        };
+        const el = createItem({ id: "non-active-conv", activeId: "some-other-conv" });
         container.appendChild(el);
         await el.updateComplete;
 
         const kebab = el.shadowRoot.querySelector(".kebab");
         expect(kebab).toBeTruthy();
+    });
+
+    test("shows kebab button on active conversation", async () => {
+        const el = createItem({ id: "active-conv", activeId: "active-conv" });
+        container.appendChild(el);
+        await el.updateComplete;
+
+        const kebab = el.shadowRoot.querySelector(".kebab");
+        expect(kebab).toBeTruthy();
+    });
+
+    test("kebab click does not dispatch select event", async () => {
+        /** @type {import("bun:test").Mock<(arg: CustomEvent<{ id: string }>) => void>} */
+        const selectListener = mock(() => {});
+        const el = createItem({ id: "conv-1" });
+        el.addEventListener("select", selectListener);
+        container.appendChild(el);
+        await el.updateComplete;
+
+        const kebab = el.shadowRoot.querySelector(".kebab");
+        kebab?.click();
+
+        expect(selectListener).not.toHaveBeenCalled();
+    });
+
+    test("menu has popover attribute", async () => {
+        const el = createItem();
+        container.appendChild(el);
+        await el.updateComplete;
+
+        const menu = el.shadowRoot.querySelector(".menu");
+        expect(menu?.hasAttribute("popover")).toBe(true);
+    });
+
+    test("menu item click closes popover and dispatches archive", async () => {
+        /** @type {import("bun:test").Mock<(arg: CustomEvent<{ id: string }>) => void>} */
+        const listener = mock(() => {});
+        const el = createItem({ id: "conv-x" });
+        el.addEventListener("archive-conversation", listener);
+        container.appendChild(el);
+        await el.updateComplete;
+
+        const archiveItem = el.shadowRoot.querySelector('[data-action="archive"]');
+        archiveItem?.click();
+
+        expect(listener).toHaveBeenCalled();
+        expect(listener.mock.calls[0][0].detail.id).toBe("conv-x");
     });
 });

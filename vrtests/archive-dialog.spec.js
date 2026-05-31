@@ -32,10 +32,9 @@ test.describe("archive dialog visual regression", () => {
     test("archive dialog open with items — desktop", async ({ page }) => {
         await page.setViewportSize({ width: 1280, height: 800 });
 
-        // Open profile menu and click Archive
         await page.locator("sidebar-profile button.avatar").click();
         await page.waitForTimeout(300);
-        await page.locator('sl-menu-item:has-text("Archive")').click();
+        await page.locator("sidebar-profile").locator('sl-menu-item:has-text("Archive")').click();
         await page.waitForTimeout(500);
 
         const dialog = page.locator("sl-dialog[open]");
@@ -50,7 +49,7 @@ test.describe("archive dialog visual regression", () => {
 
         await page.locator("sidebar-profile button.avatar").click();
         await page.waitForTimeout(300);
-        await page.locator('sl-menu-item:has-text("Archive")').click();
+        await page.locator("sidebar-profile").locator('sl-menu-item:has-text("Archive")').click();
         await page.waitForTimeout(500);
 
         const dialog = page.locator("sl-dialog[open]");
@@ -63,11 +62,12 @@ test.describe("archive dialog visual regression", () => {
     test("archive dialog open with items — phone", async ({ page }) => {
         await page.setViewportSize({ width: 375, height: 812 });
 
-        // On phone viewport the avatar button can overflow outside the viewport,
-        // so use force:true to click it even when off-screen.
         await page.locator("sidebar-profile button.avatar").click({ force: true });
         await page.waitForTimeout(300);
-        await page.locator('sl-menu-item:has-text("Archive")').click({ force: true });
+        await page
+            .locator("sidebar-profile")
+            .locator('sl-menu-item:has-text("Archive")')
+            .click({ force: true });
         await page.waitForTimeout(500);
 
         const dialog = page.locator("sl-dialog[open]");
@@ -80,13 +80,11 @@ test.describe("archive dialog visual regression", () => {
     test("archive dialog empty state — desktop", async ({ page }) => {
         await page.setViewportSize({ width: 1280, height: 800 });
 
-        // Delete the archived conversation so the dialog is empty
         await page.request.delete(`/api/conversations/${conversationId}`);
 
-        // Open profile menu and click Archive
         await page.locator("sidebar-profile button.avatar").click();
         await page.waitForTimeout(300);
-        await page.locator('sl-menu-item:has-text("Archive")').click();
+        await page.locator("sidebar-profile").locator('sl-menu-item:has-text("Archive")').click();
         await page.waitForTimeout(500);
 
         const dialog = page.locator("sl-dialog[open]");
