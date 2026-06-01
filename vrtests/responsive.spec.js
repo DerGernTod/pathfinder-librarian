@@ -90,4 +90,27 @@ test.describe("responsive design", () => {
             await expect(chatArea).toHaveScreenshot("responsive-desktop-chat-area.png");
         });
     });
+
+    test.describe("wide desktop viewport (1920x1080)", () => {
+        test.beforeEach(async ({ page, context }, testInfo) => {
+            await setupTestUser(context, testInfo);
+            await mockApiKeyStatusAvailable(page);
+            await page.setViewportSize({ width: 1920, height: 1080 });
+            await page.goto("/");
+            await page.waitForSelector("main-page");
+            await page.waitForTimeout(1000);
+        });
+
+        test("full page layout - messages centered", async ({ page }) => {
+            await expect(page).toHaveScreenshot("responsive-wide-desktop-full-page.png", {
+                fullPage: true,
+                maxDiffPixelRatio: 0.01,
+            });
+        });
+
+        test("chat area shows constrained width", async ({ page }) => {
+            const chatArea = page.locator("main.main");
+            await expect(chatArea).toHaveScreenshot("responsive-wide-desktop-chat-area.png");
+        });
+    });
 });

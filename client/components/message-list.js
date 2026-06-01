@@ -30,6 +30,9 @@ class MessageList extends BaseElement {
                 gap: 1rem;
                 overflow-y: auto;
                 padding: 1.5rem;
+                max-width: 48rem;
+                margin-inline: auto;
+                width: 100%;
             }
             .messages::before {
                 content: "";
