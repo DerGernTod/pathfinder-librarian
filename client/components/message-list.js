@@ -19,7 +19,7 @@ class MessageList extends BaseElement {
         baseStyles,
         css`
             :host {
-                display: flex;
+                display: block;
                 flex: 1;
                 min-height: 0;
                 overflow-y: auto;
@@ -35,7 +35,7 @@ class MessageList extends BaseElement {
                 border-radius: 3px;
             }
             .messages {
-                flex: 1;
+                min-height: 100%;
                 flex-direction: column-reverse;
                 display: flex;
                 gap: 1rem;
