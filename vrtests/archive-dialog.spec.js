@@ -40,7 +40,7 @@ test.describe("archive dialog visual regression", () => {
         const dialog = page.locator("sl-dialog[open]");
         await expect(dialog).toBeVisible();
 
-        const panel = dialog.locator('[part="panel"]');
+        const panel = dialog.locator('[part="body"]');
         await expect(panel).toHaveScreenshot("archive-dialog-open-desktop.png");
     });
 
@@ -55,7 +55,7 @@ test.describe("archive dialog visual regression", () => {
         const dialog = page.locator("sl-dialog[open]");
         await expect(dialog).toBeVisible();
 
-        const panel = dialog.locator('[part="panel"]');
+        const panel = dialog.locator('[part="body"]');
         await expect(panel).toHaveScreenshot("archive-dialog-open-tablet.png");
     });
 
@@ -73,7 +73,7 @@ test.describe("archive dialog visual regression", () => {
         const dialog = page.locator("sl-dialog[open]");
         await expect(dialog).toBeVisible();
 
-        const panel = dialog.locator('[part="panel"]');
+        const panel = dialog.locator('[part="body"]');
         await expect(panel).toHaveScreenshot("archive-dialog-open-phone.png");
     });
 
@@ -90,7 +90,7 @@ test.describe("archive dialog visual regression", () => {
         const dialog = page.locator("sl-dialog[open]");
         await expect(dialog).toBeVisible();
 
-        const panel = dialog.locator('[part="panel"]');
+        const panel = dialog.locator('[part="body"]');
         await expect(panel).toHaveScreenshot("archive-dialog-empty-desktop.png");
     });
 });
