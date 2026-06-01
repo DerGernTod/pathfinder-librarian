@@ -38,7 +38,7 @@ class ChatInput extends BaseElement {
                 display: flex;
                 align-items: center;
                 gap: 0.5rem;
-                max-width: 48rem;
+                max-width: 56rem;
                 margin: 0 auto;
                 background: var(--secondary);
                 border-radius: 0.75rem;

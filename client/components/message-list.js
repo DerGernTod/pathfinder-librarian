@@ -22,31 +22,31 @@ class MessageList extends BaseElement {
                 display: flex;
                 flex: 1;
                 min-height: 0;
+                overflow-y: auto;
+            }
+            :host::-webkit-scrollbar {
+                width: 6px;
+            }
+            :host::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            :host::-webkit-scrollbar-thumb {
+                background: var(--border-lighter);
+                border-radius: 3px;
             }
             .messages {
                 flex: 1;
                 flex-direction: column-reverse;
                 display: flex;
                 gap: 1rem;
-                overflow-y: auto;
                 padding: 1.5rem;
-                max-width: 48rem;
+                max-width: 56rem;
                 margin-inline: auto;
                 width: 100%;
             }
             .messages::before {
                 content: "";
                 margin-top: auto;
-            }
-            .messages::-webkit-scrollbar {
-                width: 6px;
-            }
-            .messages::-webkit-scrollbar-track {
-                background: transparent;
-            }
-            .messages::-webkit-scrollbar-thumb {
-                background: var(--border-lighter);
-                border-radius: 3px;
             }
             .loading {
                 display: flex;
