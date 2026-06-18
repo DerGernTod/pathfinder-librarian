@@ -6,15 +6,12 @@ describe("offline-indicator", () => {
         document.body.innerHTML = "";
     });
 
-    /** @param {{ online?: boolean, collapsed?: boolean }} [opts] */
+    /** @param {{ online?: boolean }} [opts] */
     function createIndicator(opts) {
         /** @type {any} */
         const el = document.createElement("offline-indicator");
         if (opts?.online !== undefined) {
             el.online = opts.online;
-        }
-        if (opts?.collapsed !== undefined) {
-            el.collapsed = opts.collapsed;
         }
         document.body.appendChild(el);
         return el;
@@ -49,22 +46,7 @@ describe("offline-indicator", () => {
         expect(svg).toBeTruthy();
     });
 
-    it("renders offline-dot when collapsed and offline", async () => {
-        const el = createIndicator({ online: false, collapsed: true });
-        await el.updateComplete;
-        const dot = el.shadowRoot.querySelector(".offline-dot");
-        expect(dot).toBeTruthy();
-        expect(dot.getAttribute("role")).toBe("status");
-        expect(dot.getAttribute("aria-live")).toBe("polite");
-    });
-
-    it("does not render a badge when collapsed but online", async () => {
-        const el = createIndicator({ online: true, collapsed: true });
-        await el.updateComplete;
-        expect(el.shadowRoot.childElementCount).toBe(0);
-    });
-
-    it("uses absolute positioning on :host so it stays out of grid flow", async () => {
+    it("uses inline-flex on :host so it flows inside the header", async () => {
         const el = createIndicator({ online: false });
         await el.updateComplete;
         const styles = el.constructor.styles;
@@ -72,7 +54,9 @@ describe("offline-indicator", () => {
             .map(/** @param {{ cssText?: string }} s */ (s) => s.cssText)
             .join("");
         expect(cssText).toContain(":host");
-        expect(cssText).toContain("position: absolute");
+        expect(cssText).toContain("display: inline-flex");
+        // Must NOT use absolute positioning (header is flex, not grid).
+        expect(cssText).not.toContain("position: absolute");
     });
 
     it("reflects uiContext updates: online→offline shows badge", async () => {

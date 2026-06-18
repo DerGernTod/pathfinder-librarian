@@ -1,6 +1,7 @@
 /** @typedef {import("../../shared/types.js").Mode} Mode */
 
 import "./mode-toggle.js";
+import "./offline-indicator.js";
 import { ContextConsumer } from "@lit/context";
 import { css } from "lit-element";
 import { html, nothing } from "lit-html";
@@ -163,6 +164,7 @@ class ChatHeader extends BaseElement {
                         : nothing}
                 </div>
                 <div style="display:flex;align-items:center;gap:0.25rem;">
+                    <offline-indicator></offline-indicator>
                     ${this._uiState.breakpoint === "phone"
                         ? html`<button
                               class="new-chat-icon-btn"

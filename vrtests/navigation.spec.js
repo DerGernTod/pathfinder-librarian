@@ -83,18 +83,20 @@ test.describe("navigation e2e tests", () => {
         await requestPromise;
         await page.waitForLoadState("networkidle");
         const conv1Count = await messageList.locator("chat-message").count();
+
+        // Switch to conversation 2 and wait for its messages to actually
+        // render before counting (SSE-based message loading makes
+        // networkidle fire too early — counting then yields stale conv1
+        // messages).
         requestPromise = page.waitForRequest("**/api/conversations/*/messages");
         await sidebar.locator("conversation-item", { hasText: "Chandelier Assassination" }).click();
         await requestPromise;
-        await page.waitForLoadState("networkidle");
+        await expect(messageList.locator("chat-message").last()).toContainText(/chandelier/i, {
+            timeout: 5000,
+        });
 
         const conv2Count = await messageList.locator("chat-message").count();
         expect(conv2Count).not.toBe(conv1Count);
-
-        await page.waitForTimeout(10);
-        const messages = messageList.locator("chat-message");
-        const hasTestMessage = await messages.count();
-        expect(hasTestMessage).toBeGreaterThan(0);
 
         const firstMessage = messageList.locator("chat-message").first();
         await expect(firstMessage).not.toContainText("Test message for conv 1");
@@ -102,7 +104,9 @@ test.describe("navigation e2e tests", () => {
         requestPromise = page.waitForRequest("**/api/conversations/*/messages");
         await sidebar.locator("conversation-item", { hasText: "Mitflit King Capture" }).click();
         await requestPromise;
-        await page.waitForLoadState("networkidle");
+        await expect(messageList.locator("chat-message").last()).toContainText(/mitflit king/i, {
+            timeout: 5000,
+        });
 
         await expect(messageList.locator("chat-message")).toHaveCount(conv1Count);
     });
