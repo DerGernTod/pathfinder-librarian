@@ -126,4 +126,83 @@ describe("conversation-item", () => {
         expect(listener).toHaveBeenCalled();
         expect(listener.mock.calls[0][0].detail.id).toBe("conv-x");
     });
+
+    describe("disabled state (offline non-cached)", () => {
+        test("adds .disabled class when disabled is true", async () => {
+            const el = createItem({ title: "Uncached" });
+            el.disabled = true;
+            container.appendChild(el);
+            await el.updateComplete;
+
+            const item = el.shadowRoot.querySelector(".item");
+            expect(item.classList.contains("disabled")).toBe(true);
+        });
+
+        test("sets aria-disabled=true when disabled", async () => {
+            const el = createItem();
+            el.disabled = true;
+            container.appendChild(el);
+            await el.updateComplete;
+
+            const item = el.shadowRoot.querySelector(".item");
+            expect(item.getAttribute("aria-disabled")).toBe("true");
+        });
+
+        test("sets tabindex=-1 when disabled", async () => {
+            const el = createItem();
+            el.disabled = true;
+            container.appendChild(el);
+            await el.updateComplete;
+
+            const item = el.shadowRoot.querySelector(".item");
+            expect(item.getAttribute("tabindex")).toBe("-1");
+        });
+
+        test("click does NOT dispatch select when disabled", async () => {
+            /** @type {import("bun:test").Mock<(arg: CustomEvent<{ id: string }>) => void>} */
+            const selectListener = mock(() => {});
+            const el = createItem();
+            el.disabled = true;
+            el.addEventListener("select", selectListener);
+            container.appendChild(el);
+            await el.updateComplete;
+
+            const item = el.shadowRoot.querySelector(".item");
+            item?.click();
+
+            expect(selectListener).not.toHaveBeenCalled();
+        });
+
+        test("hides kebab button when disabled", async () => {
+            const el = createItem();
+            el.disabled = true;
+            container.appendChild(el);
+            await el.updateComplete;
+
+            const kebab = el.shadowRoot.querySelector(".kebab");
+            expect(kebab).toBeNull();
+        });
+
+        test("disabled item sets the unavailable title", async () => {
+            const el = createItem();
+            el.disabled = true;
+            container.appendChild(el);
+            await el.updateComplete;
+
+            const item = el.shadowRoot.querySelector(".item");
+            expect(item.getAttribute("title")).toContain("offline");
+        });
+
+        test("does NOT use native disabled attribute on the div", async () => {
+            const el = createItem();
+            el.disabled = true;
+            container.appendChild(el);
+            await el.updateComplete;
+
+            const item = el.shadowRoot.querySelector(".item");
+            // divs cannot be natively disabled; this is the whole point of the aria pattern
+            expect(item.hasAttribute("disabled")).toBe(false);
+            expect(item.tagName).toBe("DIV");
+        });
+    });
 });

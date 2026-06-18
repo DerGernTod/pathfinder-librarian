@@ -7,6 +7,7 @@ import { customElement } from "lit/decorators.js";
 
 import { messagesContext } from "../stores/messages-store.js";
 import { modeContext } from "../stores/mode-store.js";
+import { uiContext } from "../stores/ui-store.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
 import { client } from "../utils/rpc-client.js";
@@ -151,6 +152,14 @@ class ChatInput extends BaseElement {
         this._modeState = { mode: "gm" };
         /** @type {import("../stores/messages-store.js").MessagesState} */
         this._msgState = { messages: [], responding: false };
+        /** @type {import("../stores/ui-store.js").UIState} */
+        this._uiState = {
+            sidebarExpanded: true,
+            settingsOpen: false,
+            archiveOpen: false,
+            breakpoint: "desktop",
+            online: true,
+        };
         this._handleSelectConversation = () => {
             this.clearValue();
             const textarea = this.shadowRoot?.querySelector("sl-textarea");
@@ -175,6 +184,13 @@ class ChatInput extends BaseElement {
             },
             subscribe: true,
         });
+        new ContextConsumer(this, {
+            context: uiContext,
+            callback: /** @param {import("../stores/ui-store.js").UIState} v */ (v) => {
+                this._uiState = v;
+            },
+            subscribe: true,
+        });
         void this._fetchApiKeyStatus();
     }
 
@@ -184,6 +200,8 @@ class ChatInput extends BaseElement {
     }
 
     render() {
+        const offline = this._uiState.online === false;
+        const sendDisabled = offline || this._msgState.responding;
         return html`
             <div class="wrapper">
                 <div class="input-row" data-mode=${this._modeState.mode}>
@@ -226,7 +244,12 @@ class ChatInput extends BaseElement {
                               <button @click=${this.handleStop} class="send-btn stop">Stop</button>
                           `
                         : html`
-                              <button @click=${this.handleSubmit} class="send-btn">
+                              <button
+                                  @click=${this.handleSubmit}
+                                  class="send-btn"
+                                  ?disabled=${sendDisabled}
+                                  title=${offline ? "Unavailable offline" : ""}
+                              >
                                   <svg
                                       class="send-icon"
                                       fill="none"
@@ -263,11 +286,18 @@ class ChatInput extends BaseElement {
     handleKeydown(e) {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
+            if (this._uiState.online === false) {
+                // Offline: preventDefault only — no shake, no send.
+                return;
+            }
             this.handleSubmit();
         }
     }
 
     handleSubmit() {
+        if (this._uiState.online === false) {
+            return;
+        }
         if (this._msgState.responding) {
             return;
         }

@@ -119,4 +119,70 @@ describe("new-chat-button", () => {
         // Should transition to hidden
         expect(getComputedStyle(text).opacity).toBe("0");
     });
+
+    describe("offline behavior", () => {
+        it("sets aria-disabled=true when offline", async () => {
+            const el = createButton();
+            el._uiState = { ...el._uiState, online: false };
+            await el.updateComplete;
+
+            const btn = el.shadowRoot.querySelector("button");
+            expect(btn.getAttribute("aria-disabled")).toBe("true");
+        });
+
+        it("sets tabindex=-1 when offline", async () => {
+            const el = createButton();
+            el._uiState = { ...el._uiState, online: false };
+            await el.updateComplete;
+
+            const btn = el.shadowRoot.querySelector("button");
+            expect(btn.getAttribute("tabindex")).toBe("-1");
+        });
+
+        it("sets title when offline", async () => {
+            const el = createButton();
+            el._uiState = { ...el._uiState, online: false };
+            await el.updateComplete;
+
+            const btn = el.shadowRoot.querySelector("button");
+            expect(btn.getAttribute("title")).toBe("Unavailable offline");
+        });
+
+        it("does NOT use native disabled attribute when offline", async () => {
+            const el = createButton();
+            el._uiState = { ...el._uiState, online: false };
+            await el.updateComplete;
+
+            const btn = el.shadowRoot.querySelector("button");
+            expect(btn.hasAttribute("disabled")).toBe(false);
+        });
+
+        it("does not dispatch new-chat when offline + clicked", async () => {
+            const el = createButton();
+            el._uiState = { ...el._uiState, online: false };
+            await el.updateComplete;
+
+            let dispatched = false;
+            el.addEventListener("new-chat", () => {
+                dispatched = true;
+            });
+
+            fireEvent.click(getByText(el.shadowRoot, "New Chat"));
+            expect(dispatched).toBe(false);
+        });
+
+        it("dispatches new-chat normally when online", async () => {
+            const el = createButton();
+            el._uiState = { ...el._uiState, online: true };
+            await el.updateComplete;
+
+            let dispatched = false;
+            el.addEventListener("new-chat", () => {
+                dispatched = true;
+            });
+
+            fireEvent.click(getByText(el.shadowRoot, "New Chat"));
+            expect(dispatched).toBe(true);
+        });
+    });
 });

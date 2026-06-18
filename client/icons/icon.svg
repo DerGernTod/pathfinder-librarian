@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Pathfinder Librarian">
+    <defs>
+        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="hsl(262, 83%, 58%)" />
+            <stop offset="100%" stop-color="hsl(25, 83%, 48%)" />
+        </linearGradient>
+        <linearGradient id="book" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="hsl(0, 0%, 98%)" />
+            <stop offset="100%" stop-color="hsl(240, 5%, 78%)" />
+        </linearGradient>
+    </defs>
+    <rect width="512" height="512" rx="96" fill="url(#bg)" />
+    <!-- Open book (librarian motif) -->
+    <g transform="translate(96, 128)">
+        <!-- Left page -->
+        <path d="M160 32 Q120 8 16 16 L16 224 Q120 216 160 240 Z" fill="url(#book)" />
+        <!-- Right page -->
+        <path d="M160 32 Q200 8 304 16 L304 224 Q200 216 160 240 Z" fill="url(#book)" />
+        <!-- Spine -->
+        <line x1="160" y1="32" x2="160" y2="240" stroke="hsl(240, 5%, 50%)" stroke-width="3" />
+        <!-- Left-page lines -->
+        <line x1="40" y1="60" x2="136" y2="56" stroke="hsl(240, 5%, 40%)" stroke-width="4" stroke-linecap="round" />
+        <line x1="40" y1="88" x2="136" y2="84" stroke="hsl(240, 5%, 40%)" stroke-width="4" stroke-linecap="round" />
+        <line x1="40" y1="116" x2="120" y2="112" stroke="hsl(240, 5%, 40%)" stroke-width="4" stroke-linecap="round" />
+        <!-- Right-page lines -->
+        <line x1="184" y1="56" x2="280" y2="60" stroke="hsl(240, 5%, 40%)" stroke-width="4" stroke-linecap="round" />
+        <line x1="184" y1="84" x2="280" y2="88" stroke="hsl(240, 5%, 40%)" stroke-width="4" stroke-linecap="round" />
+        <line x1="184" y1="112" x2="264" y2="116" stroke="hsl(240, 5%, 40%)" stroke-width="4" stroke-linecap="round" />
+    </g>
+    <!-- Compass-rose / d20 hint above the book -->
+    <g transform="translate(256, 132)">
+        <polygon points="0,-44 12,-14 44,-14 18,6 28,40 0,20 -28,40 -18,6 -44,-14 -12,-14" fill="hsl(48, 96%, 60%)" stroke="hsl(48, 96%, 40%)" stroke-width="2" />
+    </g>
+</svg>

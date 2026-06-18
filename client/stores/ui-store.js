@@ -5,7 +5,8 @@ import { createContext } from "@lit/context";
  *   sidebarExpanded: boolean,
  *   settingsOpen: boolean,
  *   archiveOpen: boolean,
- *   breakpoint: "phone" | "tablet" | "desktop"
+ *   breakpoint: "phone" | "tablet" | "desktop",
+ *   online?: boolean
  * }} UIState
  */
 
@@ -20,7 +21,8 @@ const uiContext = createContext("ui");
  *   closeSettings: (current: UIState) => UIState,
  *   openArchive: (current: UIState) => UIState,
  *   closeArchive: (current: UIState) => UIState,
- *   setBreakpoint: (current: UIState, breakpoint: "phone" | "tablet" | "desktop") => UIState
+ *   setBreakpoint: (current: UIState, breakpoint: "phone" | "tablet" | "desktop") => UIState,
+ *   setOnline: (current: UIState, online: boolean) => UIState
  * }}
  */
 function createUIStore() {
@@ -68,6 +70,15 @@ function createUIStore() {
         /** @param {"phone" | "tablet" | "desktop"} breakpoint */
         setBreakpoint(current, breakpoint) {
             return { ...current, breakpoint };
+        },
+
+        /**
+         * @param {UIState} current
+         * @param {boolean} online
+         * @returns {UIState}
+         */
+        setOnline(current, online) {
+            return { ...current, online };
         },
     };
 }

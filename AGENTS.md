@@ -58,6 +58,7 @@ Full architecture and patterns in `docs/architecture.md`.
 
 ## Conventions
 
+- **Scratch/dump paths**: never write to `/tmp`, `/var/tmp`, or other system temp dirs. Use the repo-local `./temp/` directory (already gitignored) for any scratch files, intermediate output, or ad-hoc scripts. Keep all artifacts inside the workspace so they survive across agent sessions and stay out of the host filesystem.
 - Types via JSDoc only — no `.ts` files
 - Lit components: `customElement("name")(Class); export { Class };`
 - Server routes: Hono chaining with `zValidator`

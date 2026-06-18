@@ -251,4 +251,119 @@ describe("landing-view", () => {
         const warningIcon = element.shadowRoot?.querySelector(".api-warning-icon");
         expect(warningIcon).toBeNull();
     });
+
+    describe("offline behavior", () => {
+        it("disables send button when offline", async () => {
+            await element.updateComplete;
+            element._uiState = { ...element._uiState, online: false };
+            element.requestUpdate();
+            await element.updateComplete;
+            const sendBtn = /** @type {HTMLButtonElement} */ (
+                element.shadowRoot?.querySelector('[data-test="landing-send"]')
+            );
+            expect(sendBtn.disabled).toBe(true);
+        });
+
+        it("send button has unavailable-offline title when offline", async () => {
+            await element.updateComplete;
+            element._uiState = { ...element._uiState, online: false };
+            element.requestUpdate();
+            await element.updateComplete;
+            const sendBtn = element.shadowRoot?.querySelector('[data-test="landing-send"]');
+            expect(sendBtn?.getAttribute("title")).toBe("Unavailable offline");
+        });
+
+        it("does not dispatch landing-submit when offline + clicked", async () => {
+            await element.updateComplete;
+            element._uiState = { ...element._uiState, online: false };
+            element.requestUpdate();
+            await element.updateComplete;
+
+            const textarea = /** @type {HTMLElement & { value: string }} */ (
+                element.shadowRoot?.querySelector('[data-test="landing-input"]')
+            );
+            textarea.value = "Hello";
+            textarea.dispatchEvent(new CustomEvent("sl-input", { bubbles: true }));
+            await element.updateComplete;
+
+            const result = /** @type {{ value: string | null }} */ ({ value: null });
+            element.addEventListener(
+                "landing-submit",
+                /** @param {any} e */ (e) => {
+                    result.value = e.detail.text;
+                },
+            );
+
+            const sendBtn = element.shadowRoot?.querySelector('[data-test="landing-send"]');
+            sendBtn?.dispatchEvent(new Event("click", { bubbles: true }));
+            expect(result.value).toBeNull();
+        });
+
+        it("Enter key preventDefault + no submit when offline (no shake)", async () => {
+            await element.updateComplete;
+            element._uiState = { ...element._uiState, online: false };
+            element.requestUpdate();
+            await element.updateComplete;
+
+            const textarea = /** @type {HTMLElement & { value: string }} */ (
+                element.shadowRoot?.querySelector('[data-test="landing-input"]')
+            );
+            textarea.value = "Hello";
+            textarea.dispatchEvent(new CustomEvent("sl-input", { bubbles: true }));
+            await element.updateComplete;
+
+            let dispatched = false;
+            element.addEventListener("landing-submit", () => {
+                dispatched = true;
+            });
+
+            const preventMock = mock(() => {});
+            const ev = new KeyboardEvent("keydown", {
+                key: "Enter",
+                shiftKey: false,
+                bubbles: true,
+                cancelable: true,
+            });
+            Object.defineProperty(ev, "preventDefault", { value: preventMock });
+            textarea.dispatchEvent(ev);
+
+            expect(preventMock).toHaveBeenCalled();
+            expect(dispatched).toBe(false);
+            expect(element.shadowRoot?.querySelector(".shake")).toBeNull();
+        });
+
+        it("phone new-chat icon has aria-disabled when offline", async () => {
+            await element.updateComplete;
+            element._uiState = {
+                ...element._uiState,
+                online: false,
+                breakpoint: "phone",
+            };
+            element.requestUpdate();
+            await element.updateComplete;
+            const btn = element.shadowRoot?.querySelector(".new-chat-icon-btn");
+            expect(btn?.getAttribute("aria-disabled")).toBe("true");
+            expect(btn?.getAttribute("tabindex")).toBe("-1");
+            expect(btn?.getAttribute("title")).toBe("Unavailable offline");
+        });
+
+        it("send button enabled again when back online", async () => {
+            await element.updateComplete;
+            element._uiState = { ...element._uiState, online: false };
+            element.requestUpdate();
+            await element.updateComplete;
+            const sendBtn = /** @type {HTMLButtonElement} */ (
+                element.shadowRoot?.querySelector('[data-test="landing-send"]')
+            );
+            expect(sendBtn.disabled).toBe(true);
+
+            element._uiState = { ...element._uiState, online: true };
+            element.requestUpdate();
+            await element.updateComplete;
+            const sendBtnOnline = /** @type {HTMLButtonElement} */ (
+                element.shadowRoot?.querySelector('[data-test="landing-send"]')
+            );
+            expect(sendBtnOnline.disabled).toBe(false);
+        });
+    });
 });

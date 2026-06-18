@@ -143,6 +143,7 @@ class MainPage extends BaseElement {
             settingsOpen: false,
             archiveOpen: false,
             breakpoint: "desktop",
+            online: typeof navigator !== "undefined" ? navigator.onLine : true,
         };
 
         // Store instances
@@ -251,6 +252,17 @@ class MainPage extends BaseElement {
             vv.addEventListener("resize", this._onVvResize);
             this._onVvResize();
         }
+
+        // Online/offline detection — seeded from navigator.onLine above.
+        // The window events drive live transitions; UI reads `online !== false`.
+        this._onOnline = () => {
+            this._updateUIState(this._uiStore.setOnline(this._uiState, true));
+        };
+        this._onOffline = () => {
+            this._updateUIState(this._uiStore.setOnline(this._uiState, false));
+        };
+        window.addEventListener("online", this._onOnline);
+        window.addEventListener("offline", this._onOffline);
     }
 
     disconnectedCallback() {
@@ -266,6 +278,12 @@ class MainPage extends BaseElement {
         }
         if (this._onVvResize) {
             window.visualViewport?.removeEventListener("resize", this._onVvResize);
+        }
+        if (this._onOnline) {
+            window.removeEventListener("online", this._onOnline);
+        }
+        if (this._onOffline) {
+            window.removeEventListener("offline", this._onOffline);
         }
     }
 

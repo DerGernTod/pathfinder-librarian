@@ -46,6 +46,11 @@ class ConversationItem extends BaseElement {
                 background: var(--accent);
                 color: var(--secondary-foreground);
             }
+            .item.disabled {
+                opacity: 0.4;
+                cursor: not-allowed;
+                pointer-events: none;
+            }
             .item-title {
                 overflow: hidden;
                 text-overflow: ellipsis;
@@ -105,6 +110,7 @@ class ConversationItem extends BaseElement {
     static properties = {
         conversation: { type: Object },
         loading: { type: Boolean },
+        disabled: { type: Boolean },
     };
 
     constructor() {
@@ -113,6 +119,8 @@ class ConversationItem extends BaseElement {
         this.conversation = { id: "", title: "" };
         /** @type {boolean} */
         this.loading = false;
+        /** @type {boolean} */
+        this.disabled = false;
         /** @type {import("../stores/conversation-store.js").ConversationState} */
         this._convState = { conversations: [], activeConversationId: "", loading: true };
     }
@@ -133,21 +141,32 @@ class ConversationItem extends BaseElement {
 
     render() {
         const active = this._convState.activeConversationId === this.conversation.id;
+        const classes = [active ? "active" : "", this.disabled ? "disabled" : ""]
+            .filter(Boolean)
+            .join(" ");
         return html`
-            <div class="item ${active ? "active" : ""}" @click=${() => this.handleClick()}>
+            <div
+                class="item ${classes}"
+                aria-disabled=${this.disabled ? "true" : "false"}
+                tabindex=${this.disabled ? "-1" : "0"}
+                title=${this.disabled ? "Unavailable offline — not cached" : ""}
+                @click=${() => this.handleClick()}
+            >
                 <span class="item-title">
                     ${this.loading
                         ? html`<sl-spinner style="font-size: 0.75rem;"></sl-spinner>`
                         : nothing}
                     ${this.conversation.title}
                 </span>
-                <button
-                    class="kebab"
-                    aria-label="Conversation actions"
-                    @click=${(/** @type {Event} */ e) => this.handleKebabClick(e)}
-                >
-                    ⋯
-                </button>
+                ${this.disabled
+                    ? nothing
+                    : html`<button
+                          class="kebab"
+                          aria-label="Conversation actions"
+                          @click=${(/** @type {Event} */ e) => this.handleKebabClick(e)}
+                      >
+                          ⋯
+                      </button>`}
             </div>
             <div
                 class="menu"
@@ -160,6 +179,9 @@ class ConversationItem extends BaseElement {
     }
 
     handleClick() {
+        if (this.disabled) {
+            return;
+        }
         this.dispatchEvent(
             new CustomEvent("select", {
                 detail: { id: this.conversation.id },

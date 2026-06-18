@@ -6,6 +6,7 @@ import { customElement } from "lit/decorators.js";
 import { modeContext } from "../stores/mode-store.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
+import "./offline-indicator.js";
 import "./profile-menu.js";
 import { BaseElement } from "./base-element.js";
 
@@ -152,6 +153,7 @@ class SidebarProfile extends BaseElement {
                 class="profile ${this.collapsed ? "collapsed" : ""}"
                 aria-label=${this.collapsed ? `${this.name} - ${this.subtitle}` : ""}
             >
+                <offline-indicator ?collapsed=${this.collapsed}></offline-indicator>
                 <profile-menu></profile-menu>
                 <div class="text-container">
                     <p class="name">${this.name}</p>

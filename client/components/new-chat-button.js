@@ -1,7 +1,9 @@
+import { ContextConsumer } from "@lit/context";
 import { css } from "lit-element";
 import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
+import { uiContext } from "../stores/ui-store.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
 import { BaseElement } from "./base-element.js";
@@ -42,6 +44,14 @@ class NewChatButton extends BaseElement {
                 background: var(--secondary);
                 color: var(--secondary-foreground);
             }
+            .btn[aria-disabled="true"] {
+                opacity: 0.4;
+                cursor: not-allowed;
+            }
+            .btn[aria-disabled="true"]:hover {
+                background: transparent;
+                color: var(--muted-foreground);
+            }
             .btn-text {
                 display: block;
                 opacity: 1;
@@ -66,14 +76,37 @@ class NewChatButton extends BaseElement {
     constructor() {
         super();
         this.collapsed = false;
+        /** @type {import("../stores/ui-store.js").UIState} */
+        this._uiState = {
+            sidebarExpanded: true,
+            settingsOpen: false,
+            archiveOpen: false,
+            breakpoint: "desktop",
+            online: true,
+        };
+    }
+
+    connectedCallback() {
+        super.connectedCallback();
+        new ContextConsumer(this, {
+            context: uiContext,
+            callback: /** @param {import("../stores/ui-store.js").UIState} v */ (v) => {
+                this._uiState = v;
+            },
+            subscribe: true,
+        });
     }
 
     render() {
+        const offline = this._uiState.online === false;
         return html`
             <button
                 @click=${this.handleClick}
                 class="btn ${this.collapsed ? "collapsed" : ""}"
                 aria-label=${this.collapsed ? "New Chat" : ""}
+                aria-disabled=${offline ? "true" : "false"}
+                tabindex=${offline ? "-1" : "0"}
+                title=${offline ? "Unavailable offline" : ""}
             >
                 <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
@@ -89,6 +122,9 @@ class NewChatButton extends BaseElement {
     }
 
     handleClick() {
+        if (this._uiState.online === false) {
+            return;
+        }
         this.dispatchEvent(new CustomEvent("new-chat", { bubbles: true, composed: true }));
     }
 }
