@@ -2,35 +2,46 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 
 import {
     CONVERSATION_CACHE,
+    cacheConversationList,
+    cacheConversationMessages,
     getCachedConversationIds,
+    invalidateConversationCache,
     isConversationCached,
 } from "./conversation-cache.js";
 
 describe("conversation-cache", () => {
-    /** @type {Set<string>} */
-    let seeded;
+    /** @type {Map<string, Response>} */
+    let store;
     /** @type {unknown} */
     let savedCaches;
 
     beforeEach(() => {
-        seeded = new Set();
+        store = new Map();
         savedCaches = Reflect.get(globalThis, "caches");
-        // happy-dom does NOT provide `caches`; mimic the SW cache with a stub.
-        const stub = {
-            open: async () => ({
-                match: async (/** @type {string | Request} */ req) => {
-                    const url = typeof req === "string" ? req : req.url;
-                    const id = /\/api\/conversations\/([^/]+)\/messages$/.exec(url)?.[1];
-                    if (id && seeded.has(id)) {
-                        return new Response("{}", { status: 200 });
-                    }
-                    return undefined;
-                },
-            }),
-            match: async () => undefined,
+        // happy-dom does NOT provide `caches`; mimic the SW cache with an
+        // in-memory store that supports match/put/delete (the three Cache
+        // methods conversation-cache.js calls).
+        const cacheStub = {
+            match: async (/** @type {string | Request} */ req) => {
+                const url = typeof req === "string" ? req : req.url;
+                return store.get(url);
+            },
+            put: async (/** @type {string | Request} */ req, /** @type {Response} */ res) => {
+                const url = typeof req === "string" ? req : req.url;
+                store.set(url, res.clone());
+            },
+            delete: async (/** @type {string | Request} */ req) => {
+                const url = typeof req === "string" ? req : req.url;
+                return store.delete(url);
+            },
         };
-        // The full DOM `CacheStorage` interface is much larger; we only stub the
-        // two methods conversation-cache.js calls.
+        const stub = {
+            open: async () => cacheStub,
+            match: async (/** @type {string | Request} */ req) => {
+                const url = typeof req === "string" ? req : req.url;
+                return store.get(url);
+            },
+        };
         globalThis.caches = /** @type {CacheStorage} */ (/** @type {unknown} */ (stub));
     });
 
@@ -47,19 +58,40 @@ describe("conversation-cache", () => {
         expect(CONVERSATION_CACHE).toBe("pwa-v1-api-data");
     });
 
-    it("resolves true when conversation is cached", async () => {
-        seeded.add("conv-1");
-        expect(await isConversationCached("conv-1")).toBe(true);
-    });
-
     it("resolves false when conversation is not cached", async () => {
         expect(await isConversationCached("missing")).toBe(false);
     });
 
-    it("bulk lookup returns only cached ids", async () => {
-        seeded.add("a").add("c");
+    it("cacheConversationMessages makes the conversation cached", async () => {
+        await cacheConversationMessages("conv-1", [{ id: "m1", role: "user", content: "hi" }]);
+        expect(await isConversationCached("conv-1")).toBe(true);
+    });
+
+    it("cacheConversationList writes the list payload to /api/conversations", async () => {
+        await cacheConversationList([{ id: "conv-x", title: "X" }]);
+        const res = store.get("/api/conversations");
+        expect(res).toBeTruthy();
+        const json = await res?.json();
+        expect(json.data).toHaveLength(1);
+        expect(json.data[0].id).toBe("conv-x");
+    });
+
+    it("invalidateConversationCache drops the list", async () => {
+        await cacheConversationList([{ id: "conv-x" }]);
+        await invalidateConversationCache();
+        expect(store.has("/api/conversations")).toBe(false);
+    });
+
+    it("invalidateConversationCache drops a specific conversation's messages", async () => {
+        await cacheConversationMessages("conv-1", [{ id: "m1" }]);
+        await invalidateConversationCache({ conversationId: "conv-1" });
+        expect(await isConversationCached("conv-1")).toBe(false);
+    });
+
+    it("bulk lookup returns cached ids after page-side writes", async () => {
+        await cacheConversationMessages("a", []);
+        await cacheConversationMessages("c", []);
         const set = await getCachedConversationIds(["a", "b", "c", "d"]);
-        expect(set).toBeInstanceOf(Set);
         expect(set.has("a")).toBe(true);
         expect(set.has("c")).toBe(true);
         expect(set.has("b")).toBe(false);
@@ -74,6 +106,14 @@ describe("conversation-cache", () => {
         expect(await isConversationCached("anything")).toBe(true);
         const set = await getCachedConversationIds(["a", "b", "c"]);
         expect(set.size).toBe(3);
-        expect(set.has("a")).toBe(true);
+    });
+
+    it("cache write no-ops silently when `caches` is absent", async () => {
+        delete (
+            /** @type {Record<string, unknown>} */ (/** @type {unknown} */ (globalThis)).caches
+        );
+        await cacheConversationMessages("x", []);
+        await cacheConversationList([]);
+        await invalidateConversationCache();
     });
 });

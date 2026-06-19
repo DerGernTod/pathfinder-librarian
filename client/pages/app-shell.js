@@ -77,6 +77,8 @@ class AppShell extends BaseElement {
         this._toastOnlineHandler = null;
         /** @type {(() => void) | null} */
         this._toastOfflineHandler = null;
+        /** @type {((e: Event) => void) | null} */
+        this._appToastHandler = null;
     }
 
     connectedCallback() {
@@ -84,8 +86,21 @@ class AppShell extends BaseElement {
         this._toastOfflineHandler = () =>
             this._notify("warning", "You're offline. Some actions are disabled.", 4000);
         this._toastOnlineHandler = () => this._notify("success", "Back online.", 3000);
+        this._appToastHandler = (/** @type {Event} */ e) => {
+            const detail = /** @type {{ variant: string, message: string, duration: number }} */ (
+                /** @type {CustomEvent} */ (e).detail
+            );
+            this._notify(
+                /** @type {"success" | "warning" | "danger" | "primary" | "neutral"} */ (
+                    detail.variant
+                ),
+                detail.message,
+                detail.duration,
+            );
+        };
         window.addEventListener("offline", this._toastOfflineHandler);
         window.addEventListener("online", this._toastOnlineHandler);
+        window.addEventListener("app-toast", this._appToastHandler);
     }
 
     disconnectedCallback() {
@@ -95,6 +110,9 @@ class AppShell extends BaseElement {
         }
         if (this._toastOnlineHandler) {
             window.removeEventListener("online", this._toastOnlineHandler);
+        }
+        if (this._appToastHandler) {
+            window.removeEventListener("app-toast", this._appToastHandler);
         }
     }
 

@@ -13,6 +13,7 @@ import { uiContext } from "../stores/ui-store.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
 import { client } from "../utils/rpc-client.js";
+import { showToast } from "../utils/toast.js";
 import { BaseElement } from "./base-element.js";
 
 /**
@@ -492,6 +493,7 @@ class LandingView extends BaseElement {
 
     handleNewChat() {
         if (this._uiState.online === false) {
+            showToast("warning", "You're offline — new chats are unavailable.", 3000);
             return;
         }
         this.dispatchEvent(

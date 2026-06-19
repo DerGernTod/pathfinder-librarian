@@ -61,6 +61,8 @@ class SessionList extends BaseElement {
     static properties = {
         query: { type: String },
         _cachedIds: { type: Object, state: true },
+        _convState: { type: Object, state: true },
+        _uiState: { type: Object, state: true },
     };
 
     constructor() {

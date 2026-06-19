@@ -1,5 +1,6 @@
 import { createContext } from "@lit/context";
 
+import { cacheConversationList, invalidateConversationCache } from "../utils/conversation-cache.js";
 import { client } from "../utils/rpc-client.js";
 
 /**
@@ -34,7 +35,11 @@ function createConversationStore() {
         async fetchConversations() {
             const res = await client.api.conversations.$get();
             const result = await res.json();
-            return /** @type {import("../../shared/types.js").Conversation[]} */ (result.data);
+            const data = /** @type {import("../../shared/types.js").Conversation[]} */ (
+                result.data
+            );
+            void cacheConversationList(data);
+            return data;
         },
 
         /**
@@ -46,6 +51,7 @@ function createConversationStore() {
                 json: { title },
             });
             const conv = await res.json();
+            void invalidateConversationCache();
             return /** @type {import("../../shared/types.js").Conversation} */ (conv.data);
         },
 
@@ -62,6 +68,7 @@ function createConversationStore() {
             const result = /** @type {{ data: import("../../shared/types.js").Conversation }} */ (
                 await res.json()
             );
+            void invalidateConversationCache();
             return result.data;
         },
 
@@ -71,12 +78,14 @@ function createConversationStore() {
             const result = /** @type {{ data: import("../../shared/types.js").Conversation }} */ (
                 await res.json()
             );
+            void invalidateConversationCache();
             return result.data;
         },
 
         /** @param {string} id @returns {Promise<void>} */
         async deleteConversation(id) {
             await client.api.conversations[":id"].$delete({ param: { id } });
+            void invalidateConversationCache({ conversationId: id });
         },
     };
 }

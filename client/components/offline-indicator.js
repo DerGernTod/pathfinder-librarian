@@ -36,34 +36,31 @@ class OfflineIndicator extends BaseElement {
             .offline-badge {
                 display: inline-flex;
                 align-items: center;
-                gap: 0.25rem;
-                font-size: 0.7rem;
+                gap: 0.3rem;
+                font-size: 0.8rem;
                 font-weight: 600;
-                padding: 0.2rem 0.5rem;
+                padding: 0.3rem 0.6rem;
                 border-radius: 9999px;
                 background: hsla(48, 96%, 53%, 0.18);
                 color: hsl(48, 96%, 65%);
                 border: 1px solid hsla(48, 96%, 53%, 0.4);
-                line-height: 1rem;
+                line-height: 1.1rem;
                 white-space: nowrap;
             }
             .offline-badge .icon {
-                width: 0.7rem;
-                height: 0.7rem;
+                width: 0.875rem;
+                height: 0.875rem;
                 flex-shrink: 0;
             }
             @media (max-width: 767px) {
                 .offline-badge {
-                    font-size: 0.65rem;
-                    padding: 0.125rem 0.375rem;
+                    font-size: 0.7rem;
+                    padding: 0.2rem 0.45rem;
                     gap: 0.2rem;
                 }
                 .offline-badge .icon {
-                    width: 0.625rem;
-                    height: 0.625rem;
-                }
-                .offline-badge .label {
-                    display: none;
+                    width: 0.7rem;
+                    height: 0.7rem;
                 }
             }
         `,

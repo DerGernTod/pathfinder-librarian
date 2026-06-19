@@ -77,4 +77,83 @@ export async function getCachedConversationIds(ids) {
     }
 }
 
+/**
+ * Page-side cache write for a conversation's messages payload.
+ *
+ * The service worker only controls *subsequent* navigations (no
+ * `clients.claim()` to keep the first page load deterministic), so on a
+ * fresh session the SW would not intercept the initial GET. Writing the
+ * payload from the page itself makes the conversation available offline
+ * immediately after the user first views it, regardless of SW control
+ * state. The SW (when active) reads from the same cache entry.
+ *
+ * Best-effort: silently no-ops on environments without the Cache API
+ * (happy-dom, very old browsers) or on write errors.
+ *
+ * @param {string} convId
+ * @param {unknown} messages - the `data` payload returned by GET /api/conversations/:id/messages
+ * @returns {Promise<void>}
+ */
+export async function cacheConversationMessages(convId, messages) {
+    if (typeof caches === "undefined") {
+        return;
+    }
+    try {
+        const cache = await caches.open(CONVERSATION_CACHE);
+        const response = new Response(JSON.stringify({ result: "success", data: messages }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+        });
+        await cache.put(messagesUrl(convId), response);
+    } catch {
+        // Cache write is best-effort.
+    }
+}
+
+/**
+ * Page-side cache write for the active-conversation list payload
+ * (GET /api/conversations). Keeps the sidebar usable offline.
+ *
+ * @param {unknown} conversations - the `data` payload returned by GET /api/conversations
+ * @returns {Promise<void>}
+ */
+export async function cacheConversationList(conversations) {
+    if (typeof caches === "undefined") {
+        return;
+    }
+    try {
+        const cache = await caches.open(CONVERSATION_CACHE);
+        const response = new Response(JSON.stringify({ result: "success", data: conversations }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+        });
+        await cache.put("/api/conversations", response);
+    } catch {
+        // Cache write is best-effort.
+    }
+}
+
+/**
+ * Drops the cached conversation list (and optionally a specific
+ * conversation's messages) so stale state does not surface after a
+ * create/archive/restore/delete mutation.
+ *
+ * @param {{ conversationId?: string }} [opts]
+ * @returns {Promise<void>}
+ */
+export async function invalidateConversationCache(opts) {
+    if (typeof caches === "undefined") {
+        return;
+    }
+    try {
+        const cache = await caches.open(CONVERSATION_CACHE);
+        await cache.delete("/api/conversations");
+        if (opts?.conversationId) {
+            await cache.delete(messagesUrl(opts.conversationId));
+        }
+    } catch {
+        // Cache invalidation is best-effort.
+    }
+}
+
 export { CONVERSATION_CACHE };

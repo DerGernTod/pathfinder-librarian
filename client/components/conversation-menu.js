@@ -69,6 +69,8 @@ class ConversationMenu extends BaseElement {
 
     static properties = {
         _cachedIds: { type: Object, state: true },
+        _convState: { type: Object, state: true },
+        _uiState: { type: Object, state: true },
     };
 
     constructor() {

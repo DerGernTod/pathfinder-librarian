@@ -200,16 +200,52 @@ self.addEventListener("fetch", (event) => {
         return;
     }
 
-    // 4) Read-only conversation API → SWR (enables offline re-reads).
+    // 4) Read-only conversation API.
+    //    - Conversation list (GET /api/conversations): StaleWhileRevalidate
+    //      is fine because the page-side store invalidates on mutations.
+    //    - Per-conversation messages (GET /api/conversations/:id/messages):
+    //      NetworkFirst — these change on every submit, so always prefer the
+    //      fresh network copy and only fall back to cache when truly offline.
     //    POST messages, archived GETs, auth, version, devices are excluded by
     //    method (above) or path (below).
-    if (
-        url.pathname === "/api/conversations" ||
-        /^\/api\/conversations\/[^/]+\/messages$/.test(url.pathname)
-    ) {
+    if (url.pathname === "/api/conversations") {
         fetchEvent.respondWith(staleWhileRevalidate(request, API_CACHE));
+        return;
+    }
+    if (/^\/api\/conversations\/[^/]+\/messages$/.test(url.pathname)) {
+        fetchEvent.respondWith(networkFirstApi(request, API_CACHE));
         return;
     }
 
     // Everything else passes through.
 });
+
+/**
+ * NetworkFirst variant for read-only API endpoints whose payload changes on
+ * every mutation (e.g. message lists). Always tries the network; only falls
+ * back to cache when the request throws (offline).
+ *
+ * @param {Request} request
+ * @param {string} cacheName
+ * @returns {Promise<Response>}
+ */
+async function networkFirstApi(request, cacheName) {
+    if (typeof caches === "undefined") {
+        return fetch(request);
+    }
+    try {
+        const fresh = await fetch(request);
+        if (fresh && fresh.ok && fresh.type !== "opaque") {
+            const cache = await caches.open(cacheName);
+            cache.put(request, fresh.clone()).catch(() => {});
+        }
+        return fresh;
+    } catch {
+        const cache = await caches.open(cacheName);
+        const cached = await cache.match(request);
+        if (cached) {
+            return cached;
+        }
+        return Response.error();
+    }
+}

@@ -304,4 +304,95 @@ test.describe("PWA offline UX", () => {
         }
         expect(enabledCount).toBeLessThan(count);
     });
+
+    test("desktop — visiting a conversation caches it for offline access", async ({
+        page,
+        context,
+    }) => {
+        // Verifies the page-side cache write in messages-store.fetchMessages:
+        // navigating into a conversation must populate the same cache the
+        // session-list consults when deciding what to disable offline.
+        await page.setViewportSize({ width: 1280, height: 800 });
+        await page.goto("/");
+        await page.waitForSelector("main-page");
+        await page.waitForTimeout(1000);
+
+        const sidebar = page.locator("chat-sidebar");
+
+        // Visit each seeded conversation so its messages GET is intercepted
+        // by the page-side cache write.
+        const convs = await page.evaluate(async () => {
+            const res = await fetch("/api/conversations");
+            const json = await res.json();
+            return /** @type {{ result: string, data: Array<{ id: string, title: string }> }} */ (
+                json
+            ).data.map((c) => ({ id: c.id, title: c.title }));
+        });
+        expect(convs.length).toBeGreaterThanOrEqual(2);
+
+        for (const conv of convs) {
+            await sidebar.locator("conversation-item", { hasText: conv.title }).first().click();
+            // Wait for the messages GET round-trip + page-side cache write.
+            // SSE for assistant streaming keeps networkidle unreliable, so
+            // poll the cache directly.
+            await expect
+                .poll(
+                    async () => {
+                        return await page.evaluate(async (id) => {
+                            const cache = await caches.open("pwa-v1-api-data");
+                            return Boolean(await cache.match(`/api/conversations/${id}/messages`));
+                        }, conv.id);
+                    },
+                    { timeout: 5000, intervals: [100, 250, 500] },
+                )
+                .toBe(true);
+        }
+
+        // Now each conversation URL must be in the pwa-v1-api-data cache.
+        const cached = await page.evaluate(async (items) => {
+            const cache = await caches.open("pwa-v1-api-data");
+            /** @param {string} id */
+            const present = async (id) =>
+                Boolean(await cache.match(`/api/conversations/${id}/messages`));
+            const out = /** @type {Record<string, boolean>} */ ({});
+            for (const item of items) {
+                out[item.id] = await present(item.id);
+            }
+            return out;
+        }, convs);
+        for (const conv of convs) {
+            expect(cached[conv.id], `conversation ${conv.title} should be cached after visit`).toBe(
+                true,
+            );
+        }
+
+        // Going offline: every seeded conversation must remain interactive.
+        await context.setOffline(true);
+        await page.waitForTimeout(500);
+
+        const items = page.locator("conversation-item");
+        const count = await items.count();
+        expect(count).toBe(convs.length);
+
+        // session-list queries the cache asynchronously on the offline
+        // transition; poll until the disabled count settles.
+        await expect
+            .poll(
+                async () => {
+                    let disabled = 0;
+                    const all = await items.all();
+                    for (const item of all) {
+                        const ariaDisabled = await item.evaluate((el) =>
+                            el.shadowRoot?.querySelector(".item")?.getAttribute("aria-disabled"),
+                        );
+                        if (ariaDisabled === "true") {
+                            disabled++;
+                        }
+                    }
+                    return disabled;
+                },
+                { timeout: 5000, intervals: [100, 250, 500] },
+            )
+            .toBe(0);
+    });
 });

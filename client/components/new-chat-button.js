@@ -6,6 +6,7 @@ import { customElement } from "lit/decorators.js";
 import { uiContext } from "../stores/ui-store.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
+import { showToast } from "../utils/toast.js";
 import { BaseElement } from "./base-element.js";
 
 /**
@@ -123,6 +124,7 @@ class NewChatButton extends BaseElement {
 
     handleClick() {
         if (this._uiState.online === false) {
+            showToast("warning", "You're offline — new chats are unavailable.", 3000);
             return;
         }
         this.dispatchEvent(new CustomEvent("new-chat", { bubbles: true, composed: true }));
