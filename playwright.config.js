@@ -11,6 +11,13 @@ export default defineConfig({
     use: {
         baseURL: "http://localhost:3000",
         trace: "on-first-retry",
+        // Block service worker registration so test mocks (page.route /
+        // context.route) are not bypassed by SW-initiated fetches. With
+        // clients.claim() active in sw.js, the SW would otherwise intercept
+        // API GETs and its own fetch() calls would skip Playwright's
+        // page.route handlers. The page-side Cache API writes still happen,
+        // so pwa-offline specs continue to exercise the offline UI.
+        serviceWorkers: "block",
         launchOptions: {
             args: [
                 "--disable-blink-features=LayoutAnimations",

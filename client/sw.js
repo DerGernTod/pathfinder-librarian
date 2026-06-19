@@ -97,7 +97,13 @@ async function staleWhileRevalidate(request, cacheName) {
 }
 
 /**
- * NetworkFirst: try network, fall back to cache, lastly cached /index.html.
+ * NetworkFirst: try network, fall back to cache, lastly the precached
+ * app shell at `/`.
+ *
+ * The cached entry for the navigation URL itself may be missing (e.g.
+ * on a deep link the user has never visited online), so we always fall
+ * back to the precached `/` shell — the SPA router then rehydrates the
+ * deep-linked route client-side.
  *
  * @param {Request} request
  * @returns {Promise<Response>}
@@ -119,9 +125,11 @@ async function networkFirst(request) {
         if (cached) {
             return cached;
         }
-        const fallback = await cache.match("/index.html");
-        if (fallback) {
-            return fallback;
+        // Fall back to the precached app shell so deep links still load
+        // the SPA client-side.
+        const shell = await cache.match("/");
+        if (shell) {
+            return shell;
         }
         throw new Error("offline and no cached page available");
     }
@@ -129,10 +137,31 @@ async function networkFirst(request) {
 
 self.addEventListener("install", (event) => {
     const extendable = /** @type {ExtendableEvent} */ (/** @type {unknown} */ (event));
-    extendable.waitUntil(Promise.resolve());
-    // Activate immediately so the first navigation is controlled.
-    const sw = /** @type {SWGlobal} */ (/** @type {unknown} */ (self));
-    void sw.skipWaiting?.();
+    // Precache the app shell so offline navigation can fall back to it.
+    // Without this, the first navigation (which the SW does not yet
+    // control) is never cached, and reloads while offline fail with
+    // ERR_FAILED even though API data is cached.
+    //
+    // The shell HTML references /index.js as a classic module script; if
+    // we only cache `/`, an offline reload loads the HTML but then fails
+    // to load /index.js and the page stays blank. Pre-fetch both so the
+    // entry point can boot offline.
+    extendable.waitUntil(
+        (async () => {
+            if (typeof caches === "undefined") {
+                return;
+            }
+            try {
+                const cache = await caches.open(PAGES_CACHE);
+                await Promise.all([cache.add("/"), cache.add("/index.js")]);
+            } catch {
+                // Best-effort — don't fail install if the precache misses
+                // (e.g. offline at install time).
+            }
+            const sw = /** @type {SWGlobal} */ (/** @type {unknown} */ (self));
+            void sw.skipWaiting?.();
+        })(),
+    );
 });
 
 self.addEventListener("activate", (event) => {
@@ -148,11 +177,14 @@ self.addEventListener("activate", (event) => {
                     .filter((key) => !key.startsWith(`${CACHE_VERSION}-`))
                     .map((key) => caches.delete(key)),
             );
-            // Note: intentionally NOT calling clients.claim() so the SW only
-            // controls subsequent navigations. This keeps the first page load
-            // of a session out of the SW's fetch path, which is important for
-            // test determinism and avoids surprising the user with caching
-            // behaviour on the very first visit.
+            // Claim all open clients so the SW controls the very first
+            // navigation of a session. Without this, fetches on the page
+            // that registered the SW bypass the SW entirely — meaning
+            // viewed conversations are never cached and become
+            // inaccessible once the user goes offline (the SW only
+            // started intercepting on the *next* reload).
+            const sw = /** @type {SWGlobal} */ (/** @type {unknown} */ (self));
+            await sw.clients.claim();
         })(),
     );
 });
@@ -206,13 +238,20 @@ self.addEventListener("fetch", (event) => {
     //    - Per-conversation messages (GET /api/conversations/:id/messages):
     //      NetworkFirst — these change on every submit, so always prefer the
     //      fresh network copy and only fall back to cache when truly offline.
-    //    POST messages, archived GETs, auth, version, devices are excluded by
-    //    method (above) or path (below).
+    //    - Current user (GET /api/auth/me): NetworkFirst so a freshly
+    //      updated user object wins, but offline reload can still
+    //      authenticate the session from cache.
+    //    POST messages, archived GETs, login/logout, version, devices are
+    //    excluded by method (above) or path (below).
     if (url.pathname === "/api/conversations") {
         fetchEvent.respondWith(staleWhileRevalidate(request, API_CACHE));
         return;
     }
     if (/^\/api\/conversations\/[^/]+\/messages$/.test(url.pathname)) {
+        fetchEvent.respondWith(networkFirstApi(request, API_CACHE));
+        return;
+    }
+    if (url.pathname === "/api/auth/me") {
         fetchEvent.respondWith(networkFirstApi(request, API_CACHE));
         return;
     }
