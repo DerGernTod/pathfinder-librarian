@@ -207,4 +207,93 @@ describe("chat-input", () => {
         );
         expect(hasMaxHeight).toBe(true);
     });
+
+    describe("offline behavior", () => {
+        it("disables send button when offline", async () => {
+            const el = createInput();
+            el._uiState = { ...el._uiState, online: false };
+            await el.updateComplete;
+
+            const button = el.shadowRoot.querySelector("button.send-btn");
+            expect(button).toBeTruthy();
+            expect(button.disabled).toBe(true);
+        });
+
+        it("send button has unavailable-offline title when offline", async () => {
+            const el = createInput();
+            el._uiState = { ...el._uiState, online: false };
+            await el.updateComplete;
+
+            const button = el.shadowRoot.querySelector("button.send-btn");
+            expect(button.getAttribute("title")).toBe("Unavailable offline");
+        });
+
+        it("does not dispatch send-message when offline + button clicked", async () => {
+            const el = createInput();
+            el._uiState = { ...el._uiState, online: false };
+            el.value = "Hello";
+            await el.updateComplete;
+
+            let dispatched = false;
+            el.addEventListener("send-message", () => {
+                dispatched = true;
+            });
+
+            const button = el.shadowRoot.querySelector("button.send-btn");
+            fireEvent.click(button);
+            expect(dispatched).toBe(false);
+        });
+
+        it("Enter key preventDefault + no send-message when offline (no shake)", async () => {
+            const el = createInput();
+            el._uiState = { ...el._uiState, online: false };
+            el.value = "Hello";
+            await el.updateComplete;
+
+            let dispatched = false;
+            el.addEventListener("send-message", () => {
+                dispatched = true;
+            });
+
+            const preventSpy = mock(() => {});
+            const ev = new KeyboardEvent("keydown", {
+                key: "Enter",
+                shiftKey: false,
+                bubbles: true,
+                cancelable: true,
+            });
+            Object.defineProperty(ev, "preventDefault", { value: preventSpy });
+
+            el.handleKeydown(ev);
+
+            expect(preventSpy).toHaveBeenCalled();
+            expect(dispatched).toBe(false);
+            // No shake class should exist anywhere
+            expect(el.shadowRoot.querySelector(".shake")).toBeNull();
+        });
+
+        it("keeps textarea editable offline (user may still draft)", async () => {
+            const el = createInput();
+            el._uiState = { ...el._uiState, online: false };
+            await el.updateComplete;
+
+            const textarea = el.shadowRoot.querySelector("sl-textarea");
+            expect(textarea.hasAttribute("disabled")).toBe(false);
+        });
+
+        it("send button is enabled again when online", async () => {
+            const el = createInput();
+            el._uiState = { ...el._uiState, online: false };
+            await el.updateComplete;
+            const buttonOffline = el.shadowRoot.querySelector("button.send-btn");
+            expect(buttonOffline.disabled).toBe(true);
+
+            el._uiState = { ...el._uiState, online: true };
+            el.value = "Hello";
+            el.requestUpdate();
+            await el.updateComplete;
+            const buttonOnline = el.shadowRoot.querySelector("button.send-btn");
+            expect(buttonOnline.disabled).toBe(false);
+        });
+    });
 });

@@ -154,6 +154,22 @@ app.get("/conversations/:conversationId", async (c) => {
 });
 
 app.get("/", serveStatic({ path: "./client/index.html" }));
+
+// Explicit manifest route — Bun's static MIME table does not reliably map
+// `.webmanifest` to the correct Content-Type, which breaks PWA installability
+// checks. SW + SVG icon are served by the `/*` fallback below with their
+// built-in Content-Types.
+app.get("/manifest.webmanifest", async (c) => {
+    // oxlint-disable-next-line no-undef -- Bun is the runtime global
+    const file = Bun.file(clientDir + "/manifest.webmanifest");
+    if (!(await file.exists())) {
+        return c.notFound();
+    }
+    return new Response(file, {
+        headers: { "Content-Type": "application/manifest+json; charset=utf-8" },
+    });
+});
+
 app.get("/*", async (c) => {
     const path = c.req.path;
     // Serve actual static files (JS, CSS, images, fonts, etc.)

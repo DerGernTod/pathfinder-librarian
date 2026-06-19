@@ -1,5 +1,6 @@
 import { createContext } from "@lit/context";
 
+import { cacheConversationMessages } from "../utils/conversation-cache.js";
 import { client } from "../utils/rpc-client.js";
 
 /**
@@ -45,7 +46,11 @@ function createMessagesStore() {
                 param: { id: convId },
             });
             const result = await res.json();
-            return /** @type {import("../../shared/types.js").Message[]} */ (result.data);
+            const data = /** @type {import("../../shared/types.js").Message[]} */ (result.data);
+            // Page-side cache write so the conversation is available offline
+            // even before the service worker controls the page.
+            void cacheConversationMessages(convId, data);
+            return data;
         },
 
         /**

@@ -1,6 +1,7 @@
 /** @typedef {import("../../shared/types.js").Mode} Mode */
 
 import "./mode-toggle.js";
+import "./offline-indicator.js";
 import { ContextConsumer } from "@lit/context";
 import { css } from "lit-element";
 import { html, nothing } from "lit-html";
@@ -9,6 +10,7 @@ import { customElement } from "lit/decorators.js";
 import { uiContext } from "../stores/ui-store.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
+import { showToast } from "../utils/toast.js";
 import { BaseElement } from "./base-element.js";
 
 /**
@@ -110,11 +112,13 @@ class ChatHeader extends BaseElement {
 
     constructor() {
         super();
+        /** @type {import("../stores/ui-store.js").UIState} */
         this._uiState = {
             sidebarExpanded: true,
             settingsOpen: false,
             archiveOpen: false,
             breakpoint: "desktop",
+            online: true,
         };
     }
 
@@ -130,6 +134,7 @@ class ChatHeader extends BaseElement {
     }
 
     render() {
+        const offline = this._uiState.online === false;
         return html`
             <header class="header">
                 <div class="title-section">
@@ -160,11 +165,15 @@ class ChatHeader extends BaseElement {
                         : nothing}
                 </div>
                 <div style="display:flex;align-items:center;gap:0.25rem;">
+                    <offline-indicator></offline-indicator>
                     ${this._uiState.breakpoint === "phone"
                         ? html`<button
                               class="new-chat-icon-btn"
                               @click=${this.handleNewChat}
                               aria-label="New chat"
+                              aria-disabled=${offline ? "true" : "false"}
+                              tabindex=${offline ? "-1" : "0"}
+                              title=${offline ? "Unavailable offline" : ""}
                           >
                               <svg
                                   class="new-chat-icon"
@@ -198,6 +207,10 @@ class ChatHeader extends BaseElement {
     }
 
     handleNewChat() {
+        if (this._uiState.online === false) {
+            showToast("warning", "You're offline — new chats are unavailable.", 3000);
+            return;
+        }
         this.dispatchEvent(
             new CustomEvent("new-chat", {
                 bubbles: true,

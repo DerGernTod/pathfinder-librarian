@@ -13,6 +13,7 @@ import { uiContext } from "../stores/ui-store.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
 import { client } from "../utils/rpc-client.js";
+import { showToast } from "../utils/toast.js";
 import { BaseElement } from "./base-element.js";
 
 /**
@@ -265,6 +266,7 @@ class LandingView extends BaseElement {
             settingsOpen: false,
             archiveOpen: false,
             breakpoint: "desktop",
+            online: true,
         };
     }
 
@@ -288,6 +290,8 @@ class LandingView extends BaseElement {
     }
 
     render() {
+        const offline = this._uiState.online === false;
+        const sendDisabled = offline || this.submitting;
         return html`
             <header class="landing-header">
                 <div class="header-left">
@@ -319,6 +323,9 @@ class LandingView extends BaseElement {
                               class="new-chat-icon-btn"
                               @click=${this.handleNewChat}
                               aria-label="New chat"
+                              aria-disabled=${offline ? "true" : "false"}
+                              tabindex=${offline ? "-1" : "0"}
+                              title=${offline ? "Unavailable offline" : ""}
                           >
                               <svg
                                   class="new-chat-icon"
@@ -380,7 +387,8 @@ class LandingView extends BaseElement {
                         aria-label="Send prompt"
                         class="landing-send-btn"
                         data-test="landing-send"
-                        ?disabled=${this.submitting}
+                        ?disabled=${sendDisabled}
+                        title=${offline ? "Unavailable offline" : ""}
                         @click=${this._handleSubmit}
                         part="send"
                     >
@@ -419,11 +427,18 @@ class LandingView extends BaseElement {
     _handleKeydown(e) {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
+            if (this._uiState.online === false) {
+                // Offline: preventDefault only — no shake, no submit.
+                return;
+            }
             this._handleSubmit();
         }
     }
 
     _handleSubmit() {
+        if (this._uiState.online === false) {
+            return;
+        }
         if (this.submitting) {
             return;
         }
@@ -477,6 +492,10 @@ class LandingView extends BaseElement {
     }
 
     handleNewChat() {
+        if (this._uiState.online === false) {
+            showToast("warning", "You're offline — new chats are unavailable.", 3000);
+            return;
+        }
         this.dispatchEvent(
             new CustomEvent("new-chat", {
                 bubbles: true,

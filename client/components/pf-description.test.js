@@ -1,3 +1,4 @@
+import "./pf-description.js";
 import { describe, expect, it } from "bun:test";
 
 /**

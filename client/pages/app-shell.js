@@ -1,5 +1,8 @@
+// Shoelace side-effect import for sl-alert — REQUIRED before rendering
+// `<sl-alert>` (reviewer point #3: inline-URL pattern per AGENTS.md).
+import "https://esm.sh/@shoelace-style/shoelace@2.20.1/dist/components/alert/alert.js?deps=lit@3.3.2";
 import { css } from "lit-element";
-import { html, nothing } from "lit-html";
+import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
 import { BaseElement } from "../components/base-element.js";
@@ -57,6 +60,7 @@ class AppShell extends BaseElement {
     static properties = {
         user: { type: Object },
         loading: { type: Boolean },
+        _toastCount: { type: Number, state: true },
     };
 
     constructor() {
@@ -65,6 +69,77 @@ class AppShell extends BaseElement {
         this.user = null;
         /** @type {boolean} */
         this.loading = true;
+        /** @type {number} */
+        this._toastCount = 0;
+        // online/offline transition toasts — descope candidate but implemented
+        // per PLAN.md §"Transition toasts". Bound in connectedCallback.
+        /** @type {(() => void) | null} */
+        this._toastOnlineHandler = null;
+        /** @type {(() => void) | null} */
+        this._toastOfflineHandler = null;
+        /** @type {((e: Event) => void) | null} */
+        this._appToastHandler = null;
+    }
+
+    connectedCallback() {
+        super.connectedCallback();
+        this._toastOfflineHandler = () =>
+            this._notify("warning", "You're offline. Some actions are disabled.", 4000);
+        this._toastOnlineHandler = () => this._notify("success", "Back online.", 3000);
+        this._appToastHandler = (/** @type {Event} */ e) => {
+            const detail = /** @type {{ variant: string, message: string, duration: number }} */ (
+                /** @type {CustomEvent} */ (e).detail
+            );
+            this._notify(
+                /** @type {"success" | "warning" | "danger" | "primary" | "neutral"} */ (
+                    detail.variant
+                ),
+                detail.message,
+                detail.duration,
+            );
+        };
+        window.addEventListener("offline", this._toastOfflineHandler);
+        window.addEventListener("online", this._toastOnlineHandler);
+        window.addEventListener("app-toast", this._appToastHandler);
+    }
+
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        if (this._toastOfflineHandler) {
+            window.removeEventListener("offline", this._toastOfflineHandler);
+        }
+        if (this._toastOnlineHandler) {
+            window.removeEventListener("online", this._toastOnlineHandler);
+        }
+        if (this._appToastHandler) {
+            window.removeEventListener("app-toast", this._appToastHandler);
+        }
+    }
+
+    /**
+     * @param {"success" | "warning" | "danger" | "primary" | "neutral"} variant
+     * @param {string} message
+     * @param {number} duration
+     */
+    _notify(variant, message, duration) {
+        const host = /** @type {HTMLElement | null} */ (
+            this.shadowRoot?.querySelector("#toast-outlet")
+        );
+        if (!host) {
+            return;
+        }
+        const alert = /** @type {HTMLElement & { toast?: (host: HTMLElement) => unknown }} */ (
+            document.createElement("sl-alert")
+        );
+        alert.setAttribute("variant", variant);
+        alert.setAttribute("duration", String(duration));
+        alert.setAttribute("closable", "true");
+        alert.innerHTML = message;
+        host.appendChild(alert);
+        if (typeof alert.toast === "function") {
+            alert.toast(host);
+        }
+        this._toastCount++;
     }
 
     async firstUpdated() {
@@ -84,7 +159,7 @@ class AppShell extends BaseElement {
 
     render() {
         if (this.loading) {
-            return nothing;
+            return html`<div id="toast-outlet"></div>`;
         }
 
         if (this.user) {
@@ -93,10 +168,14 @@ class AppShell extends BaseElement {
                     .user=${this.user}
                     @user-logged-out=${() => this.handleLogout()}
                 ></main-page>
+                <div id="toast-outlet"></div>
             `;
         }
 
-        return html` <login-page @login-success=${this.handleLoginSuccess}></login-page> `;
+        return html`
+            <login-page @login-success=${this.handleLoginSuccess}></login-page>
+            <div id="toast-outlet"></div>
+        `;
     }
 
     /** @param {CustomEvent<{ user: AuthUser }>} e */

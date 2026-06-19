@@ -6,8 +6,10 @@ import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
 import { conversationContext } from "../stores/conversation-store.js";
+import { uiContext } from "../stores/ui-store.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
+import { getCachedConversationIds } from "../utils/conversation-cache.js";
 import { BaseElement } from "./base-element.js";
 
 /** @typedef {import("../../shared/types.js").Conversation} Conversation */
@@ -58,18 +60,31 @@ class SessionList extends BaseElement {
 
     static properties = {
         query: { type: String },
+        _cachedIds: { type: Object, state: true },
+        _convState: { type: Object, state: true },
+        _uiState: { type: Object, state: true },
     };
 
     constructor() {
         super();
         /** @type {string} */
         this.query = "";
+        /** @type {Set<string>} */
+        this._cachedIds = new Set();
         /** @type {import("../stores/conversation-store.js").ConversationState} */
         this._convState = {
             conversations: [],
             activeConversationId: "",
             loading: true,
             loadingConversationId: "",
+        };
+        /** @type {import("../stores/ui-store.js").UIState} */
+        this._uiState = {
+            sidebarExpanded: true,
+            settingsOpen: false,
+            archiveOpen: false,
+            breakpoint: "desktop",
+            online: true,
         };
     }
 
@@ -86,12 +101,45 @@ class SessionList extends BaseElement {
                 },
             subscribe: true,
         });
+        new ContextConsumer(this, {
+            context: uiContext,
+            callback: /** @param {import("../stores/ui-store.js").UIState} v */ (v) => {
+                this._uiState = v;
+            },
+            subscribe: true,
+        });
         this.addEventListener("conversations-updated", () => {
             this.requestUpdate();
         });
     }
 
+    /**
+     * Async cache lookup MUST NOT happen in render() (Lit render is sync).
+     * Trigger the lookup here and store on a reactive property; render reads
+     * the property synchronously.
+     * @param {Map<string, unknown>} changedProperties
+     */
+    willUpdate(changedProperties) {
+        if (!changedProperties.has("_convState") && !changedProperties.has("_uiState")) {
+            return;
+        }
+        const online = this._uiState.online !== false;
+        const ids = this._convState.conversations.map((c) => c.id);
+        if (online) {
+            // Online → everything enabled (avoid Cache API entirely).
+            this._cachedIds = new Set(ids);
+            return;
+        }
+        // Fire-and-forget; the assignment triggers a second render with the
+        // correct disabled set when the lookup resolves.
+        void getCachedConversationIds(ids).then((set) => {
+            this._cachedIds = set;
+        });
+    }
+
     render() {
+        const offline = this._uiState.online === false;
+        const activeId = this._convState.activeConversationId;
         const filtered = this.query
             ? this._convState.conversations.filter((c) =>
                   c.title.toLowerCase().includes(this.query.toLowerCase()),
@@ -114,6 +162,9 @@ class SessionList extends BaseElement {
                         <conversation-item
                             .conversation=${conv}
                             .loading=${this._convState.loadingConversationId === conv.id}
+                            .disabled=${offline &&
+                            !this._cachedIds.has(conv.id) &&
+                            conv.id !== activeId}
                             @select=${this.handleSelect}
                             data-test="session-item"
                         ></conversation-item>

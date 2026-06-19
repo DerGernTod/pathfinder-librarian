@@ -7,8 +7,10 @@ import { html } from "lit-html";
 import { customElement } from "lit/decorators.js";
 
 import { conversationContext } from "../stores/conversation-store.js";
+import { uiContext } from "../stores/ui-store.js";
 import { baseStyles } from "../styles/base-styles.js";
 import { tokens } from "../styles/tokens.js";
+import { getCachedConversationIds } from "../utils/conversation-cache.js";
 import { BaseElement } from "./base-element.js";
 
 /**
@@ -65,10 +67,26 @@ class ConversationMenu extends BaseElement {
         `,
     ];
 
+    static properties = {
+        _cachedIds: { type: Object, state: true },
+        _convState: { type: Object, state: true },
+        _uiState: { type: Object, state: true },
+    };
+
     constructor() {
         super();
+        /** @type {Set<string>} */
+        this._cachedIds = new Set();
         /** @type {import("../stores/conversation-store.js").ConversationState} */
         this._convState = { conversations: [], activeConversationId: "", loading: true };
+        /** @type {import("../stores/ui-store.js").UIState} */
+        this._uiState = {
+            sidebarExpanded: true,
+            settingsOpen: false,
+            archiveOpen: false,
+            breakpoint: "desktop",
+            online: true,
+        };
     }
 
     connectedCallback() {
@@ -83,9 +101,38 @@ class ConversationMenu extends BaseElement {
                 },
             subscribe: true,
         });
+        new ContextConsumer(this, {
+            context: uiContext,
+            callback: /** @param {import("../stores/ui-store.js").UIState} v */ (v) => {
+                this._uiState = v;
+            },
+            subscribe: true,
+        });
+    }
+
+    /**
+     * Async cache lookup MUST NOT happen in render() (Lit render is sync).
+     * Compute the cached-id Set here, store on a reactive property, read in render.
+     * @param {Map<string, unknown>} changedProperties
+     */
+    willUpdate(changedProperties) {
+        if (!changedProperties.has("_convState") && !changedProperties.has("_uiState")) {
+            return;
+        }
+        const online = this._uiState.online !== false;
+        const ids = this._convState.conversations.map((c) => c.id);
+        if (online) {
+            this._cachedIds = new Set(ids);
+            return;
+        }
+        void getCachedConversationIds(ids).then((set) => {
+            this._cachedIds = set;
+        });
     }
 
     render() {
+        const offline = this._uiState.online === false;
+        const activeId = this._convState.activeConversationId;
         return html`
             <sl-dropdown placement="right-start">
                 <button class="menu-trigger" slot="trigger" aria-label="Recent conversations">
@@ -110,9 +157,10 @@ class ConversationMenu extends BaseElement {
                             (conv) => html`
                                 <sl-menu-item
                                     value=${conv.id}
-                                    class=${conv.id === this._convState.activeConversationId
-                                        ? "active"
-                                        : ""}
+                                    class=${conv.id === activeId ? "active" : ""}
+                                    ?disabled=${offline &&
+                                    !this._cachedIds.has(conv.id) &&
+                                    conv.id !== activeId}
                                     @click=${() => this.handleSelect(conv.id)}
                                 >
                                     ${conv.title}

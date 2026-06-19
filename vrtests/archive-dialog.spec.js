@@ -41,7 +41,11 @@ test.describe("archive dialog visual regression", () => {
         await expect(dialog).toBeVisible();
 
         const panel = dialog.locator('[part="body"]');
-        await expect(panel).toHaveScreenshot("archive-dialog-open-desktop.png");
+        // Mask the date string so the snapshot is stable across days.
+        const dateMask = panel.locator(".archived-date");
+        await expect(panel).toHaveScreenshot("archive-dialog-open-desktop.png", {
+            mask: [dateMask],
+        });
     });
 
     test("archive dialog open with items — tablet", async ({ page }) => {
@@ -56,7 +60,10 @@ test.describe("archive dialog visual regression", () => {
         await expect(dialog).toBeVisible();
 
         const panel = dialog.locator('[part="body"]');
-        await expect(panel).toHaveScreenshot("archive-dialog-open-tablet.png");
+        const dateMask = panel.locator(".archived-date");
+        await expect(panel).toHaveScreenshot("archive-dialog-open-tablet.png", {
+            mask: [dateMask],
+        });
     });
 
     test("archive dialog open with items — phone", async ({ page }) => {
@@ -74,7 +81,10 @@ test.describe("archive dialog visual regression", () => {
         await expect(dialog).toBeVisible();
 
         const panel = dialog.locator('[part="body"]');
-        await expect(panel).toHaveScreenshot("archive-dialog-open-phone.png");
+        const dateMask = panel.locator(".archived-date");
+        await expect(panel).toHaveScreenshot("archive-dialog-open-phone.png", {
+            mask: [dateMask],
+        });
     });
 
     test("archive dialog empty state — desktop", async ({ page }) => {
