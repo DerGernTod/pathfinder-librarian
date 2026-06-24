@@ -23,6 +23,39 @@ const SCROLL_PAGE_SIZE = 64;
 const PAYLOAD_INDEX_FIELDS = ["rule_item_id", "rule_item_type", "compendium_source"];
 
 /**
+ * Construct a QdrantClient that does NOT attach an undici `dispatcher` to its
+ * fetch calls. Bun masquerades as Node by setting `process.versions.node`, so
+ * @qdrant/js-client-rest takes its Node branch and pulls an `undici` Agent into
+ * every request's `init.dispatcher`. Bun's fetch ignores `dispatcher`, but the
+ * resulting `Response` shape ends up with an undefined `.headers` accessor
+ * against real Qdrant (the wire format from `actix-web` plus the agent triggers
+ * a bug surface that does not reproduce against `Bun.serve`), which makes every
+ * request throw `undefined is not an object (evaluating 'response.headers.get')`.
+ * The constructor reads `process.versions.node` synchronously and stores the
+ * resulting `init`, so we only need to hide it for the construction window.
+ * @param {string} url
+ * @returns {QdrantClient}
+ */
+function makeQdrantClient(url) {
+    const isBun = typeof Bun !== "undefined";
+    const versions = isBun ? process.versions : undefined;
+    const saved = versions?.node;
+    if (saved !== undefined && versions) {
+        // Hide Bun's masquerade-as-Node flag for the construction window so the
+        // qdrant client's dispatcher detection takes the browser/no-dispatcher branch.
+        // `delete` triggers TS2790 on the typed `string` field; Reflect works around it.
+        Reflect.deleteProperty(versions, "node");
+    }
+    try {
+        return new QdrantClient({ url });
+    } finally {
+        if (saved !== undefined && versions) {
+            versions.node = saved;
+        }
+    }
+}
+
+/**
  * Build the Qdrant collection config for the given vector size.
  * @param {number} size
  * @returns {Record<string, unknown>}
@@ -68,7 +101,7 @@ export function createVectorStore(options = {}) {
     let initPromise = null;
 
     if (qdrantUrl !== null && !disabled) {
-        client = options.client ?? new QdrantClient({ url: qdrantUrl });
+        client = options.client ?? makeQdrantClient(qdrantUrl);
     } else {
         available = false;
     }
