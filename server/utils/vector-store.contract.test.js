@@ -19,6 +19,20 @@ describe.skipIf(!QDRANT_URL)("vector-store contract (live Qdrant)", () => {
     let store;
 
     beforeAll(async () => {
+        // Other test files mock `globalThis.fetch` directly. bun:test's
+        // `mock.restore()` does NOT revert manual `globalThis.fetch` assignments,
+        // so the mock leaks across files in the same process and the qdrant client
+        // would see a plain object instead of a real Response (whose `.headers`
+        // accessor is undefined) — every request would throw
+        // "undefined is not an object (evaluating 'response.headers.get')".
+        // `Bun.fetch` is the un-mockable original; restore it before constructing
+        // the store so the qdrant client captures a real fetch.
+        const realFetch = /** @type {{ fetch?: typeof fetch } | undefined} */ (
+            /** @type {unknown} */ (globalThis.Bun)
+        )?.fetch;
+        if (realFetch) {
+            globalThis.fetch = realFetch;
+        }
         store = createVectorStore({
             url: QDRANT_URL,
             collection: QDRANT_COLLECTION,
