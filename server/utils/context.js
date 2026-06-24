@@ -30,8 +30,10 @@ export function getSessionId(c) {
 
 /**
  * @param {import("hono").Context} c
- * @returns {import("bun:sqlite").Database | null}
+ * @returns {import("../utils/vector-store.js").VectorStore | null}
  */
-export function getVectorDb(c) {
-    return /** @type {import("bun:sqlite").Database | null} */ (c.get("vectorDb"));
+export function getVectorStore(c) {
+    return /** @type {import("../utils/vector-store.js").VectorStore | null} */ (
+        c.get("vectorStore")
+    );
 }

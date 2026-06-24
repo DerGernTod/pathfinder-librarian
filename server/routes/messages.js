@@ -5,7 +5,7 @@ import { stream } from "hono/streaming";
 import { createMessageSchema } from "../../shared/schemas.js";
 import * as queries from "../db/queries.js";
 import { compactConversation } from "../utils/compaction.js";
-import { getDb, getUserId, getVectorDb } from "../utils/context.js";
+import { getDb, getUserId, getVectorStore } from "../utils/context.js";
 import { formatConversationForLlm, shouldCompact } from "../utils/conversation-history.js";
 import { redactCreatureDataForPlayer } from "../utils/data-redaction.js";
 import { resolveLocalizeRefs, resolveUuidRefs, loadLocalizations } from "../utils/foundry-refs.js";
@@ -338,7 +338,7 @@ async function getLlmResponseWithRetry(
  * @typedef {{ content: string, mode: "player" | "gm" }} MessageData
  * @typedef {{
  *   db: import("bun:sqlite").Database,
- *   vectorDb: import("bun:sqlite").Database | null,
+ *   vectorStore: import("../utils/vector-store.js").VectorStore | null,
  *   userMsg: object,
  *   actualConvId: string,
  *   newConv: import("../../shared/types.js").Conversation | null,
@@ -352,7 +352,7 @@ async function getLlmResponseWithRetry(
  * @param {StreamContext} ctx
  */
 async function runResponseStream(honoStream, ctx) {
-    const { db, vectorDb, userMsg, actualConvId, newConv, data, userId } = ctx;
+    const { db, vectorStore, userMsg, actualConvId, newConv, data, userId } = ctx;
     const encoder = new TextEncoder();
 
     const sendEvent = (/** @type {object | string} */ obj) => {
@@ -376,7 +376,7 @@ async function runResponseStream(honoStream, ctx) {
         // Long running async operation
         const ragContext = await queryRagContext(data.content, {
             db,
-            vectorDb,
+            vectorStore,
             topN: 5,
             threshold: 0.3,
             mode: data.mode,
@@ -528,10 +528,10 @@ export const messagesRouter = new Hono()
             blocksJson: null,
         });
 
-        const vectorDb = getVectorDb(c);
+        const vectorStore = getVectorStore(c);
         const streamCtx = {
             db,
-            vectorDb,
+            vectorStore,
             userMsg,
             actualConvId,
             newConv,

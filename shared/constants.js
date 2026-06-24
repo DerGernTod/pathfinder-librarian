@@ -8,7 +8,15 @@ export const RAG_CONFIG = {
     LLM_MODEL: "gemini-2.5-flash",
     TOP_N: 5,
     SIMILARITY_THRESHOLD: 0.3,
-    VECTOR_DB_PATH: "data/vectors.sqlite",
+};
+
+/** Qdrant sidecar configuration. Consumed by server/utils/vector-store.js. */
+export const QDRANT_CONFIG = {
+    COLLECTION: "rule_chunks",
+    URL: "http://localhost:6333",
+    VECTOR_SIZE: 3072,
+    SEARCH_OVERFETCH_FACTOR: 5,
+    SEARCH_MIN_LIMIT: 25,
 };
 
 /** Gemini API configuration */

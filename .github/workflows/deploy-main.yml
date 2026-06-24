@@ -35,22 +35,31 @@ jobs:
               run: |
                   docker context create remote --docker "host=ssh://${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}"
 
-                  # 1. Pull the fresh image
+                  # Guard: ensure the compose plugin is present on the remote host.
+                  docker --context remote compose version
+
+                  # Pull fresh app image
                   docker --context remote pull ghcr.io/${{ env.REPO_LOWER }}:latest
 
-                  # 2. Stop and remove the old container
-                  docker --context remote rm -f project-pathfinderlibrarian || true
+                  # One-time migration ONLY: if a legacy standalone container named
+                  # project-pathfinderlibrarian exists AND is not compose-managed
+                  # (compose stamps containers with com.docker.compose.project), remove
+                  # it so compose can claim the name. Once compose owns the container
+                  # the label is present and this branch is skipped on every later
+                  # deploy (zero downtime; compose handles its own rolling replace).
+                  if ! docker --context remote inspect project-pathfinderlibrarian \
+                        --format '{{ index .Config.Labels "com.docker.compose.project" }}' 2>/dev/null \
+                        | grep -q .; then
+                      docker --context remote rm -f project-pathfinderlibrarian || true
+                  fi
 
-                  # 3. Run the container (Docker will now use the newly pulled layer)
-                  docker --context remote run -d \
-                    --name project-pathfinderlibrarian \
-                    --network opencode-server_backend \
-                    -e WEBAUTHN_ORIGIN="https://pathfinderlibrarian.projects.raudner.dev" \
-                    -e WEBAUTHN_RP_ID="pathfinderlibrarian.projects.raudner.dev" \
-                    -e GOOGLE_AI_API_KEY="${{ secrets.GOOGLE_AI_API_KEY }}" \
-                    --restart unless-stopped \
-                    -v pathfinder_db:/app/data \
-                    ghcr.io/${{ env.REPO_LOWER }}:latest
+                  # Deploy via compose + prod override. The prod override mounts the
+                  # external pathfinder_db volume (existing live data) and joins ingress.
+                  APP_IMAGE=ghcr.io/${{ env.REPO_LOWER }}:latest \
+                  CONTAINER_NAME=project-pathfinderlibrarian \
+                  GOOGLE_AI_API_KEY="${{ secrets.GOOGLE_AI_API_KEY }}" \
+                  WEBAUTHN_ORIGIN="https://pathfinderlibrarian.projects.raudner.dev" \
+                  WEBAUTHN_RP_ID="pathfinderlibrarian.projects.raudner.dev" \
+                  docker --context remote compose -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
 
-                  # 4. Clean up old untagged images to save disk space on your home server
                   docker --context remote image prune -f

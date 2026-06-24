@@ -1,172 +1,290 @@
-import { Database } from "bun:sqlite";
-import { existsSync } from "fs";
+import { QdrantClient } from "@qdrant/js-client-rest";
 
-import { unpackEmbedding } from "../../scripts/create-vector-db.js";
+import { uuidV5FromName } from "../../scripts/lib/vector-math.js";
+import { QDRANT_CONFIG } from "../../shared/constants.js";
+import { qdrantSearchHitSchema, vectorChunkPayloadSchema } from "../../shared/vector-schemas.js";
 
-/** @type {Database | null | undefined} */
-let cachedVectorDb = undefined;
+/** @typedef {import("../../shared/vector-schemas.js").QdrantSearchHit} QdrantSearchHit */
+/**
+ * @typedef {{ id: string, ruleItemId: string, ruleItemName: string, ruleItemType: string, compendiumSource: string | null, text: string }} VectorChunkLite
+ */
+/**
+ * @typedef {{ chunk: VectorChunkLite, score: number }} VectorChunkWithScore
+ */
+/**
+ * @typedef {{ id: string, ruleItemId: string, ruleItemName: string, ruleItemType: string, compendiumSource: string | null, chunkIndex: number, text: string, embedding: number[] }} VectorChunkForUpsert
+ */
+/**
+ * @typedef {{ url?: string, collection?: string, client?: QdrantClient }} CreateVectorStoreOptions
+ */
+
+const DEFAULT_COLLECTION = QDRANT_CONFIG.COLLECTION;
+const SCROLL_PAGE_SIZE = 64;
+const PAYLOAD_INDEX_FIELDS = ["rule_item_id", "rule_item_type", "compendium_source"];
 
 /**
- * Opens the vector database. Returns null gracefully if file doesn't exist.
- * Caches singleton to avoid repeated file-exists checks.
- * @param {string} [dbPath] - Path to the vector DB file. Defaults to env VECTOR_DB_PATH or "data/vectors.sqlite".
- * @returns {Database | null}
+ * Build the Qdrant collection config for the given vector size.
+ * @param {number} size
+ * @returns {Record<string, unknown>}
  */
-export function openVectorDb(dbPath) {
-    if (cachedVectorDb !== undefined) {
-        return cachedVectorDb;
-    }
-
-    const path = dbPath || process.env.VECTOR_DB_PATH || "data/vectors.sqlite";
-
-    // Allow :memory: for testing
-    if (path === ":memory:") {
-        const vdb = new Database(path);
-        vdb.exec("PRAGMA journal_mode=WAL");
-        vdb.exec(CREATE_VECTOR_TABLE_SQL);
-        cachedVectorDb = vdb;
-        return vdb;
-    }
-
-    if (!existsSync(path)) {
-        cachedVectorDb = null;
-        return null;
-    }
-
-    const vdb = new Database(path);
-    vdb.exec("PRAGMA journal_mode=WAL");
-    cachedVectorDb = vdb;
-    return vdb;
+function collectionConfig(size) {
+    return {
+        vectors: { size, distance: "Cosine" },
+        hnsw_config: { m: 16, ef_construct: 100 },
+        on_disk_payload: true,
+        optimizers_config: { default_segment_number: 2 },
+        quantization_config: { scalar: { type: "int8", quantile: 0.99, always_ram: true } },
+    };
 }
 
 /**
- * Resets the cached vector DB singleton. Useful for testing.
- */
-export function resetVectorDbCache() {
-    cachedVectorDb = undefined;
-}
-
-/** SQL to create the vector_chunks table. */
-const CREATE_VECTOR_TABLE_SQL = `
-CREATE TABLE IF NOT EXISTS vector_chunks (
-    id TEXT PRIMARY KEY,
-    rule_item_id TEXT NOT NULL,
-    rule_item_name TEXT NOT NULL,
-    rule_item_type TEXT NOT NULL,
-    compendium_source TEXT,
-    chunk_index INTEGER NOT NULL,
-    text TEXT NOT NULL,
-    embedding BLOB,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-CREATE INDEX IF NOT EXISTS idx_vector_chunks_rule_item ON vector_chunks(rule_item_id);
-CREATE INDEX IF NOT EXISTS idx_vector_chunks_type ON vector_chunks(rule_item_type);
-`;
-
-/**
- * @typedef {{ id: string, ruleItemId: string, ruleItemName: string, ruleItemType: string, compendiumSource: string | null, text: string, embedding: number[] }} ChunkWithEmbedding
+ * @typedef {{
+ *   readonly collectionName: string,
+ *   readonly client: QdrantClient | null,
+ *   isAvailable(): boolean,
+ *   ensureCollection(vectorSize?: number): Promise<boolean>,
+ *   search(queryEmbedding: number[], opts?: { topN?: number, threshold?: number, filter?: unknown }): Promise<VectorChunkWithScore[]>,
+ *   getChunksByRuleItemId(ruleItemId: string): Promise<Array<{ id: string, text: string, chunkIndex: number }>>,
+ *   upsertChunks(chunks: VectorChunkForUpsert[]): Promise<{ upserted: number }>,
+ * }} VectorStore
  */
 
 /**
- * Gets all chunk embeddings from the vector DB, unpacking BLOBs.
- * Filters out rows with null embeddings.
- * @param {Database} vdb
- * @returns {ChunkWithEmbedding[]}
+ * Factory. Construction is synchronous and performs NO I/O.
+ * @param {CreateVectorStoreOptions} [options]
+ * @returns {VectorStore}
  */
-export function getAllChunkEmbeddings(vdb) {
-    const rows = vdb
-        .query(
-            "SELECT id, rule_item_id, rule_item_name, rule_item_type, compendium_source, text, embedding FROM vector_chunks",
-        )
-        .all();
+export function createVectorStore(options = {}) {
+    const collectionName =
+        options.collection ?? process.env.QDRANT_COLLECTION ?? DEFAULT_COLLECTION;
+    const qdrantUrl = options.url ?? process.env.QDRANT_URL ?? null;
+    const disabled = process.env.QDRANT_DISABLED === "1";
 
-    /** @type {ChunkWithEmbedding[]} */
-    const result = [];
-    for (const row of rows) {
-        if (!row.embedding) {
-            continue;
+    /** @type {QdrantClient | null} */
+    let client = null;
+    /** @type {boolean | null} */
+    let available = null;
+    /** @type {Promise<boolean> | null} */
+    let initPromise = null;
+
+    if (qdrantUrl !== null && !disabled) {
+        client = options.client ?? new QdrantClient({ url: qdrantUrl });
+    } else {
+        available = false;
+    }
+
+    const isAvailable = () => available === true;
+
+    /**
+     * @param {number} [vectorSize]
+     * @returns {Promise<boolean>}
+     */
+    const ensureCollection = (vectorSize) => {
+        if (initPromise) {
+            return initPromise;
         }
-        /** @type {ChunkWithEmbedding} */
-        const chunk = {
-            id: String(row.id),
-            ruleItemId: String(row.rule_item_id),
-            ruleItemName: String(row.rule_item_name),
-            ruleItemType: String(row.rule_item_type),
-            compendiumSource: row.compendium_source ? String(row.compendium_source) : null,
-            text: String(row.text),
-            embedding: unpackEmbedding(/** @type {Buffer} */ (row.embedding)),
+        initPromise = (async () => {
+            if (!client) {
+                available = false;
+                return false;
+            }
+            try {
+                const resp = await client.collectionExists(collectionName);
+                const exists = Boolean(resp && resp.exists);
+
+                if (exists) {
+                    available = true;
+                    return true;
+                }
+
+                const size =
+                    vectorSize ??
+                    (process.env.QDRANT_VECTOR_SIZE
+                        ? Number(process.env.QDRANT_VECTOR_SIZE)
+                        : undefined);
+
+                if (size === undefined) {
+                    // oxlint-disable-next-line no-console -- boot diagnostic
+                    console.warn(
+                        `Qdrant collection ${collectionName} missing; run bun run hydrate:qdrant`,
+                    );
+                    available = false;
+                    return false;
+                }
+
+                await client.createCollection(collectionName, collectionConfig(size));
+                for (const field of PAYLOAD_INDEX_FIELDS) {
+                    await client.createPayloadIndex(collectionName, {
+                        field_name: field,
+                        field_schema: "keyword",
+                        wait: true,
+                    });
+                }
+                available = true;
+                return true;
+            } catch (/** @type {unknown} */ error) {
+                const msg = error instanceof Error ? error.message : String(error);
+                // oxlint-disable-next-line no-console -- init failure diagnostic
+                console.warn("Qdrant init failed:", msg);
+                available = false;
+                return false;
+            }
+        })();
+        return initPromise;
+    };
+
+    /**
+     * @param {QdrantSearchHit} hit
+     * @returns {VectorChunkWithScore | null}
+     */
+    const mapHit = (hit) => {
+        if (!hit.payload) {
+            return null;
+        }
+        const parsed = qdrantSearchHitSchema.safeParse(hit);
+        if (!parsed.success || !parsed.data.payload) {
+            return null;
+        }
+        const p = parsed.data.payload;
+        return {
+            chunk: {
+                id: p.chunk_id,
+                ruleItemId: p.rule_item_id,
+                ruleItemName: p.rule_item_name,
+                ruleItemType: p.rule_item_type,
+                compendiumSource: p.compendium_source,
+                text: p.text,
+            },
+            score: parsed.data.score,
         };
-        result.push(chunk);
-    }
-    return result;
-}
+    };
 
-/**
- * Computes cosine similarity between two vectors.
- * Returns 0 for zero-length vectors.
- * @param {number[]} vecA
- * @param {number[]} vecB
- * @returns {number}
- */
-export function cosineSimilarity(vecA, vecB) {
-    const len = Math.min(vecA.length, vecB.length);
-    let dotProduct = 0;
-    let normA = 0;
-    let normB = 0;
-
-    for (let i = 0; i < len; i++) {
-        dotProduct += vecA[i] * vecB[i];
-        normA += vecA[i] * vecA[i];
-        normB += vecB[i] * vecB[i];
-    }
-
-    if (normA === 0 || normB === 0) {
-        return 0;
-    }
-
-    return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
-}
-
-/**
- * Searches the vector DB for chunks similar to the query embedding.
- * @param {Database} vdb
- * @param {number[]} queryEmbedding
- * @param {number} topN - Maximum number of results to return.
- * @param {number} threshold - Minimum cosine similarity score.
- * @returns {Array<{ chunk: ChunkWithEmbedding, score: number }>}
- */
-export function searchVectorDb(vdb, queryEmbedding, topN, threshold) {
-    const allChunks = getAllChunkEmbeddings(vdb);
-
-    /** @type {Array<{ chunk: ChunkWithEmbedding, score: number }>} */
-    const scored = [];
-    for (const chunk of allChunks) {
-        const score = cosineSimilarity(queryEmbedding, chunk.embedding);
-        if (score >= threshold) {
-            scored.push({ chunk, score });
+    /**
+     * @param {number[]} queryEmbedding
+     * @param {{ topN?: number, threshold?: number, filter?: unknown }} [opts]
+     * @returns {Promise<VectorChunkWithScore[]>}
+     */
+    const search = async (queryEmbedding, opts = {}) => {
+        const topN = opts.topN ?? 5;
+        const threshold = opts.threshold ?? 0.0;
+        await ensureCollection();
+        if (!isAvailable() || !client) {
+            return [];
         }
-    }
+        try {
+            const hits = await client.search(collectionName, {
+                vector: queryEmbedding,
+                limit: topN,
+                score_threshold: threshold,
+                with_payload: true,
+                with_vector: false,
+                ...(opts.filter !== undefined ? { filter: opts.filter } : {}),
+            });
+            /** @type {VectorChunkWithScore[]} */
+            const out = [];
+            for (const hit of /** @type {unknown[]} */ (/** @type {unknown} */ (hits))) {
+                const mapped = mapHit(/** @type {QdrantSearchHit} */ (hit));
+                if (mapped) {
+                    out.push(mapped);
+                }
+            }
+            return out;
+        } catch (/** @type {unknown} */ error) {
+            const msg = error instanceof Error ? error.message : String(error);
+            // oxlint-disable-next-line no-console -- search failure diagnostic
+            console.warn("Qdrant search failed:", msg);
+            return [];
+        }
+    };
 
-    scored.sort((a, b) => b.score - a.score);
-    return scored.slice(0, topN);
-}
+    /**
+     * @param {string} ruleItemId
+     * @returns {Promise<Array<{ id: string, text: string, chunkIndex: number }>>}
+     */
+    const getChunksByRuleItemId = async (ruleItemId) => {
+        await ensureCollection();
+        if (!isAvailable() || !client) {
+            return [];
+        }
+        try {
+            const resp = await client.scroll(collectionName, {
+                filter: { must: [{ key: "rule_item_id", match: { value: ruleItemId } }] },
+                limit: SCROLL_PAGE_SIZE,
+                with_payload: true,
+                with_vector: false,
+            });
+            /** @type {Array<{ id: string, text: string, chunkIndex: number }>} */
+            const out = [];
+            for (const point of /** @type {unknown[]} */ (/** @type {unknown} */ (resp.points))) {
+                const p = point;
+                const payload = vectorChunkPayloadSchema
+                    .nullable()
+                    .safeParse(/** @type {{ payload?: unknown }} */ (p).payload);
+                if (!payload.success || !payload.data) {
+                    continue;
+                }
+                out.push({
+                    id: payload.data.chunk_id,
+                    text: payload.data.text,
+                    chunkIndex: payload.data.chunk_index,
+                });
+            }
+            out.sort((a, b) => a.chunkIndex - b.chunkIndex);
+            return out;
+        } catch (/** @type {unknown} */ error) {
+            const msg = error instanceof Error ? error.message : String(error);
+            // oxlint-disable-next-line no-console -- scroll failure diagnostic
+            console.warn("Qdrant scroll failed:", msg);
+            return [];
+        }
+    };
 
-/**
- * Gets all chunks for a specific rule item ID (for parent enrichment).
- * @param {Database} vdb
- * @param {string} ruleItemId
- * @returns {Array<{ id: string, text: string, chunkIndex: number }>}
- */
-export function getChunksByRuleItemId(vdb, ruleItemId) {
-    const rows = vdb
-        .query(
-            "SELECT id, text, chunk_index FROM vector_chunks WHERE rule_item_id = ? ORDER BY chunk_index",
-        )
-        .all(ruleItemId);
+    /**
+     * @param {VectorChunkForUpsert[]} chunks
+     * @returns {Promise<{ upserted: number }>}
+     */
+    const upsertChunks = async (chunks) => {
+        if (!client) {
+            return { upserted: 0 };
+        }
+        /** @type {Array<{ id: string, vector: number[], payload: Record<string, unknown> }>} */
+        const points = [];
+        for (const chunk of chunks) {
+            const payload = {
+                rule_item_id: chunk.ruleItemId,
+                rule_item_name: chunk.ruleItemName,
+                rule_item_type: chunk.ruleItemType,
+                compendium_source: chunk.compendiumSource ?? null,
+                chunk_index: chunk.chunkIndex,
+                text: chunk.text,
+                chunk_id: chunk.id,
+            };
+            const parsed = vectorChunkPayloadSchema.safeParse(payload);
+            if (!parsed.success) {
+                throw new Error(`Invalid chunk payload: ${parsed.error.message}`);
+            }
+            points.push({
+                id: uuidV5FromName(chunk.id),
+                vector: chunk.embedding,
+                payload: parsed.data,
+            });
+        }
+        if (points.length === 0) {
+            return { upserted: 0 };
+        }
+        await client.upsert(collectionName, { wait: true, points });
+        return { upserted: points.length };
+    };
 
-    return rows.map((row) => ({
-        id: String(row.id),
-        text: String(row.text),
-        chunkIndex: Number(row.chunk_index),
-    }));
+    return {
+        collectionName,
+        get client() {
+            return client;
+        },
+        isAvailable,
+        ensureCollection,
+        search,
+        getChunksByRuleItemId,
+        upsertChunks,
+    };
 }

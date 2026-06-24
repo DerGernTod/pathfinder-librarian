@@ -16,25 +16,30 @@ import { conversationsRouter } from "./routes/conversations.js";
 import { ruleItemsRouter } from "./routes/rule-items.js";
 import { usersRouter } from "./routes/users.js";
 import { setForcedMockIndexForUser } from "./utils/mock-response.js";
-import { openVectorDb } from "./utils/vector-store.js";
+import { createVectorStore } from "./utils/vector-store.js";
 
 /** @typedef {import("../shared/hono-env.js").AppEnv} AppEnv */
 
 // Seed database
 seedIfNeeded(db);
 
-// Initialize vector DB
-const vectorDb = openVectorDb();
-if (vectorDb) {
-    const chunkCount = Number(
-        vectorDb.query("SELECT COUNT(*) as count FROM vector_chunks").get().count,
-    );
-    // oxlint-disable-next-line no-console -- startup diagnostic
-    console.log(`Vector DB loaded: ${chunkCount} chunks available`);
-} else {
-    // oxlint-disable-next-line no-console -- startup diagnostic
-    console.log("Vector DB not found at data/vectors.sqlite — RAG context retrieval disabled");
-}
+// Initialize vector store (lazy; existence-check only — does NOT create a
+// collection at boot). When QDRANT_URL is unset the store is unavailable and
+// RAG silently degrades. The hydrate script owns collection creation.
+const vectorStore = createVectorStore();
+vectorStore
+    .ensureCollection()
+    .then((ok) => {
+        // oxlint-disable-next-line no-console -- startup diagnostic
+        console.log(
+            ok
+                ? `Vector store ready (collection ${vectorStore.collectionName})`
+                : "Vector store unavailable — RAG context retrieval disabled",
+        );
+    })
+    .catch(() => {
+        /* ensureCollection already swallows + logs */
+    });
 
 // --- Read package.json version at module load ---
 const packageJsonPath = fileURLToPath(new URL("../package.json", import.meta.url));
@@ -44,8 +49,8 @@ const packageJson = /** @type {{ version: string }} */ (
 const APP_VERSION = packageJson.version;
 
 const app = new Hono()
-    // Database middleware (sets db and vectorDb in context for all routes)
-    .use("/api/*", databaseMiddleware({ vectorDb }))
+    // Database middleware (sets db and vectorStore in context for all routes)
+    .use("/api/*", databaseMiddleware({ vectorStore }))
     // Auth routes (no session required for most)
     .route("/api/auth", authRouter)
     // Session-protected API routes

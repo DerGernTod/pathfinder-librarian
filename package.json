@@ -26,11 +26,14 @@
         "import:foundry": "bun ./scripts/import-foundry.js --source ./temp/foundry-vtt-pf2e --verbose",
         "import:traits": "bun ./scripts/import-foundry-traits.js --source ./temp/foundry-vtt-pf2e",
         "export:localizations": "bun ./scripts/export-localizations.js",
-        "create:embeddings": "bun ./scripts/create-vector-db.js --model gemini-embedding-001"
+        "create:embeddings": "bun ./scripts/create-vector-db.js --model gemini-embedding-001",
+        "hydrate:qdrant": "bun ./scripts/hydrate-qdrant.js --qdrant-url http://localhost:6333 --vector-db data/vectors.sqlite",
+        "qdrant:up": "docker compose up -d qdrant && docker compose logs -f qdrant"
     },
     "dependencies": {
         "@hono/zod-validator": "0.7.6",
         "@lit/context": "1.1.2",
+        "@qdrant/js-client-rest": "1.12.0",
         "@shoelace-style/shoelace": "2.20.1",
         "@simplewebauthn/browser": "13.3.0",
         "@simplewebauthn/server": "13.3.0",

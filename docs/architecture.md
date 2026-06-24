@@ -66,3 +66,37 @@ client.api.conversations[":id"].messages.$post(
 ```
 
 All RPC methods return raw `Response` objects — call `.json()` for JSON endpoints or access `.body` (ReadableStream) for SSE/streaming endpoints.
+
+## Vector store (Qdrant sidecar)
+
+Vector similarity search for RAG is served by a [Qdrant](https://qdrant.tech/) sidecar (HNSW + int8 scalar quantization), replacing the previous in-process brute-force cosine loop. The app talks only to a thin `VectorStore` wrapper (`server/utils/vector-store.js`); no other module touches the Qdrant wire format.
+
+### Collection schema
+
+- **Collection:** `rule_chunks` (env `QDRANT_COLLECTION`).
+- **Distance:** `Cosine`; HNSW `m: 16`, `ef_construct: 100`.
+- **Quantization:** `scalar: { type: "int8", quantile: 0.99, always_ram: true }`.
+- **Payload indexes:** `rule_item_id`, `rule_item_type`, `compendium_source` (keyword).
+- **Point ids:** deterministic UUID v5 derived from the original chunk id (`scripts/lib/vector-math.js#uuidV5FromName`) so upserts are idempotent.
+
+### Lifecycle
+
+- **App boot** calls `vectorStore.ensureCollection()` (no `vectorSize` arg) — a pure existence check. If the collection is missing, RAG silently disables and a one-time warning is logged pointing at `bun run hydrate:qdrant`. The app NEVER creates an empty collection at boot.
+- **Hydrate script** (`scripts/hydrate-qdrant.js`) reads the existing `data/vectors.sqlite`, detects the embedding dimension from the first row, creates the collection with quantization, and upserts all points. Re-running is idempotent.
+
+### Env vars
+
+| Var                  | Default                                        | Notes                                                                                  |
+| -------------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `QDRANT_URL`         | unset locally, `http://qdrant:6333` in compose | If unset, `VectorStore` constructs no client and RAG degrades silently.                |
+| `QDRANT_COLLECTION`  | `rule_chunks`                                  |                                                                                        |
+| `QDRANT_VECTOR_SIZE` | unset                                          | Optional; the hydrate script auto-detects. App boot ignores it (existence-check only). |
+| `QDRANT_DISABLED`    | unset                                          | Escape hatch: forces `available=false` even if a URL is set.                           |
+
+### Over-fetch ownership
+
+`rag-query.js` is the sole owner of the rule-item-dedup over-fetch: it queries `VectorStore.search()` with `topN = max(userTopN * 5, 25)`. `VectorStore.search()` queries Qdrant with `limit = topN` exactly (no further multiplication) — the over-fetch lives in one place only.
+
+### Local development
+
+`docker compose up` brings up both `app` and `qdrant` on a project-scoped `internal` network with port 3000 exposed. `bun run qdrant:up` brings up only the sidecar for local dev against `bun run start`.
