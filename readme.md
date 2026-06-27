@@ -1,5 +1,13 @@
 ## CI / Workflows
 
+### e2e job runtime
+
+The `e2e` job runs on the host `ubuntu-latest` runner (not the
+`mcr.microsoft.com/playwright` container). Browsers are cached keyed on the
+`playwright` package version (`~/.cache/ms-playwright`); `playwright install`
+only runs on a cache miss. The job sets `NODE_ENV: test` so the
+`/api/test/*` seed endpoints used by VR `global-setup.js` are available.
+
 ### Updating Playwright visual-regression snapshots
 
 When a CI run fails on the `e2e` job because snapshots are outdated, use the **Update Snapshots** workflow:

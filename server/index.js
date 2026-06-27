@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
@@ -46,7 +46,11 @@ vectorStore
     });
 
 // --- Read package.json version at module load ---
-const packageJsonPath = fileURLToPath(new URL("../package.json", import.meta.url));
+// Resolve via process.cwd() so the path works both in dev (repo root) and
+// inside a `bun build --compile` binary where import.meta.url points at the
+// executable, not the source tree. WORKDIR /app in the container guarantees
+// process.cwd() === "/app" (see Dockerfile).
+const packageJsonPath = resolve(process.cwd(), "package.json");
 const packageJson = /** @type {{ version: string }} */ (
     JSON.parse(readFileSync(packageJsonPath, "utf-8"))
 );
@@ -157,9 +161,11 @@ if (process.env.NODE_ENV !== "production") {
 // Everything else gets index.html so deep links like
 // /conversations/:uuid load the SPA correctly.
 
-// Resolve paths relative to this module's directory (server/)
-// to avoid working-directory mismatches in deployed environments.
-const clientDir = import.meta.dir + "/../client";
+// Resolve paths relative to the app root (process.cwd()) so static serving
+// works identically in dev (repo root) and inside a `bun build --compile`
+// binary on the scratch runtime (WORKDIR /app). import.meta.dir would point
+// at the executable's own location in the compiled binary.
+const clientDir = resolve(process.cwd(), "client");
 
 /** @type {string | null} */
 let _indexHtml = null;
