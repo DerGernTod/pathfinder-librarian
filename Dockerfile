@@ -3,6 +3,10 @@
 # carries compile fixes vs the 1.1 baseline in the original issue.
 FROM oven/bun:1.3-slim AS builder
 WORKDIR /app
+# oven/bun:*-slim (Debian-slim) does NOT ship /etc/ssl/certs/ca-certificates.crt
+# by default. Install the bundle here so the runtime stage can COPY it for TLS
+# verification of outbound HTTPS (Google AI). PLAN.md §3.5.
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
 COPY . .
