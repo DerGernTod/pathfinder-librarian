@@ -41,22 +41,32 @@ jobs:
                   key: ${{ secrets.SSH_PRIVATE_KEY }}
                   known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
 
-            # 5. Deploy using the new REPO_LOWER variable
+            # 5. Deploy via compose with per-PR project name
             - name: Deploy to Home Server
               run: |
                   docker context create home-server --docker "host=ssh://${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}"
 
-                  # Pull using lowercase name
+                  docker --context home-server compose version
+
                   docker --context home-server pull ghcr.io/${{ env.REPO_LOWER }}:pr-${{ github.event.number }}
 
-                  docker --context home-server stop pr-${{ github.event.number }}-pathfinderlibrarian || true
-                  docker --context home-server rm pr-${{ github.event.number }}-pathfinderlibrarian || true
+                  # One-time migration ONLY: if a legacy standalone PR container
+                  # exists and is NOT compose-managed, remove it so compose can
+                  # claim the name. Skipped once compose owns it (label present),
+                  # so re-pushes to the same PR have zero container-removal downtime.
+                  PR_NAME="pr-${{ github.event.number }}-pathfinderlibrarian"
+                  if ! docker --context home-server inspect "$PR_NAME" \
+                        --format '{{ index .Config.Labels "com.docker.compose.project" }}' 2>/dev/null \
+                        | grep -q .; then
+                      docker --context home-server rm -f "$PR_NAME" || true
+                  fi
 
-                  docker --context home-server run -d \
-                    --name pr-${{ github.event.number }}-pathfinderlibrarian \
-                    --network opencode-server_backend \
-                    --restart unless-stopped \
-                    ghcr.io/${{ env.REPO_LOWER }}:pr-${{ github.event.number }}
+                  # Base + preview override: joins opencode-server_backend for Caddy
+                  # routing, but app_data + qdrant_data stay project-scoped (per-PR,
+                  # cleaned by `down -v`).
+                  APP_IMAGE=ghcr.io/${{ env.REPO_LOWER }}:pr-${{ github.event.number }} \
+                  CONTAINER_NAME=pr-${{ github.event.number }}-pathfinderlibrarian \
+                  docker --context home-server compose -p pr-${{ github.event.number }} -f docker-compose.yml -f docker-compose.preview.yml up -d --remove-orphans
             - name: Post Preview URL to PR
               uses: actions/github-script@v7
               with:
@@ -100,8 +110,7 @@ jobs:
                   key: ${{ secrets.SSH_PRIVATE_KEY }}
                   known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
 
-            - name: Remove PR Container
+            - name: Remove PR Stack
               run: |
                   docker context create home-server --docker "host=ssh://${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}"
-                  docker --context home-server stop pr-${{ github.event.number }}-pathfinderlibrarian || true
-                  docker --context home-server rm pr-${{ github.event.number }}-pathfinderlibrarian || true
+                  docker --context home-server compose -p pr-${{ github.event.number }} -f docker-compose.yml -f docker-compose.preview.yml down -v --remove-orphans

@@ -47,6 +47,19 @@ jobs:
 
     test:
         runs-on: ubuntu-latest
+        services:
+            qdrant:
+                image: qdrant/qdrant:v1.12.4
+                ports:
+                    - 6333:6333
+                options: >-
+                    --health-cmd "bash -c '</dev/tcp/localhost/6333' || exit 1"
+                    --health-interval 5s
+                    --health-timeout 3s
+                    --health-retries 12
+        env:
+            QDRANT_URL: http://localhost:6333
+            QDRANT_COLLECTION: rule_chunks_contract
         steps:
             - uses: actions/checkout@v4
             - uses: oven-sh/setup-bun@v2

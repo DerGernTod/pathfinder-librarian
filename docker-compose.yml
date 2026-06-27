@@ -1,0 +1,40 @@
+services:
+    app:
+        image: ${APP_IMAGE:-pathfinder-librarian:local}
+        container_name: ${CONTAINER_NAME:-pathfinder-librarian}
+        environment:
+            QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
+            QDRANT_COLLECTION: ${QDRANT_COLLECTION:-rule_chunks}
+            GOOGLE_AI_API_KEY: ${GOOGLE_AI_API_KEY:-}
+            WEBAUTHN_ORIGIN: ${WEBAUTHN_ORIGIN:-}
+            WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID:-}
+            NODE_ENV: production
+        volumes:
+            - app_data:/app/data
+        networks:
+            internal: {}
+        depends_on:
+            qdrant:
+                condition: service_healthy
+        restart: unless-stopped
+
+    qdrant:
+        image: qdrant/qdrant:v1.12.4
+        volumes:
+            - qdrant_data:/qdrant/storage
+        networks:
+            internal: {}
+        healthcheck:
+            test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/6333'"]
+            interval: 5s
+            timeout: 3s
+            retries: 12
+            start_period: 5s
+        restart: unless-stopped
+
+networks:
+    internal: {}
+
+volumes:
+    app_data: {}
+    qdrant_data: {}

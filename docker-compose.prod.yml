@@ -1,0 +1,17 @@
+services:
+    app:
+        volumes:
+            - pathfinder_db:/app/data
+        networks:
+            internal: {}
+            ingress: {}
+
+networks:
+    ingress:
+        name: opencode-server_backend
+        external: true
+
+volumes:
+    pathfinder_db:
+        name: pathfinder_db
+        external: true

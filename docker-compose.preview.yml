@@ -1,0 +1,10 @@
+services:
+    app:
+        networks:
+            internal: {}
+            ingress: {}
+
+networks:
+    ingress:
+        name: opencode-server_backend
+        external: true
