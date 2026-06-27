@@ -1,1 +1,24 @@
+# Preserve the original entry plus the expanded ignore list (PLAN.md §4.1).
+# Critical files kept in context: server/, shared/, client/, scripts/,
+# package.json, bun.lock, bunfig.toml, jsconfig.json, globals.d.ts,
+# data/localizations.json (only data/*.sqlite* DBs are ignored).
 .env
+.env.test
+node_modules
+.git
+.github
+.vscode
+.agents
+.opencode
+dist
+temp
+test-results
+test
+vrtests
+playwright-report
+data/*.sqlite*
+Dockerfile
+.dockerignore
+docker-compose*.yml
+docs
+*.md

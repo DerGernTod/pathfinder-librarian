@@ -87,21 +87,35 @@ jobs:
 
     e2e:
         runs-on: ubuntu-latest
-        container:
-            image: mcr.microsoft.com/playwright:v1.59.1-noble
-            options: --user root
+        env:
+            NODE_ENV: test
         steps:
             - uses: actions/checkout@v4
               with:
                   ref: ${{ github.event.pull_request.head.ref || github.ref }}
-            - name: Prepare Container
-              run: apt-get update && apt-get install -y unzip
             - uses: oven-sh/setup-bun@v2
             - uses: actions/cache@v4
               with:
                   path: ~/.bun/install/cache
                   key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
             - run: bun install --frozen-lockfile
+            # Browser binaries are owned by the bare `playwright` package (not
+            # @playwright/test), so key the cache on its declared version. jq
+            # is preinstalled on ubuntu-latest (PLAN.md §3.8).
+            - name: Playwright version
+              id: pw
+              run: echo "v=$(jq -r .version node_modules/playwright/package.json)" >> "$GITHUB_OUTPUT"
+            - name: Cache browsers
+              id: pw-cache
+              uses: actions/cache@v4
+              with:
+                  path: ~/.cache/ms-playwright
+                  key: pw-${{ runner.os }}-${{ steps.pw.outputs.v }}
+            - name: Install system deps
+              run: bun x playwright install-deps
+            - name: Install browsers (cache miss only)
+              if: steps.pw-cache.outputs.cache-hit != 'true'
+              run: bun x playwright install
             - name: Run Playwright tests
               run: bun run e2e
             - name: Upload Playwright Report
