@@ -81,17 +81,17 @@ Vector similarity search for RAG is served by a [Qdrant](https://qdrant.tech/) s
 
 ### Lifecycle
 
-- **App boot** calls `vectorStore.ensureCollection()` (no `vectorSize` arg) — a pure existence check. If the collection is missing, RAG silently disables and a one-time warning is logged pointing at `bun run hydrate:qdrant`. The app NEVER creates an empty collection at boot.
-- **Hydrate script** (`scripts/hydrate-qdrant.js`) reads the existing `data/vectors.sqlite`, detects the embedding dimension from the first row, creates the collection with quantization, and upserts all points. Re-running is idempotent.
+- **App boot** calls `vectorStore.ensureCollection()` (no `vectorSize` arg) — a pure existence check. If the collection is missing, RAG silently disables and a one-time warning is logged pointing at `bun run create:embeddings`. The app NEVER creates an empty collection at boot.
+- **Index script** (`scripts/create-vector-db.js`) chunks rule items, embeds via Google AI, and upserts directly into Qdrant. Idempotent via UUID v5 point ids.
 
 ### Env vars
 
-| Var                  | Default                                        | Notes                                                                                  |
-| -------------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `QDRANT_URL`         | unset locally, `http://qdrant:6333` in compose | If unset, `VectorStore` constructs no client and RAG degrades silently.                |
-| `QDRANT_COLLECTION`  | `rule_chunks`                                  |                                                                                        |
-| `QDRANT_VECTOR_SIZE` | unset                                          | Optional; the hydrate script auto-detects. App boot ignores it (existence-check only). |
-| `QDRANT_DISABLED`    | unset                                          | Escape hatch: forces `available=false` even if a URL is set.                           |
+| Var                  | Default                                        | Notes                                                                                          |
+| -------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `QDRANT_URL`         | unset locally, `http://qdrant:6333` in compose | If unset, `VectorStore` constructs no client and RAG degrades silently.                        |
+| `QDRANT_COLLECTION`  | `rule_chunks`                                  |                                                                                                |
+| `QDRANT_VECTOR_SIZE` | unset                                          | Optional; defaults to 3072 (gemini-embedding-001). App boot ignores it (existence-check only). |
+| `QDRANT_DISABLED`    | unset                                          | Escape hatch: forces `available=false` even if a URL is set.                                   |
 
 ### Over-fetch ownership
 
@@ -99,4 +99,4 @@ Vector similarity search for RAG is served by a [Qdrant](https://qdrant.tech/) s
 
 ### Local development
 
-`docker compose up` brings up both `app` and `qdrant` on a project-scoped `internal` network with port 3000 exposed. `bun run qdrant:up` brings up only the sidecar for local dev against `bun run start`.
+`docker compose up` brings up both `app` and `qdrant` on a project-scoped `internal` network with port 3000 exposed. `bun run qdrant:up` brings up only the sidecar for local dev against `bun run start`. For first-time setup see `readme.md` → _Vector search setup_.

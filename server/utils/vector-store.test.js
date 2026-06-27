@@ -293,14 +293,65 @@ describe("vector-store", () => {
             });
         });
 
-        it("sets available=false and returns false when client throws", async () => {
+        it("sets available=false and re-throws when client throws", async () => {
             const store = createVectorStore({ url: "http://example:6333" });
             fakeClient.setThrow(() => new Error("boom"));
-            const ok = await store.ensureCollection(8);
-            expect(ok).toBe(false);
+            const initPromise = store.ensureCollection(8);
+            /** @type {unknown} */
+            let caught = null;
+            try {
+                await initPromise;
+            } catch (/** @type {unknown} */ e) {
+                caught = e;
+            }
+            expect(caught).toBeInstanceOf(Error);
+            expect(String(caught)).toBe("Error: boom");
             expect(store.isAvailable()).toBe(false);
             const results = await store.search([1, 2, 3]);
             expect(results).toEqual([]);
+        });
+
+        it("does not spurious-log search when init already failed (clarify #6)", async () => {
+            const store = createVectorStore({ url: "http://example:6333" });
+            fakeClient.setThrow(() => new Error("init down"));
+            const initPromise = store.ensureCollection(8);
+            try {
+                await initPromise;
+            } catch {
+                // expected rejection
+            }
+            expect(store.isAvailable()).toBe(false);
+            /** @type {import("bun:test").Mock<() => void>} */
+            const warnSpy = mock(() => {});
+            const originalWarn = console.warn;
+            console.warn = warnSpy;
+            try {
+                const r1 = await store.search([1, 2, 3]);
+                const r2 = await store.search([4, 5, 6]);
+                expect(r1).toEqual([]);
+                expect(r2).toEqual([]);
+                expect(warnSpy).not.toHaveBeenCalled();
+            } finally {
+                console.warn = originalWarn;
+            }
+        });
+
+        it("lazy-init search swallows ensureCollection throw silently (clarify #6)", async () => {
+            const store = createVectorStore({ url: "http://example:6333" });
+            fakeClient.setThrow(() => new Error("lazy init down"));
+            /** @type {import("bun:test").Mock<() => void>} */
+            const warnSpy = mock(() => {});
+            const originalWarn = console.warn;
+            console.warn = warnSpy;
+            try {
+                const r1 = await store.search([1, 2, 3]);
+                const r2 = await store.search([4, 5, 6]);
+                expect(r1).toEqual([]);
+                expect(r2).toEqual([]);
+                expect(warnSpy).not.toHaveBeenCalled();
+            } finally {
+                console.warn = originalWarn;
+            }
         });
     });
 

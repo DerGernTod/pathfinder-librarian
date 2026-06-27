@@ -855,15 +855,20 @@ export function updateCompactedSummary(database, conversationId, summary) {
 }
 
 /**
- * Archives a conversation by setting archived_at to now.
- * Idempotent: succeeds silently if already archived.
+ * Archives a conversation by setting archived_at. Idempotent: succeeds silently
+ * if already archived.
  * @param {import("bun:sqlite").Database} database
  * @param {string} conversationId
+ * @param {string} [archivedAt] - ISO timestamp; defaults to now.
  * @returns {z.infer<typeof ConversationSchema> | null}
  */
-export function archiveConversation(database, conversationId) {
+export function archiveConversation(
+    database,
+    conversationId,
+    archivedAt = new Date().toISOString(),
+) {
     database.run("UPDATE conversations SET archived_at = ? WHERE id = ?", [
-        new Date().toISOString(),
+        archivedAt,
         conversationId,
     ]);
     return getConversationById(database, conversationId);

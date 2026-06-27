@@ -38,6 +38,30 @@ function collectionConfig(size) {
 }
 
 /**
+ * Runs an async Qdrant operation, logging any failure with a consistent
+ * prefix. If `fallback` is omitted the error is re-thrown (caller decides);
+ * if provided, the error is swallowed and `fallback` is returned.
+ * @template T
+ * @param {string} label
+ * @param {() => Promise<T>} fn
+ * @param {{ fallback?: T }} [opts]
+ * @returns {Promise<T>}
+ */
+async function withQdrantErrorLog(label, fn, opts) {
+    try {
+        return await fn();
+    } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        // oxlint-disable-next-line no-console -- Qdrant failure diagnostic
+        console.warn(`Qdrant ${label} failed:`, msg);
+        if (opts && "fallback" in opts) {
+            return /** @type {T} */ (opts.fallback);
+        }
+        throw error;
+    }
+}
+
+/**
  * @typedef {{
  *   readonly collectionName: string,
  *   readonly client: QdrantClient | null,
@@ -51,6 +75,11 @@ function collectionConfig(size) {
 
 /**
  * Factory. Construction is synchronous and performs NO I/O.
+ *
+ * `ensureCollection` returns `Promise<boolean>` for all non-error outcomes:
+ * `true` when the collection exists/was created, `false` when unavailable
+ * without error. It **throws** on transport errors (the boot call site is the
+ * sole init logger); callers can short-circuit on `available === false`.
  * @param {CreateVectorStoreOptions} [options]
  * @returns {VectorStore}
  */
@@ -90,28 +119,19 @@ export function createVectorStore(options = {}) {
             }
             try {
                 const resp = await client.collectionExists(collectionName);
-                const exists = Boolean(resp && resp.exists);
-
-                if (exists) {
+                if (resp && resp.exists) {
                     available = true;
                     return true;
                 }
-
                 const size =
                     vectorSize ??
                     (process.env.QDRANT_VECTOR_SIZE
                         ? Number(process.env.QDRANT_VECTOR_SIZE)
                         : undefined);
-
                 if (size === undefined) {
-                    // oxlint-disable-next-line no-console -- boot diagnostic
-                    console.warn(
-                        `Qdrant collection ${collectionName} missing; run bun run hydrate:qdrant`,
-                    );
                     available = false;
                     return false;
                 }
-
                 await client.createCollection(collectionName, collectionConfig(size));
                 for (const field of PAYLOAD_INDEX_FIELDS) {
                     await client.createPayloadIndex(collectionName, {
@@ -122,12 +142,9 @@ export function createVectorStore(options = {}) {
                 }
                 available = true;
                 return true;
-            } catch (/** @type {unknown} */ error) {
-                const msg = error instanceof Error ? error.message : String(error);
-                // oxlint-disable-next-line no-console -- init failure diagnostic
-                console.warn("Qdrant init failed:", msg);
-                available = false;
-                return false;
+            } catch (error) {
+                available = false; // mark tried-and-failed so callers short-circuit
+                throw error; // boot site logs
             }
         })();
         return initPromise;
@@ -164,80 +181,100 @@ export function createVectorStore(options = {}) {
      * @param {{ topN?: number, threshold?: number, filter?: unknown }} [opts]
      * @returns {Promise<VectorChunkWithScore[]>}
      */
-    const search = async (queryEmbedding, opts = {}) => {
-        const topN = opts.topN ?? 5;
-        const threshold = opts.threshold ?? 0.0;
-        await ensureCollection();
-        if (!isAvailable() || !client) {
-            return [];
-        }
-        try {
-            const hits = await client.search(collectionName, {
-                vector: queryEmbedding,
-                limit: topN,
-                score_threshold: threshold,
-                with_payload: true,
-                with_vector: false,
-                ...(opts.filter !== undefined ? { filter: opts.filter } : {}),
-            });
-            /** @type {VectorChunkWithScore[]} */
-            const out = [];
-            for (const hit of /** @type {unknown[]} */ (/** @type {unknown} */ (hits))) {
-                const mapped = mapHit(/** @type {QdrantSearchHit} */ (hit));
-                if (mapped) {
-                    out.push(mapped);
+    const search = (queryEmbedding, opts = {}) =>
+        withQdrantErrorLog(
+            "search",
+            async () => {
+                // Init already ran and failed → no point re-awaiting the cached
+                // rejected initPromise (would spurious-log "search failed" each call).
+                if (available === false || !client) {
+                    return [];
                 }
-            }
-            return out;
-        } catch (/** @type {unknown} */ error) {
-            const msg = error instanceof Error ? error.message : String(error);
-            // oxlint-disable-next-line no-console -- search failure diagnostic
-            console.warn("Qdrant search failed:", msg);
-            return [];
-        }
-    };
+                // Lazy init on the first call (available === null).
+                if (available === null) {
+                    try {
+                        await ensureCollection();
+                    } catch {
+                        return []; // init transport error already logged by boot site
+                    }
+                }
+                // available === true beyond here.
+                if (!client) {
+                    return [];
+                }
+                const topN = opts.topN ?? 5;
+                const threshold = opts.threshold ?? 0.0;
+                const hits = await client.search(collectionName, {
+                    vector: queryEmbedding,
+                    limit: topN,
+                    score_threshold: threshold,
+                    with_payload: true,
+                    with_vector: false,
+                    ...(opts.filter !== undefined ? { filter: opts.filter } : {}),
+                });
+                /** @type {VectorChunkWithScore[]} */
+                const out = [];
+                for (const hit of /** @type {unknown[]} */ (/** @type {unknown} */ (hits))) {
+                    const mapped = mapHit(/** @type {QdrantSearchHit} */ (hit));
+                    if (mapped) {
+                        out.push(mapped);
+                    }
+                }
+                return out;
+            },
+            { fallback: [] },
+        );
 
     /**
      * @param {string} ruleItemId
      * @returns {Promise<Array<{ id: string, text: string, chunkIndex: number }>>}
      */
-    const getChunksByRuleItemId = async (ruleItemId) => {
-        await ensureCollection();
-        if (!isAvailable() || !client) {
-            return [];
-        }
-        try {
-            const resp = await client.scroll(collectionName, {
-                filter: { must: [{ key: "rule_item_id", match: { value: ruleItemId } }] },
-                limit: SCROLL_PAGE_SIZE,
-                with_payload: true,
-                with_vector: false,
-            });
-            /** @type {Array<{ id: string, text: string, chunkIndex: number }>} */
-            const out = [];
-            for (const point of /** @type {unknown[]} */ (/** @type {unknown} */ (resp.points))) {
-                const p = point;
-                const payload = vectorChunkPayloadSchema
-                    .nullable()
-                    .safeParse(/** @type {{ payload?: unknown }} */ (p).payload);
-                if (!payload.success || !payload.data) {
-                    continue;
+    const getChunksByRuleItemId = (ruleItemId) =>
+        withQdrantErrorLog(
+            "scroll",
+            async () => {
+                if (available === false || !client) {
+                    return [];
                 }
-                out.push({
-                    id: payload.data.chunk_id,
-                    text: payload.data.text,
-                    chunkIndex: payload.data.chunk_index,
+                if (available === null) {
+                    try {
+                        await ensureCollection();
+                    } catch {
+                        return []; // init transport error already logged by boot site
+                    }
+                }
+                if (!client) {
+                    return [];
+                }
+                const resp = await client.scroll(collectionName, {
+                    filter: { must: [{ key: "rule_item_id", match: { value: ruleItemId } }] },
+                    limit: SCROLL_PAGE_SIZE,
+                    with_payload: true,
+                    with_vector: false,
                 });
-            }
-            out.sort((a, b) => a.chunkIndex - b.chunkIndex);
-            return out;
-        } catch (/** @type {unknown} */ error) {
-            const msg = error instanceof Error ? error.message : String(error);
-            // oxlint-disable-next-line no-console -- scroll failure diagnostic
-            console.warn("Qdrant scroll failed:", msg);
-            return [];
-        }
-    };
+                /** @type {Array<{ id: string, text: string, chunkIndex: number }>} */
+                const out = [];
+                for (const point of /** @type {unknown[]} */ (
+                    /** @type {unknown} */ (resp.points)
+                )) {
+                    const p = point;
+                    const payload = vectorChunkPayloadSchema
+                        .nullable()
+                        .safeParse(/** @type {{ payload?: unknown }} */ (p).payload);
+                    if (!payload.success || !payload.data) {
+                        continue;
+                    }
+                    out.push({
+                        id: payload.data.chunk_id,
+                        text: payload.data.text,
+                        chunkIndex: payload.data.chunk_index,
+                    });
+                }
+                out.sort((a, b) => a.chunkIndex - b.chunkIndex);
+                return out;
+            },
+            { fallback: [] },
+        );
 
     /**
      * @param {VectorChunkForUpsert[]} chunks

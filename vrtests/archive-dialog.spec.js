@@ -1,5 +1,6 @@
 import { expect, test } from "playwright/test";
 
+import { VR_FIXED_TIMESTAMP } from "../shared/constants.js";
 import { setupTestUser } from "./helpers/test-user.js";
 
 test.describe("archive dialog visual regression", () => {
@@ -14,11 +15,13 @@ test.describe("archive dialog visual regression", () => {
         const listData = await listRes.json();
         conversationId = listData.data[0]?.id;
 
-        // Archive it via Playwright request context (works before page.goto)
+        // Archive it with a pinned server-side timestamp so the rendered date is
+        // deterministic (the dialog formats archived_at, which is stamped by the
+        // server, not the browser — page.clock cannot reach it).
         if (conversationId) {
-            const archiveRes = await page.request.patch(
-                `/api/conversations/${conversationId}/archive`,
-            );
+            const archiveRes = await page.request.post("/api/test/archive-conversation", {
+                data: { conversationId, archivedAt: VR_FIXED_TIMESTAMP },
+            });
             if (!archiveRes.ok) {
                 throw new Error(`Archive failed: ${archiveRes.status()}`);
             }
@@ -41,11 +44,7 @@ test.describe("archive dialog visual regression", () => {
         await expect(dialog).toBeVisible();
 
         const panel = dialog.locator('[part="body"]');
-        // Mask the date string so the snapshot is stable across days.
-        const dateMask = panel.locator(".archived-date");
-        await expect(panel).toHaveScreenshot("archive-dialog-open-desktop.png", {
-            mask: [dateMask],
-        });
+        await expect(panel).toHaveScreenshot("archive-dialog-open-desktop.png");
     });
 
     test("archive dialog open with items — tablet", async ({ page }) => {
@@ -60,10 +59,7 @@ test.describe("archive dialog visual regression", () => {
         await expect(dialog).toBeVisible();
 
         const panel = dialog.locator('[part="body"]');
-        const dateMask = panel.locator(".archived-date");
-        await expect(panel).toHaveScreenshot("archive-dialog-open-tablet.png", {
-            mask: [dateMask],
-        });
+        await expect(panel).toHaveScreenshot("archive-dialog-open-tablet.png");
     });
 
     test("archive dialog open with items — phone", async ({ page }) => {
@@ -81,10 +77,7 @@ test.describe("archive dialog visual regression", () => {
         await expect(dialog).toBeVisible();
 
         const panel = dialog.locator('[part="body"]');
-        const dateMask = panel.locator(".archived-date");
-        await expect(panel).toHaveScreenshot("archive-dialog-open-phone.png", {
-            mask: [dateMask],
-        });
+        await expect(panel).toHaveScreenshot("archive-dialog-open-phone.png");
     });
 
     test("archive dialog empty state — desktop", async ({ page }) => {

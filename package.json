@@ -27,7 +27,6 @@
         "import:traits": "bun ./scripts/import-foundry-traits.js --source ./temp/foundry-vtt-pf2e",
         "export:localizations": "bun ./scripts/export-localizations.js",
         "create:embeddings": "bun ./scripts/create-vector-db.js --model gemini-embedding-001",
-        "hydrate:qdrant": "bun ./scripts/hydrate-qdrant.js --qdrant-url http://localhost:6333 --vector-db data/vectors.sqlite",
         "qdrant:up": "docker compose up -d qdrant && docker compose logs -f qdrant"
     },
     "dependencies": {

@@ -25,7 +25,8 @@ seedIfNeeded(db);
 
 // Initialize vector store (lazy; existence-check only — does NOT create a
 // collection at boot). When QDRANT_URL is unset the store is unavailable and
-// RAG silently degrades. The hydrate script owns collection creation.
+// RAG silently degrades. Collection creation is owned by the index script
+// (bun run create:embeddings).
 const vectorStore = createVectorStore();
 vectorStore
     .ensureCollection()
@@ -34,11 +35,14 @@ vectorStore
         console.log(
             ok
                 ? `Vector store ready (collection ${vectorStore.collectionName})`
-                : "Vector store unavailable — RAG context retrieval disabled",
+                : "Vector store unavailable — RAG context retrieval disabled. " +
+                      "Run `bun run create:embeddings` to index.",
         );
     })
-    .catch(() => {
-        /* ensureCollection already swallows + logs */
+    .catch((error) => {
+        const msg = error instanceof Error ? error.message : String(error);
+        // oxlint-disable-next-line no-console -- single init-failure log path
+        console.warn("Vector store init failed:", msg);
     });
 
 // --- Read package.json version at module load ---
@@ -125,6 +129,25 @@ if (process.env.NODE_ENV !== "production") {
             setForcedMockIndexForUser(userId, index);
         }
         return c.json({ ok: true });
+    });
+
+    // Pin archived_at to a fixed timestamp for VR tests so the rendered date is
+    // deterministic (the archive dialog formats archived_at server-side).
+    app.post("/api/test/archive-conversation", async (c) => {
+        const body = /** @type {{ conversationId?: unknown, archivedAt?: unknown }} */ (
+            await c.req.json()
+        );
+        const conversationId = typeof body.conversationId === "string" ? body.conversationId : null;
+        if (!conversationId) {
+            return c.json({ result: "error", message: "conversationId required" }, 400);
+        }
+        const archivedAt =
+            typeof body.archivedAt === "string" ? body.archivedAt : new Date().toISOString();
+        const updated = queries.archiveConversation(db, conversationId, archivedAt);
+        if (!updated) {
+            return c.json({ result: "error", message: "conversation not found" }, 404);
+        }
+        return c.json({ result: "success", data: updated }, 200);
     });
 }
 

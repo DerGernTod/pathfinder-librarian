@@ -20,6 +20,49 @@ with **Contents: Read and Write** (to push commits) and **Actions: Read and Writ
 
 ---
 
+## Vector search setup (Qdrant)
+
+RAG context retrieval is optional. When `QDRANT_URL` is unset the app skips
+vector search and answers without retrieved context — local dev and visual
+regression tests do not require Qdrant. To enable it:
+
+1. **Start the Qdrant sidecar** (dev override exposes port 6333 to the host)
+
+    ```bash
+    bun run qdrant:up        # docker compose up -d qdrant && logs -f
+    ```
+
+    Default URL: `http://localhost:6333`.
+
+2. **Set env vars** (only `QDRANT_URL` is required to enable RAG)
+
+    ```bash
+    export QDRANT_URL=http://localhost:6333
+    export QDRANT_COLLECTION=rule_chunks      # optional
+    export GOOGLE_AI_API_KEY=...              # required for indexing + queries
+    ```
+
+3. **Index rule items into Qdrant** (chunks → embeds → upserts in one step)
+
+    ```bash
+    bun run create:embeddings
+    # or a smaller demo subset:
+    bun run create:demo:vector-db
+    ```
+
+    Re-running is idempotent (point ids are deterministic UUID v5).
+
+4. **Verify**
+    ```bash
+    curl -s http://localhost:6333/collections/rule_chunks | grep points_count
+    # expect points_count > 0
+    ```
+
+See `docs/architecture.md` → "Vector store (Qdrant sidecar)" for the collection
+schema, lifecycle, and the over-fetch ownership rule.
+
+---
+
 i'm trying to build a RAG system for the pathfinder rpg. i want a chat-like assistant interaction that's augmented with deterministic data (e.g. stat blocks of npcs, spells, equipment etc.). the user should be able to ask things like this:
 "i'm a gm, my party just captured a mitflit king and wants to sell them at the market of a nearby settlement. how should i handle this?". the assistant should respond with settlement requirements, rules, proposals of how to set the scene, DCs on required skill rolls etc.. another example of a question:
 "i'm an assassin, hanging from a chandelier. i want to jump on an enemy below me and cut their throat. what do i need to roll?" - the assistant should find the respective rule sets and answer with the requirements, what to roll, what skills they need, what stats of the enemy affect the action etc.

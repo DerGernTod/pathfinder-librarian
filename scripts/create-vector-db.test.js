@@ -1,45 +1,130 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
+import { mkdirSync, rmSync } from "node:fs";
 
 import { createDb } from "../server/db/database.js";
 import { getRuleItems } from "../server/db/queries.js";
 import { seedRuleItems } from "../server/db/seed.js";
-import {
-    createVectorDb,
-    packEmbedding,
-    parseVectorArgs,
-    unpackEmbedding,
-} from "./create-vector-db.js";
+
+// Capture the real fetch before any test stubs it so we can restore it and
+// avoid leaking a mock into later test files (mock.module on the Google AI
+// client would also leak across files in the same bun:test process).
+const realFetch = globalThis.fetch;
 
 /**
- * @param {() => Promise<unknown>} fn
+ * Stub globalThis.fetch to return canned embeddings for createEmbeddings.
+ * The response embeddings count matches the request's `requests` array.
  */
-function mockFetch(fn) {
-    globalThis.fetch = /** @type {typeof fetch} */ (/** @type {unknown} */ (mock(fn)));
+function mockEmbeddingsFetch() {
+    const handler = async (/** @type {string} */ _url, /** @type {RequestInit} */ opts) => {
+        const body = JSON.parse(/** @type {string} */ (opts.body));
+        const count = /** @type {{ requests: unknown[] }} */ (body).requests.length;
+        return {
+            ok: true,
+            json: () =>
+                Promise.resolve({
+                    embeddings: Array.from({ length: count }, () => ({
+                        values: [0.1, 0.2, 0.3],
+                    })),
+                }),
+        };
+    };
+    globalThis.fetch = /** @type {typeof fetch} */ (/** @type {unknown} */ (mock(handler)));
+}
+
+const { parseVectorArgs, runVectorCreate } = await import("./create-vector-db.js");
+
+/** Records createStore invocations and returns a fake store. */
+function makeFakeStoreModule() {
+    /** @type {{ calls: { url?: string, collection?: string }[], upsertCalls: Array<{ points: unknown[] }>, deleteCalls: string[], ensureCalls: number[], points: Map<string, unknown>, available: boolean }} */
+    const state = {
+        calls: [],
+        upsertCalls: [],
+        deleteCalls: [],
+        ensureCalls: [],
+        points: new Map(),
+        available: false,
+    };
+    const fakeStore = {
+        collectionName: "rule_chunks",
+        client: {
+            async deleteCollection(/** @type {string} */ name) {
+                state.deleteCalls.push(name);
+            },
+        },
+        isAvailable: () => state.available,
+        async ensureCollection(/** @type {number} */ vectorSize) {
+            state.ensureCalls.push(vectorSize);
+            state.available = true;
+            return true;
+        },
+        async search() {
+            return [];
+        },
+        async getChunksByRuleItemId() {
+            return [];
+        },
+        async upsertChunks(/** @type {Array<{ id: string }>} */ chunks) {
+            state.upsertCalls.push({ points: chunks });
+            for (const c of chunks) {
+                state.points.set(c.id, c);
+            }
+            return { upserted: chunks.length };
+        },
+    };
+    const createStore = (/** @type {{ url?: string, collection?: string }} */ opts = {}) => {
+        state.calls.push({ url: opts.url, collection: opts.collection });
+        return /** @type {import("../server/utils/vector-store.js").VectorStore} */ (
+            /** @type {unknown} */ (fakeStore)
+        );
+    };
+    return { state, createStore };
+}
+
+const TEMP_DIR = "./temp";
+const SOURCE_DB = `${TEMP_DIR}/__create_vector_source.sqlite`;
+
+/**
+ * Seed a temp source DB file with rule items so runVectorCreate can read it.
+ * @param {string} path
+ */
+function writeSeededSourceDb(path) {
+    mkdirSync(TEMP_DIR, { recursive: true });
+    try {
+        rmSync(path);
+    } catch {
+        // ignore
+    }
+    const db = createDb(path);
+    seedRuleItems(db);
+    db.close();
 }
 
 describe("create-vector-db", () => {
-    describe("packEmbedding / unpackEmbedding", () => {
-        it("round-trips float64 arrays", () => {
-            const original = [0.1, 0.2, 0.3, -0.4, 0.5];
-            const packed = packEmbedding(original);
-            const unpacked = unpackEmbedding(packed);
+    describe("parseVectorArgs", () => {
+        const origApiKey = process.env.GOOGLE_AI_API_KEY;
+        const origUrl = process.env.QDRANT_URL;
+        const origCollection = process.env.QDRANT_COLLECTION;
 
-            expect(unpacked.length).toBe(original.length);
-            for (let i = 0; i < original.length; i++) {
-                expect(Math.abs(unpacked[i] - original[i])).toBeLessThan(1e-10);
+        afterEach(() => {
+            if (origApiKey !== undefined) {
+                process.env.GOOGLE_AI_API_KEY = origApiKey;
+            } else {
+                delete process.env.GOOGLE_AI_API_KEY;
+            }
+            if (origUrl !== undefined) {
+                process.env.QDRANT_URL = origUrl;
+            } else {
+                delete process.env.QDRANT_URL;
+            }
+            if (origCollection !== undefined) {
+                process.env.QDRANT_COLLECTION = origCollection;
+            } else {
+                delete process.env.QDRANT_COLLECTION;
             }
         });
 
-        it("handles empty array", () => {
-            const packed = packEmbedding([]);
-            expect(packed.length).toBe(0);
-            const unpacked = unpackEmbedding(packed);
-            expect(unpacked).toEqual([]);
-        });
-    });
-
-    describe("parseVectorArgs", () => {
         it("parses all arguments", () => {
+            delete process.env.GOOGLE_AI_API_KEY;
             const args = [
                 "bun",
                 "script.js",
@@ -53,10 +138,15 @@ describe("create-vector-db", () => {
                 "5",
                 "--db",
                 "source.sqlite",
-                "--vector-db",
-                "output.sqlite",
                 "--model",
                 "embedding-001",
+                "--qdrant-url",
+                "http://flag:6333",
+                "--collection",
+                "flag_coll",
+                "--vector-size",
+                "768",
+                "--recreate",
                 "--dry-run",
             ];
             const opts = parseVectorArgs(args);
@@ -66,23 +156,39 @@ describe("create-vector-db", () => {
             expect(opts.limit).toBe(10);
             expect(opts.batchSize).toBe(5);
             expect(opts.db).toBe("source.sqlite");
-            expect(opts.vectorDb).toBe("output.sqlite");
             expect(opts.model).toBe("embedding-001");
+            expect(opts.qdrantUrl).toBe("http://flag:6333");
+            expect(opts.collection).toBe("flag_coll");
+            expect(opts.vectorSize).toBe(768);
+            expect(opts.recreate).toBe(true);
             expect(opts.dryRun).toBe(true);
         });
 
         it("uses defaults for missing args", () => {
             delete process.env.GOOGLE_AI_API_KEY;
+            delete process.env.QDRANT_URL;
+            delete process.env.QDRANT_COLLECTION;
             const opts = parseVectorArgs(["bun", "script.js", "--dry-run"]);
 
             expect(opts.apiKey).toBeUndefined();
             expect(opts.types).toBeUndefined();
             expect(opts.limit).toBeUndefined();
-            expect(opts.batchSize).toBe(20);
+            expect(opts.batchSize).toBe(100);
             expect(opts.db).toBe("data/dev.sqlite");
-            expect(opts.vectorDb).toBe("data/vectors.sqlite");
             expect(opts.model).toBe("gemini-embedding-001");
+            expect(opts.qdrantUrl).toBe("http://localhost:6333");
+            expect(opts.collection).toBe("rule_chunks");
+            expect(opts.vectorSize).toBe(3072);
+            expect(opts.recreate).toBe(false);
             expect(opts.dryRun).toBe(true);
+        });
+
+        it("honors env vars for qdrant-url and collection when flags absent", () => {
+            process.env.QDRANT_URL = "http://env:6333";
+            process.env.QDRANT_COLLECTION = "env_coll";
+            const opts = parseVectorArgs(["bun", "script.js", "--dry-run"]);
+            expect(opts.qdrantUrl).toBe("http://env:6333");
+            expect(opts.collection).toBe("env_coll");
         });
 
         it("exits with help when called with --help", () => {
@@ -107,51 +213,23 @@ describe("create-vector-db", () => {
         });
     });
 
-    describe("createVectorDb", () => {
-        it("creates vector DB with correct schema", () => {
-            const vdb = createVectorDb(":memory:");
-
-            // Check table exists
-            const tables = vdb
-                .query("SELECT name FROM sqlite_master WHERE type='table' AND name='vector_chunks'")
-                .all();
-            expect(tables.length).toBe(1);
-
-            // Check indexes
-            const indexes = vdb
-                .query(
-                    "SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'idx_vector_%'",
-                )
-                .all();
-            expect(indexes.length).toBeGreaterThanOrEqual(2);
-        });
-    });
-
-    describe("vector DB creation with mocked API", () => {
+    describe("chunking (storage-independent)", () => {
         /** @type {import("bun:sqlite").Database} */
         let db;
-        /** @type {import("bun:sqlite").Database} */
-        let vdb;
 
         beforeEach(() => {
             db = createDb(":memory:");
             seedRuleItems(db);
-            vdb = createVectorDb(":memory:");
         });
 
         afterEach(() => {
             if (db) {
                 db.close();
             }
-            if (vdb) {
-                vdb.close();
-            }
         });
 
         it("generates chunks from fixture DB with dry run", async () => {
-            // For dry run, we test that chunks are generated from seeded data
             const { createChunksFromRuleItem } = await import("./lib/vector-chunker.js");
-            const { getRuleItems } = await import("../server/db/queries.js");
 
             const items = getRuleItems(db, undefined, { includeChildren: true });
             const allChunks = [];
@@ -159,7 +237,6 @@ describe("create-vector-db", () => {
                 allChunks.push(...createChunksFromRuleItem(item));
             }
 
-            // Should have generated some chunks from the seeded data
             expect(allChunks.length).toBeGreaterThan(0);
         });
 
@@ -175,23 +252,18 @@ describe("create-vector-db", () => {
         it("child chunks include parent context", async () => {
             const { createChunksFromRuleItem } = await import("./lib/vector-chunker.js");
 
-            // Get all items including children
             const allItems = getRuleItems(db, undefined, { includeChildren: true });
-
-            // Find child items (non-spellcastingEntry first, as those have simpler format)
             const meleeChildren = allItems.filter((item) => item.parentId && item.type === "melee");
 
             for (const child of meleeChildren) {
                 const parent = allItems.find((p) => p.id === child.parentId);
                 const chunks = createChunksFromRuleItem(child, parent);
 
-                // Melee child chunks should contain parent's name
                 for (const chunk of chunks) {
                     expect(chunk.text).toContain("Mitflit King's");
                 }
             }
 
-            // Spellcasting entry children should also have parent context
             const scChildren = allItems.filter(
                 (item) => item.parentId && item.type === "spellcastingEntry",
             );
@@ -202,70 +274,6 @@ describe("create-vector-db", () => {
                     expect(chunk.text).toContain("Mitflit King's");
                 }
             }
-        });
-
-        it("creates vector chunks with mocked API", async () => {
-            // Mock fetch for Google AI API
-            mockFetch(() =>
-                Promise.resolve({
-                    ok: true,
-                    json: () =>
-                        Promise.resolve({
-                            embeddings: [{ values: [0.1, 0.2, 0.3] }, { values: [0.4, 0.5, 0.6] }],
-                        }),
-                }),
-            );
-
-            // Use runVectorCreate but we need to mock the DB creation
-            // For this test, we'll manually create chunks and insert
-            const { createChunksFromRuleItem } = await import("./lib/vector-chunker.js");
-
-            const items = getRuleItems(db, undefined, { includeChildren: true });
-            const allChunks = [];
-            for (const item of items) {
-                allChunks.push(...createChunksFromRuleItem(item));
-            }
-
-            // Manually insert into vector DB
-            const insertStmt = vdb.prepare(
-                "INSERT INTO vector_chunks (id, rule_item_id, rule_item_name, rule_item_type, compendium_source, chunk_index, text, embedding, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            );
-
-            for (const chunk of allChunks) {
-                const embedding = [Math.random(), Math.random(), Math.random()];
-                insertStmt.run(
-                    chunk.id,
-                    chunk.ruleItemId,
-                    chunk.ruleItemName,
-                    chunk.ruleItemType,
-                    chunk.compendiumSource ?? null,
-                    chunk.chunkIndex,
-                    chunk.text,
-                    packEmbedding(embedding),
-                    new Date().toISOString(),
-                );
-            }
-
-            // Verify rows
-            const rows = vdb.query("SELECT * FROM vector_chunks").all();
-            expect(rows.length).toBe(allChunks.length);
-
-            // Verify embeddings are stored as BLOBs
-            const row = /** @type {{ embedding: Uint8Array }} */ (
-                vdb.query("SELECT embedding FROM vector_chunks LIMIT 1").get()
-            );
-            expect(row.embedding).toBeDefined();
-            expect(row.embedding.length).toBe(24); // 3 floats * 8 bytes
-
-            // Verify unpack
-            const unpacked = unpackEmbedding(row.embedding);
-            expect(unpacked.length).toBe(3);
-
-            // Verify chunk-to-rule-item links
-            const creatureChunks = vdb
-                .query("SELECT * FROM vector_chunks WHERE rule_item_type = 'creature'")
-                .all();
-            expect(creatureChunks.length).toBeGreaterThan(0);
         });
 
         it("type filtering works", async () => {
@@ -279,11 +287,131 @@ describe("create-vector-db", () => {
                 chunks.push(...createChunksFromRuleItem(item));
             }
 
-            // Only spell chunks
             for (const chunk of chunks) {
                 expect(chunk.ruleItemType).toBe("spell");
             }
             expect(chunks.length).toBeGreaterThan(0);
+        });
+    });
+
+    describe("runVectorCreate (direct to Qdrant)", () => {
+        const origUrl = process.env.QDRANT_URL;
+        const origCollection = process.env.QDRANT_COLLECTION;
+
+        beforeEach(() => {
+            delete process.env.QDRANT_URL;
+            delete process.env.QDRANT_COLLECTION;
+            writeSeededSourceDb(SOURCE_DB);
+            mockEmbeddingsFetch();
+        });
+
+        afterEach(() => {
+            globalThis.fetch = realFetch;
+            if (origUrl !== undefined) {
+                process.env.QDRANT_URL = origUrl;
+            } else {
+                delete process.env.QDRANT_URL;
+            }
+            if (origCollection !== undefined) {
+                process.env.QDRANT_COLLECTION = origCollection;
+            } else {
+                delete process.env.QDRANT_COLLECTION;
+            }
+        });
+
+        it("chunks, embeds, and upserts directly to Qdrant via createStore", async () => {
+            const fake = makeFakeStoreModule();
+            const result = await runVectorCreate(
+                {
+                    apiKey: "test-key",
+                    db: SOURCE_DB,
+                    batchSize: 100,
+                    model: "gemini-embedding-001",
+                    dryRun: false,
+                    qdrantUrl: "http://test:6333",
+                    collection: "rule_chunks",
+                    vectorSize: 3072,
+                    recreate: false,
+                },
+                { createStore: fake.createStore },
+            );
+
+            expect(result.errors).toBe(0);
+            expect(result.chunksCreated).toBeGreaterThan(0);
+            expect(result.apiCalls).toBeGreaterThanOrEqual(1);
+            expect(fake.state.calls[0]).toEqual({
+                url: "http://test:6333",
+                collection: "rule_chunks",
+            });
+            expect(fake.state.ensureCalls).toEqual([3072]);
+            expect(fake.state.deleteCalls).toHaveLength(0);
+            expect(fake.state.upsertCalls.length).toBeGreaterThanOrEqual(1);
+            const upsertedTotal = fake.state.upsertCalls.reduce(
+                (sum, call) => sum + call.points.length,
+                0,
+            );
+            expect(upsertedTotal).toBe(result.chunksCreated);
+        });
+
+        it("re-running is idempotent: point ids dedup (UUID v5)", async () => {
+            const fake = makeFakeStoreModule();
+            const args = {
+                apiKey: "test-key",
+                db: SOURCE_DB,
+                batchSize: 100,
+                model: "gemini-embedding-001",
+                dryRun: false,
+                qdrantUrl: "http://test:6333",
+                collection: "rule_chunks",
+                vectorSize: 3072,
+                recreate: false,
+            };
+            const r1 = await runVectorCreate(args, { createStore: fake.createStore });
+            const sizeAfterFirst = fake.state.points.size;
+            const r2 = await runVectorCreate(args, { createStore: fake.createStore });
+            expect(r1.chunksCreated).toBe(r2.chunksCreated);
+            expect(fake.state.points.size).toBe(sizeAfterFirst);
+        });
+
+        it("recreate=true triggers deleteCollection exactly once", async () => {
+            const fake = makeFakeStoreModule();
+            await runVectorCreate(
+                {
+                    apiKey: "test-key",
+                    db: SOURCE_DB,
+                    batchSize: 100,
+                    model: "gemini-embedding-001",
+                    dryRun: false,
+                    qdrantUrl: "http://test:6333",
+                    collection: "rule_chunks",
+                    vectorSize: 3072,
+                    recreate: true,
+                },
+                { createStore: fake.createStore },
+            );
+            expect(fake.state.deleteCalls).toEqual(["rule_chunks"]);
+        });
+
+        it("dry-run returns chunk count without upserting", async () => {
+            const fake = makeFakeStoreModule();
+            const result = await runVectorCreate(
+                {
+                    apiKey: "test-key",
+                    db: SOURCE_DB,
+                    batchSize: 100,
+                    model: "gemini-embedding-001",
+                    dryRun: true,
+                    qdrantUrl: "http://test:6333",
+                    collection: "rule_chunks",
+                    vectorSize: 3072,
+                    recreate: false,
+                },
+                { createStore: fake.createStore },
+            );
+            expect(result.chunksCreated).toBeGreaterThan(0);
+            expect(result.apiCalls).toBe(0);
+            expect(fake.state.upsertCalls).toHaveLength(0);
+            expect(fake.state.ensureCalls).toHaveLength(0);
         });
     });
 });

@@ -47,3 +47,6 @@ export const SEED_IDS = {
     RULE_TRAIT_GOBLINOID: "00000000-0000-4000-8000-000000000041",
     RULE_CONDITION_ENFEEBLED: "00000000-0000-4000-8000-000000000050",
 };
+
+/** Fixed timestamp used by VR tests to freeze date-rendered UI (e.g. archive dialog). */
+export const VR_FIXED_TIMESTAMP = "2026-01-15T12:00:00Z"; // renders as "Jan 15, 2026"

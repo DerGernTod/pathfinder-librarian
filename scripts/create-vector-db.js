@@ -1,83 +1,34 @@
-import { Database } from "bun:sqlite";
-import { mkdirSync } from "fs";
-
 import { z } from "zod";
 
 import { createDb } from "../server/db/database.js";
 import { getRuleItemById, getRuleItems } from "../server/db/queries.js";
+import { createVectorStore } from "../server/utils/vector-store.js";
+import { QDRANT_CONFIG } from "../shared/constants.js";
 import { createEmbeddings } from "./lib/google-ai-client.js";
 import { createChunksFromRuleItem } from "./lib/vector-chunker.js";
-
-/**
- * Packs a float64 array into a Buffer for BLOB storage.
- * @param {number[]} embedding
- * @returns {Buffer}
- */
-export function packEmbedding(embedding) {
-    const buffer = Buffer.alloc(embedding.length * 8);
-    for (let i = 0; i < embedding.length; i++) {
-        buffer.writeDoubleLE(embedding[i], i * 8);
-    }
-    return buffer;
-}
-
-/**
- * Unpacks a BLOB buffer back into a float64 array.
- * @param {Buffer | ArrayBuffer | Uint8Array} blob
- * @returns {number[]}
- */
-export function unpackEmbedding(blob) {
-    const buf = Buffer.isBuffer(blob)
-        ? blob
-        : Buffer.from(
-              /** @type {unknown} */ (blob) instanceof ArrayBuffer
-                  ? new Uint8Array(/** @type {ArrayBuffer} */ (/** @type {unknown} */ (blob)))
-                  : /** @type {Uint8Array} */ (/** @type {unknown} */ (blob)),
-          );
-    const count = buf.length / 8;
-    /** @type {number[]} */
-    const result = [];
-    for (let i = 0; i < count; i++) {
-        result.push(buf.readDoubleLE(i * 8));
-    }
-    return result;
-}
-
-const CREATE_VECTOR_TABLE_SQL = `
-CREATE TABLE IF NOT EXISTS vector_chunks (
-    id TEXT PRIMARY KEY,
-    rule_item_id TEXT NOT NULL,
-    rule_item_name TEXT NOT NULL,
-    rule_item_type TEXT NOT NULL,
-    compendium_source TEXT,
-    chunk_index INTEGER NOT NULL,
-    text TEXT NOT NULL,
-    embedding BLOB,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-CREATE INDEX IF NOT EXISTS idx_vector_chunks_rule_item ON vector_chunks(rule_item_id);
-CREATE INDEX IF NOT EXISTS idx_vector_chunks_type ON vector_chunks(rule_item_type);
-`;
 
 const VECTOR_HELP = `
 Usage: bun scripts/create-vector-db.js [options]
 
-Read rule items from the database, generate text chunks, embed them via the
-Google AI API, and store the resulting vectors in a SQLite database.
+Read rule items from the source database, generate text chunks, embed them via
+the Google AI API, and upsert the resulting vectors directly into Qdrant.
 
 Requires a Google AI API key. Set GOOGLE_AI_API_KEY in your environment or
 pass --api-key. Use --limit and --dry-run to test without incurring costs.
 
 Options:
-  --api-key <key>     Google AI API key (or set GOOGLE_AI_API_KEY)
-  --types <types>     Comma-separated entity types to process (creature,spell,etc.)
-  --limit <n>         Only process the first N rule items
-  --batch-size <n>    Embeddings per API call [default: 20]
-  --db <path>         Source SQLite database [default: data/dev.sqlite]
-  --vector-db <path>  Output vector database [default: data/vectors.sqlite]
-  --model <name>      Embedding model name [default: gemini-embedding-001]
-  --dry-run           Generate chunks without calling the embedding API
-  --help              Show this help message
+  --api-key <key>      Google AI API key (or set GOOGLE_AI_API_KEY)
+  --types <types>      Comma-separated entity types to process (creature,spell,etc.)
+  --limit <n>          Only process the first N rule items
+  --batch-size <n>     Embeddings per API call / points per upsert [default: 100]
+  --db <path>          Source SQLite database [default: data/dev.sqlite]
+  --model <name>       Embedding model name [default: gemini-embedding-001]
+  --qdrant-url <url>   Qdrant URL [default: $QDRANT_URL or http://localhost:6333]
+  --collection <name>  Qdrant collection [default: $QDRANT_COLLECTION or rule_chunks]
+  --vector-size <n>    Embedding dimension [default: 3072]
+  --recreate           Drop & recreate collection before indexing (destructive)
+  --dry-run            Generate chunks without calling the embedding API
+  --help               Show this help message
 `;
 
 const vectorArgsSchema = z.object({
@@ -87,11 +38,14 @@ const vectorArgsSchema = z.object({
         .transform((v) => v.split(","))
         .optional(),
     limit: z.coerce.number().int().positive().optional(),
-    batchSize: z.coerce.number().int().positive().default(20),
+    batchSize: z.coerce.number().int().positive().default(100),
     db: z.string().default("data/dev.sqlite"),
-    vectorDb: z.string().default("data/vectors.sqlite"),
     model: z.string().default("gemini-embedding-001"),
     dryRun: z.boolean().default(false),
+    qdrantUrl: z.string().default(() => process.env.QDRANT_URL ?? QDRANT_CONFIG.URL),
+    collection: z.string().default(() => process.env.QDRANT_COLLECTION ?? QDRANT_CONFIG.COLLECTION),
+    vectorSize: z.coerce.number().int().positive().default(QDRANT_CONFIG.VECTOR_SIZE),
+    recreate: z.boolean().default(false),
 });
 
 /** @typedef {z.infer<typeof vectorArgsSchema>} VectorArgs */
@@ -121,10 +75,16 @@ export function parseVectorArgs(argv) {
             raw.batchSize = argv[++i];
         } else if (arg === "--db" && argv[i + 1]) {
             raw.db = argv[++i];
-        } else if (arg === "--vector-db" && argv[i + 1]) {
-            raw.vectorDb = argv[++i];
         } else if (arg === "--model" && argv[i + 1]) {
             raw.model = argv[++i];
+        } else if (arg === "--qdrant-url" && argv[i + 1]) {
+            raw.qdrantUrl = argv[++i];
+        } else if (arg === "--collection" && argv[i + 1]) {
+            raw.collection = argv[++i];
+        } else if (arg === "--vector-size" && argv[i + 1]) {
+            raw.vectorSize = argv[++i];
+        } else if (arg === "--recreate") {
+            raw.recreate = true;
         } else if (arg === "--dry-run") {
             raw.dryRun = true;
         }
@@ -136,27 +96,15 @@ export function parseVectorArgs(argv) {
 }
 
 /**
- * Creates and initializes the vector database.
- * @param {string} dbPath
- * @returns {Database}
- */
-export function createVectorDb(dbPath) {
-    if (dbPath !== ":memory:" && !dbPath.startsWith("file:")) {
-        const dir = dbPath.substring(0, dbPath.lastIndexOf("/"));
-        mkdirSync(dir, { recursive: true });
-    }
-    const vdb = new Database(dbPath);
-    vdb.exec("PRAGMA journal_mode=WAL");
-    vdb.exec(CREATE_VECTOR_TABLE_SQL);
-    return vdb;
-}
-
-/**
- * Main function to create the vector database.
- * @param {{ apiKey?: string, types?: string[], limit?: number, batchSize: number, db: string, vectorDb: string, model: string, dryRun: boolean }} options
+ * Chunks rule items, embeds the chunks via Google AI, and upserts them directly
+ * into Qdrant. Idempotent: point ids are deterministic UUID v5 derived from the
+ * chunk id, so re-running cannot accumulate duplicates.
+ * @param {VectorArgs} options
+ * @param {{ createStore?: typeof createVectorStore }} [deps]
  * @returns {Promise<{ chunksCreated: number, apiCalls: number, errors: number }>}
  */
-export async function runVectorCreate(options) {
+export async function runVectorCreate(options, deps = {}) {
+    const createStore = deps.createStore ?? createVectorStore;
     const sourceDb = createDb(options.db);
     const ruleItems = getRuleItems(sourceDb, undefined, { includeChildren: true });
 
@@ -198,12 +146,20 @@ export async function runVectorCreate(options) {
         );
     }
 
-    // Create vector DB
-    const vdb = createVectorDb(options.vectorDb);
+    const store = createStore({ url: options.qdrantUrl, collection: options.collection });
+    if (!store.client) {
+        throw new Error(`Qdrant client not constructed (url=${options.qdrantUrl})`);
+    }
 
-    const insertStmt = vdb.prepare(
-        "INSERT OR REPLACE INTO vector_chunks (id, rule_item_id, rule_item_name, rule_item_type, compendium_source, chunk_index, text, embedding, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-    );
+    if (options.recreate) {
+        try {
+            await store.client.deleteCollection(options.collection);
+        } catch {
+            // Best-effort.
+        }
+    }
+
+    await store.ensureCollection(options.vectorSize);
 
     let apiCalls = 0;
     let errors = 0;
@@ -218,22 +174,20 @@ export async function runVectorCreate(options) {
             const embeddings = await createEmbeddings(options.apiKey, options.model, texts);
             apiCalls++;
 
-            for (let j = 0; j < batch.length; j++) {
-                const chunk = batch[j];
-                const embedding = embeddings[j];
-                insertStmt.run(
-                    chunk.id,
-                    chunk.ruleItemId,
-                    chunk.ruleItemName,
-                    chunk.ruleItemType,
-                    chunk.compendiumSource ?? null,
-                    chunk.chunkIndex,
-                    chunk.text,
-                    embedding ? packEmbedding(embedding) : null,
-                    new Date().toISOString(),
-                );
-                processedChunks++;
-            }
+            /** @type {import("../server/utils/vector-store.js").VectorChunkForUpsert[]} */
+            const chunksForUpsert = batch.map((chunk, j) => ({
+                id: chunk.id,
+                ruleItemId: chunk.ruleItemId,
+                ruleItemName: chunk.ruleItemName,
+                ruleItemType: chunk.ruleItemType,
+                compendiumSource: chunk.compendiumSource ?? null,
+                chunkIndex: chunk.chunkIndex,
+                text: chunk.text,
+                embedding: embeddings[j] ?? [],
+            }));
+
+            const result = await store.upsertChunks(chunksForUpsert);
+            processedChunks += result.upserted;
         } catch (error) {
             errors++;
             console.error(

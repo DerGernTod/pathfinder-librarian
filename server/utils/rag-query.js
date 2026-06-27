@@ -75,7 +75,11 @@ export async function queryRagContext(userPrompt, options = {}) {
         return { contextText: "", sources: [], embeddingTokens: 0 };
     }
     if (!vectorStore.isAvailable()) {
-        await vectorStore.ensureCollection();
+        try {
+            await vectorStore.ensureCollection();
+        } catch {
+            // Qdrant unreachable; RAG degrades silently.
+        }
     }
     if (!vectorStore.isAvailable()) {
         return { contextText: "", sources: [], embeddingTokens: 0 };

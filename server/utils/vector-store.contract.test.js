@@ -11,12 +11,10 @@ const QDRANT_COLLECTION = process.env.QDRANT_COLLECTION || "rule_chunks_contract
  * non-test CI jobs). Runs in CI via the `qdrant` service container.
  */
 describe.skipIf(!QDRANT_URL)("vector-store contract (live Qdrant)", () => {
-    if (!QDRANT_URL) {
-        return;
-    }
-
     /** @type {ReturnType<typeof createVectorStore>} */
     let store;
+    /** @type {typeof fetch | undefined} */
+    let originalFetch;
 
     beforeAll(async () => {
         // Other test files mock `globalThis.fetch` directly. bun:test's
@@ -26,7 +24,9 @@ describe.skipIf(!QDRANT_URL)("vector-store contract (live Qdrant)", () => {
         // accessor is undefined) — every request would throw
         // "undefined is not an object (evaluating 'response.headers.get')".
         // `Bun.fetch` is the un-mockable original; restore it before constructing
-        // the store so the qdrant client captures a real fetch.
+        // the store so the qdrant client captures a real fetch. Captured here and
+        // restored in afterAll so later test files get a clean fetch.
+        originalFetch = globalThis.fetch;
         const realFetch = /** @type {{ fetch?: typeof fetch } | undefined} */ (
             /** @type {unknown} */ (globalThis.Bun)
         )?.fetch;
@@ -40,6 +40,9 @@ describe.skipIf(!QDRANT_URL)("vector-store contract (live Qdrant)", () => {
     });
 
     afterAll(async () => {
+        if (originalFetch !== undefined) {
+            globalThis.fetch = originalFetch;
+        }
         if (store && store.client) {
             try {
                 await store.client.deleteCollection(QDRANT_COLLECTION);

@@ -108,6 +108,18 @@ describe("rag-query", () => {
             expect(ensureCalls).toBe(1);
         });
 
+        it("returns empty context (not error) when ensureCollection rejects", async () => {
+            const store = makeFakeStore([]);
+            store._setAvailable(false);
+            store.ensureCollection = async () => {
+                throw new Error("qdrant unreachable");
+            };
+            const result = await queryRagContext("anything", { vectorStore: store });
+            expect(result.contextText).toBe("");
+            expect(result.sources).toEqual([]);
+            expect(result.embeddingTokens).toBe(0);
+        });
+
         it("lazily triggers ensureCollection when not yet available", async () => {
             const store = makeFakeStore([]);
             store._setAvailable(false);
